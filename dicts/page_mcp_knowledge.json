@@ -1,0 +1,14 @@
+{
+    "Loading knowledge items...": "正在加载知识库...",
+    "Loading MCP servers...": "正在加载 MCP 服务器...",
+    "No resources available": "无可用的资源",
+    "MCP Servers": "MCP 服务器",
+    "Installed MCP Servers": "已安装的 MCP 服务器",
+    "Add MCP Servers": "添加 MCP 服务器",
+    "Search for MCP servers to add to your configuration": "搜索要添加到配置中的 MCP 服务器",
+    "No MCP Servers": "暂无 MCP 服务器",
+    "MCP Configuration Error:": "MCP 配置错误：",
+    "Knowledge": "知识库",
+    "Knowledge Generation": "知识生成",
+    "Search for MCP servers": "搜索 MCP 服务器"
+}
