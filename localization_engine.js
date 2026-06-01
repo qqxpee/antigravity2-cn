@@ -127,24 +127,24 @@ function generateJs() {
                     newVal = map.get(valNorm);
                 } else if (lowerMap.has(valLower)) {
                     newVal = lowerMap.get(valLower);
-                } else if (/^Refreshes in (\d+) days?, (\d+) hours?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Refreshes in (\d+) days?, (\d+) hours?$/i, (match, d, h) => {
+                } else if (/^Refreshes in (\\d+) days?, (\\d+) hours?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) days?, (\\d+) hours?$/i, (match, d, h) => {
                         return d + " 天 " + h + " 小时后刷新";
                     });
-                } else if (/^Refreshes in (\d+) hours?, (\d+) minutes?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Refreshes in (\d+) hours?, (\d+) minutes?$/i, (match, h, m) => {
+                } else if (/^Refreshes in (\\d+) hours?, (\\d+) minutes?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) hours?, (\\d+) minutes?$/i, (match, h, m) => {
                         return h + " 小时 " + m + " 分钟后刷新";
                     });
-                } else if (/^Refreshes in (\d+) days?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Refreshes in (\d+) days?$/i, (match, d) => {
+                } else if (/^Refreshes in (\\d+) days?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) days?$/i, (match, d) => {
                         return d + " 天后刷新";
                     });
-                } else if (/^Refreshes in (\d+) hours?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Refreshes in (\d+) hours?$/i, (match, h) => {
+                } else if (/^Refreshes in (\\d+) hours?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) hours?$/i, (match, h) => {
                         return h + " 小时后刷新";
                     });
-                } else if (/^Refreshes in (\d+) minutes?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Refreshes in (\d+) minutes?$/i, (match, m) => {
+                } else if (/^Refreshes in (\\d+) minutes?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) minutes?$/i, (match, m) => {
                         return m + " 分钟后刷新";
                     });
                 } else if (/^Learn more about (.+)$/i.test(valNorm)) {
