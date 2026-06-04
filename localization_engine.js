@@ -127,6 +127,43 @@ function generateJs() {
                     newVal = map.get(valNorm);
                 } else if (lowerMap.has(valLower)) {
                     newVal = lowerMap.get(valLower);
+                } else if (/^Refreshes in (\\d+) days?, (\\d+) hours?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) days?, (\\d+) hours?$/i, (match, d, h) => {
+                        return d + " 天 " + h + " 小时后刷新";
+                    });
+                } else if (/^Refreshes in (\\d+) hours?, (\\d+) minutes?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) hours?, (\\d+) minutes?$/i, (match, h, m) => {
+                        return h + " 小时 " + m + " 分钟后刷新";
+                    });
+                } else if (/^Refreshes in (\\d+) days?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) days?$/i, (match, d) => {
+                        return d + " 天后刷新";
+                    });
+                } else if (/^Refreshes in (\\d+) hours?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) hours?$/i, (match, h) => {
+                        return h + " 小时后刷新";
+                    });
+                } else if (/^Refreshes in (\\d+) minutes?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Refreshes in (\\d+) minutes?$/i, (match, m) => {
+                        return m + " 分钟后刷新";
+                    });
+                } else if (/^Learn more about (.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Learn more about (.+)$/i, (match, p) => {
+                        let translatedPreset = p;
+                        if (p.toLowerCase() === 'default') translatedPreset = '默认 (Default)';
+                        else if (p.toLowerCase() === 'full machine') translatedPreset = '全机访问 (Full Machine)';
+                        else if (p.toLowerCase() === 'turbo mode') translatedPreset = '极速模式 (Turbo Mode)';
+                        else if (p.toLowerCase() === 'custom') translatedPreset = '自定义 (Custom)';
+                        return "了解更多关于 " + translatedPreset + " 的信息";
+                    });
+                } else if (/^Yes, and always allow '(.+)' in this project$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Yes, and always allow '(.+)' in this project$/i, (match, cmd) => {
+                        return "是，且在此项目中始终允许运行 '" + cmd + "'";
+                    });
+                } else if (/^Yes, and always allow '(.+)'$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Yes, and always allow '(.+)'$/i, (match, cmd) => {
+                        return "是，且始终允许运行 '" + cmd + "'";
+                    });
                 } else {
                     // 2. 长句子串滑动替换
                     for (const [key, translated] of longEntries) {
@@ -241,7 +278,11 @@ function closeAntigravityProcesses() {
 function detectInstallationDir(manualDir) {
     if (manualDir) {
         if (fs.existsSync(manualDir)) {
-            return path.resolve(manualDir);
+            let resolved = path.resolve(manualDir);
+            if (fs.statSync(resolved).isFile() && resolved.endsWith('app.asar')) {
+                resolved = path.dirname(resolved);
+            }
+            return resolved;
         } else {
             console.error(`[错误] 手动指定的路径不存在: ${manualDir}`);
             process.exit(1);
@@ -278,6 +319,34 @@ function runCommandSync(cmd) {
         return { success: true, stdout: out, stderr: '' };
     } catch (e) {
         return { success: false, stdout: e.stdout || '', stderr: e.stderr || e.message };
+    }
+}
+
+function resignAppOnMac(anyPath) {
+    if (process.platform !== 'darwin') return;
+    
+    let targetApp = "";
+    let current = path.resolve(anyPath);
+    for (let i = 0; i < 10; i++) {
+        if (current.endsWith(".app")) {
+            targetApp = current;
+            break;
+        }
+        const parent = path.dirname(current);
+        if (parent === current) break;
+        current = parent;
+    }
+    
+    if (targetApp && fs.existsSync(targetApp)) {
+        console.log(`[签名] 检测到 macOS 平台，正在对应用包进行本地 ad-hoc 深度重签名: ${targetApp} ...`);
+        const signRes = runCommandSync(`codesign --force --deep --sign - "${targetApp}"`);
+        if (signRes.success) {
+            console.log(`[签名] 重新签名成功！`);
+        } else {
+            console.warn(`[警告] 重新签名失败。可能会导致应用无法打开。详情:\n${signRes.stderr}\n${signRes.stdout}`);
+        }
+    } else {
+        console.warn(`[警告] 未能从路径 ${anyPath} 识别到有效的 .app 路径，跳过重新签名。`);
     }
 }
 
@@ -472,6 +541,7 @@ function install20(resourcesDir) {
         return false;
     }
 
+    resignAppOnMac(resourcesDir);
     console.log(`[√] Antigravity 2.0 汉化部署完成！`);
     return true;
 }
@@ -490,6 +560,7 @@ function restore20(resourcesDir) {
     console.log("[还原] 正在用官方备份文件恢复...");
     fs.copyFileSync(bakPath, asarPath);
     fs.unlinkSync(bakPath);
+    resignAppOnMac(resourcesDir);
     console.log("[√] 官方 app.asar 已成功恢复！");
     return true;
 }
@@ -570,6 +641,7 @@ function install10(installDir) {
     }
             
     updateChecksums10(installDir);
+    resignAppOnMac(installDir);
     console.log("[√] Antigravity 1.0 汉化部署完成！");
     return true;
 }
@@ -597,6 +669,7 @@ function restore10(installDir) {
         
     if (changed) {
         updateChecksums10(installDir);
+        resignAppOnMac(installDir);
         console.log("[√] 校验值已同步，1.0 软件恢复至原始状态。");
     } else {
         console.log("[!] 未找到 1.0 备份文件。");
@@ -630,7 +703,7 @@ function main() {
         resourcesDir = path.join(installDir, "resources");
     } else if (fs.existsSync(path.join(installDir, "Contents", "Resources"))) {
         resourcesDir = path.join(installDir, "Contents", "Resources");
-    } else if (installDir.replace(/\\/g, "/").replace(/\/$/, "").endsWith("/resources")) {
+    } else if (installDir.replace(/\\/g, "/").replace(/\/$/, "").toLowerCase().endsWith("/resources")) {
         resourcesDir = installDir;
     } else {
         if (fs.existsSync(path.join(installDir, "app.asar"))) {

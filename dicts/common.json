@@ -97,5 +97,8 @@
     "Continue with Google": "通过 Google 继续",
     "Previous": "上一步",
     "Next": "下一步",
-    "Finish": "完成"
+    "Finish": "完成",
+    "Allow running this command?": "是否允许运行此命令？",
+    "Yes, allow this time": "是，仅允许本次执行",
+    "No (tell the agent what to do instead)": "否（告知智能体其他操作）"
 }
