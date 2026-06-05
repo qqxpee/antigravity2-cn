@@ -2,6 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const child_process = require('child_process');
 
+// --tw 參數：使用繁體中文字典 (dicts_tw/)，否則使用預設簡體字典 (dicts/)
+const USE_TW = process.argv.includes('--tw');
+const DICTS_FOLDER = USE_TW ? 'dicts_tw' : 'dicts';
+
 const SIGNATURE_START = "/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */";
 const SIGNATURE_END = "/* --- ANTIGRAVITY CHINESE LOCALIZATION END --- */";
 
@@ -17,7 +21,7 @@ function normalizeText(text) {
 
 function loadDictionary() {
     const totalMap = {};
-    const dictsDir = path.join(__dirname, 'dicts');
+    const dictsDir = path.join(__dirname, DICTS_FOLDER);
     if (fs.existsSync(dictsDir)) {
         const files = fs.readdirSync(dictsDir);
         for (const file of files) {

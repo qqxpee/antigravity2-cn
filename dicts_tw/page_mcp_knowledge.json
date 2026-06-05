@@ -1,0 +1,14 @@
+{
+    "Loading knowledge items...": "正在載入知識庫項目...",
+    "Loading MCP servers...": "正在載入 MCP 伺服器...",
+    "No resources available": "無可用資源",
+    "MCP Servers": "MCP 伺服器",
+    "Installed MCP Servers": "已安裝的 MCP 伺服器",
+    "Add MCP Servers": "新增 MCP 伺服器",
+    "Search for MCP servers to add to your configuration": "搜尋要新增至設定的 MCP 伺服器",
+    "No MCP Servers": "尚無 MCP 伺服器",
+    "MCP Configuration Error:": "MCP 設定錯誤：",
+    "Knowledge": "知識庫",
+    "Knowledge Generation": "知識生成",
+    "Search for MCP servers": "搜尋 MCP 伺服器"
+}
