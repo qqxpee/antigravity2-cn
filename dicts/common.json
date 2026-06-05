@@ -100,5 +100,15 @@
     "Finish": "完成",
     "Allow running this command?": "是否允许运行此命令？",
     "Yes, allow this time": "是，仅允许本次执行",
-    "No (tell the agent what to do instead)": "否（告知智能体其他操作）"
+    "No (tell the agent what to do instead)": "否（告知智能体其他操作）",
+    "Allow read access to this path?": "是否允许读取此路径？",
+    "Allow write access to this path?": "是否允许写入此路径？",
+    "Allow read/write access to this path?": "是否允许读写此路径？",
+    "Allow read access?": "是否允许读取权限？",
+    "Allow write access?": "是否允许写入权限？",
+    "Allow executing this command?": "是否允许执行此命令？",
+    "Allow network access to this URL?": "是否允许访问此 URL？",
+    "Allow network access?": "是否允许访问网络？",
+    "Yes, and always allow in this project": "是，且在此项目中始终允许",
+    "Yes, and always allow": "是，且始终允许"
 }

@@ -97,5 +97,18 @@
     "Continue with Google": "以 Google 繼續",
     "Previous": "上一步",
     "Next": "下一步",
-    "Finish": "完成"
+    "Finish": "完成",
+    "Allow running this command?": "是否允許執行此命令？",
+    "Yes, allow this time": "是，僅允許本次執行",
+    "No (tell the agent what to do instead)": "否（告知代理其他操作）",
+    "Allow read access to this path?": "是否允許讀取此路徑？",
+    "Allow write access to this path?": "是否允許寫入此路徑？",
+    "Allow read/write access to this path?": "是否允許讀寫此路徑？",
+    "Allow read access?": "是否允許讀取權限？",
+    "Allow write access?": "是否允許寫入權限？",
+    "Allow executing this command?": "是否允許執行此命令？",
+    "Allow network access to this URL?": "是否允許存取此 URL？",
+    "Allow network access?": "是否允許存取網路？",
+    "Yes, and always allow in this project": "是，且在此專案中一律允許",
+    "Yes, and always allow": "是，且一律允許"
 }
