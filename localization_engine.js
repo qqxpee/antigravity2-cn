@@ -133,40 +133,40 @@ function generateJs() {
                     newVal = lowerMap.get(valLower);
                 } else if (/^Refreshes in (\\d+) days?, (\\d+) hours?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Refreshes in (\\d+) days?, (\\d+) hours?$/i, (match, d, h) => {
-                        return d + " 天 " + h + " 小时后刷新";
+                        return ${USE_TW ? 'd + " 天 " + h + " 小時後更新"' : 'd + " 天 " + h + " 小时后刷新"'};
                     });
                 } else if (/^Refreshes in (\\d+) hours?, (\\d+) minutes?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Refreshes in (\\d+) hours?, (\\d+) minutes?$/i, (match, h, m) => {
-                        return h + " 小时 " + m + " 分钟后刷新";
+                        return ${USE_TW ? 'h + " 小時 " + m + " 分鐘後更新"' : 'h + " 小时 " + m + " 分钟后刷新"'};
                     });
                 } else if (/^Refreshes in (\\d+) days?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Refreshes in (\\d+) days?$/i, (match, d) => {
-                        return d + " 天后刷新";
+                        return ${USE_TW ? 'd + " 天後更新"' : 'd + " 天后刷新"'};
                     });
                 } else if (/^Refreshes in (\\d+) hours?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Refreshes in (\\d+) hours?$/i, (match, h) => {
-                        return h + " 小时后刷新";
+                        return ${USE_TW ? 'h + " 小時後更新"' : 'h + " 小时后刷新"'};
                     });
                 } else if (/^Refreshes in (\\d+) minutes?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Refreshes in (\\d+) minutes?$/i, (match, m) => {
-                        return m + " 分钟后刷新";
+                        return ${USE_TW ? 'm + " 分鐘後更新"' : 'm + " 分钟后刷新"'};
                     });
                 } else if (/^Learn more about (.+)$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Learn more about (.+)$/i, (match, p) => {
                         let translatedPreset = p;
-                        if (p.toLowerCase() === 'default') translatedPreset = '默认 (Default)';
-                        else if (p.toLowerCase() === 'full machine') translatedPreset = '全机访问 (Full Machine)';
-                        else if (p.toLowerCase() === 'turbo mode') translatedPreset = '极速模式 (Turbo Mode)';
-                        else if (p.toLowerCase() === 'custom') translatedPreset = '自定义 (Custom)';
-                        return "了解更多关于 " + translatedPreset + " 的信息";
+                        if (p.toLowerCase() === 'default') translatedPreset = ${USE_TW ? '"預設 (Default)"' : '"默认 (Default)"'};
+                        else if (p.toLowerCase() === 'full machine') translatedPreset = ${USE_TW ? '"全機存取 (Full Machine)"' : '"全机访问 (Full Machine)"'};
+                        else if (p.toLowerCase() === 'turbo mode') translatedPreset = ${USE_TW ? '"極速模式 (Turbo Mode)"' : '"极速模式 (Turbo Mode)"'};
+                        else if (p.toLowerCase() === 'custom') translatedPreset = ${USE_TW ? '"自訂 (Custom)"' : '"自定义 (Custom)"'};
+                        return ${USE_TW ? '"瞭解更多關於 " + translatedPreset + " 的詳細資訊"' : '"了解更多关于 " + translatedPreset + " 的信息"'};
                     });
                 } else if (/^Yes, and always allow '(.+)' in this project$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Yes, and always allow '(.+)' in this project$/i, (match, cmd) => {
-                        return "是，且在此项目中始终允许运行 '" + cmd + "'";
+                        return ${USE_TW ? '"是，且在此專案中一律允許執行 \'" + cmd + "\'"' : '"是，且在此项目中始终允许运行 \'" + cmd + "\'"'};
                     });
                 } else if (/^Yes, and always allow '(.+)'$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Yes, and always allow '(.+)'$/i, (match, cmd) => {
-                        return "是，且始终允许运行 '" + cmd + "'";
+                        return ${USE_TW ? '"是，且一律允許執行 \'" + cmd + "\'"' : '"是，且始终允许运行 \'" + cmd + "\'"'};
                     });
                 } else {
                     // 2. 长句子串滑动替换

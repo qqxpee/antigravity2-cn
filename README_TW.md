@@ -6,17 +6,27 @@
 
 | 檔案 | 說明 |
 |------|------|
-| `install-tw.bat` | 雙擊安裝繁體中文化 |
-| `restore-en.bat` | 雙擊還原官方英文版 |
+| `install-tw.bat` | 雙擊安裝 Windows 繁體中文化 |
+| `双击安装繁体中文.command` | 雙擊安裝 macOS 繁體中文化 |
+| `restore-en.bat` | 雙擊還原 Windows 官方英文版 |
+| `双击卸载还原官方英文.command` | 雙擊還原 macOS 官方英文版 |
 | `localization_engine.js` | 核心注入引擎（與原版相同） |
-| `dicts/` | 繁體中文翻譯字典（全部重新翻譯） |
+| `dicts_tw/` | 繁體中文翻譯字典（全部重新翻譯） |
 
 ## 使用方式
 
-1. 確保已安裝 [Node.js](https://nodejs.org/)
-2. 雙擊 `install-tw.bat` 安裝繁體中文化
-3. 重新啟動 Antigravity 即可看到繁體中文介面
-4. 如需還原英文版，雙擊 `restore-en.bat`
+### Windows 使用者
+1. **完全退出** Antigravity 軟體。
+2. 雙擊 `install-tw.bat` 安裝繁體中文化。
+3. 重新啟動 Antigravity 即可。
+4. 如需還原英文版，雙擊 `restore-en.bat`。
+
+### macOS 使用者
+1. **完全退出** Antigravity 軟體。
+2. 首次執行前如果提示權限不足，可在終端機執行 `chmod +x *.command`。
+3. 雙擊 `双击安装繁体中文.command` 安裝繁體中文化。
+4. 重新啟動 Antigravity 即可。
+5. 如需還原英文版，雙擊 `双击卸载还原官方英文.command`。
 
 ## 翻譯字典說明
 
