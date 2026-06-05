@@ -6,9 +6,9 @@
 
 | 檔案 | 說明 |
 |------|------|
-| `install-tw.bat` | 雙擊安裝 Windows 繁體中文化 |
+| `双击安装繁体中文.bat` | 雙擊安裝 Windows 繁體中文化 |
 | `双击安装繁体中文.command` | 雙擊安裝 macOS 繁體中文化 |
-| `restore-en.bat` | 雙擊還原 Windows 官方英文版 |
+| `双击卸载还原官方英文.bat` | 雙擊還原 Windows 官方英文版 |
 | `双击卸载还原官方英文.command` | 雙擊還原 macOS 官方英文版 |
 | `localization_engine.js` | 核心注入引擎（與原版相同） |
 | `dicts_tw/` | 繁體中文翻譯字典（全部重新翻譯） |
@@ -17,9 +17,9 @@
 
 ### Windows 使用者
 1. **完全退出** Antigravity 軟體。
-2. 雙擊 `install-tw.bat` 安裝繁體中文化。
+2. 雙擊 `双击安装繁体中文.bat` 安裝繁體中文化。
 3. 重新啟動 Antigravity 即可。
-4. 如需還原英文版，雙擊 `restore-en.bat`。
+4. 如需還原英文版，雙擊 `双击卸载还原官方英文.bat`。
 
 ### macOS 使用者
 1. **完全退出** Antigravity 軟體。
