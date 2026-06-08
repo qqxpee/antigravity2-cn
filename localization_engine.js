@@ -127,7 +127,7 @@ function generateJs() {
     for (const [k, v] of map.entries()) lowerMap.set(k.toLowerCase(), v);
     
     const longEntries = REPLACEMENT_ENTRIES_PLACEHOLDER;
-    const done = new WeakSet();
+    const translatedValues = new WeakMap();
 
     // 禁区类名/属性特征
     const BLOCKED_CLASSES = ['monaco-editor', 'editor-container', 'terminal', 'output-view', 'debug-console', 'code-view', 'artifact-container', 'suggest-widget'];
@@ -161,7 +161,7 @@ function generateJs() {
 
     function translateNode(node) {
         try {
-            if (!node || done.has(node)) return;
+            if (!node) return;
             
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
@@ -189,6 +189,8 @@ function generateJs() {
 
                 // 核心：在处理文本节点前，必须确认其不在“禁止区”
                 if (isInBlockedZone(node)) return;
+
+                if (translatedValues.get(node) === originalVal) return;
 
                 let newVal = originalVal;
                 const valNorm = norm(originalVal);
@@ -283,9 +285,8 @@ function generateJs() {
                 }
 
                 if (newVal !== originalVal) {
+                    translatedValues.set(node, newVal);
                     node.nodeValue = newVal;
-                    done.add(node);
-                    setTimeout(() => done.delete(node), 50); 
                 }
             }
         } catch (e) {}

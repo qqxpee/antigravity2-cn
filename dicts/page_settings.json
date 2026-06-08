@@ -417,5 +417,7 @@
     "Monokai": "Monokai",
     "Useful for typical development with an emphasis on security. It prioritizes safety over speed by requiring manual approval for all terminal commands and files outside the project directory.": "适用于以安全为重点的典型开发。它通过要求对项目目录外的所有终端命令和文件进行人工批准，将安全性置于速度之上。",
     "Useful for tasks that require file access across your full machine. The agent has full read and write access to all local files, but all proposed terminal commands require manual review and approval before running.": "适用于需要访问整机文件的任务。智能体对所有本地文件拥有完全的读写权限，但所有拟执行的终端命令在运行前均需人工审查和批准。",
-    "A high-risk mode that disables all safety barriers. The agent operates with full system access, auto-executes all terminal commands, and reads or writes to all local files without review prompts.": "一种禁用所有安全屏障的高风险模式。智能体在拥有完全系统访问权限下运行，自动执行所有终端命令，读写所有本地文件且无需审查提示。"
+    "A high-risk mode that disables all safety barriers. The agent operates with full system access, auto-executes all terminal commands, and reads or writes to all local files without review prompts.": "一种禁用所有安全屏障的高风险模式。智能体在拥有完全系统访问权限下运行，自动执行所有终端命令，读写所有本地文件且无需审查提示。",
+    "Artifact Review Policy": "交付件审查策略",
+    "Controls whether terminal commands require your approval before running.": "控制终端命令在运行前是否需要您的批准。"
 }

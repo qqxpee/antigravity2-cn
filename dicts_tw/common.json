@@ -188,5 +188,9 @@
     "Finalizing...": "正在收尾...",
     "Record Audio": "錄製語音",
     "Stop Recording": "停止錄音",
-    "See less": "收起"
+    "See less": "收起",
+    "Add Context": "新增上下文",
+    "Media": "媒體",
+    "Mentions": "提及",
+    "Actions": "操作"
 }
