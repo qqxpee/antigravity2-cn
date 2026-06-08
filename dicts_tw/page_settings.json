@@ -400,7 +400,7 @@
     "Go Forward": "前進",
     "File Picker": "檔案選擇器",
     "Select Previous Conversation": "選擇上一個會話",
-    "Select Next Conversation": "選擇下一個會话",
+    "Select Next Conversation": "選擇下一個會話",
     "Toggle Model Selector": "切換模型選擇器",
     "Start Voice Recording": "開始錄音",
     "Stop Voice Recording": "停止錄音",
@@ -412,5 +412,6 @@
     "One Light": "One Light 淺色",
     "Solarized Light": "Solarized Light 淺色",
     "One Dark Pro": "One Dark Pro 深色",
-    "Tokyo Night": "Tokyo Night 東京之夜"
+    "Tokyo Night": "Tokyo Night 東京之夜",
+    "Specifies Agent’s behavior when asking for review on artifacts, which are documents it creates to enable a richer conversation experience.": "指定代理在請求審查成品時的行為。成品 (Artifact) 是代理為了提供更豐富的互動體驗而生成的文件。"
 }
