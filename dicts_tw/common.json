@@ -206,5 +206,7 @@
     "Invoke a team of agents to autonomously tackle large projects": "呼叫代理團隊自主應對大型專案",
     "See all": "顯示全部",
     "Create a new project. You can add folders to it now or later.": "建立新專案。您現在或稍後都可以為其新增資料夾。",
-    "This will permanently delete the project and all conversations within it. This action cannot be undone.": "這將永久刪除該專案及其包含的所有對話。此操作無法復原。"
+    "This will permanently delete the project and all conversations within it. This action cannot be undone.": "這將永久刪除該專案及其包含的所有對話。此操作無法復原。",
+    "Select Environment": "選擇環境",
+    "Local": "本機"
 }
