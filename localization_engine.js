@@ -169,7 +169,7 @@ function generateJs() {
                 if (BLOCKED_TAGS.includes(tag)) {
                     // 对于 INPUT 和 TEXTAREA，虽然不翻译其子元素或内容，但需要翻译其 placeholder 等属性
                     if (tag === 'INPUT' || tag === 'TEXTAREA') {
-                        if (!isInBlockedZone(node)) {
+                        if (!isInBlockedZone(node.parentElement)) {
                             for (const attr of ['placeholder', 'title', 'aria-label']) {
                                 const v = node.getAttribute(attr);
                                 if (v) {
