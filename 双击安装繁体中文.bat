@@ -7,10 +7,11 @@ echo 請選擇左上角品牌顯示方式：
 echo [1] 顯示英文 Antigravity（推薦）
 echo [2] 不顯示品牌名稱
 echo [3] 顯示繁體中文品牌名
-set /p BRAND_CHOICE=請輸入 1/2/3，直接 Enter 預設 1：
+echo 請按 1、2 或 3 選擇：
+choice /c 123 /n /m "Choice [1/2/3]: "
 set "BRAND_ARG=--brand-title english"
-if "%BRAND_CHOICE%"=="2" set "BRAND_ARG=--brand-title hidden"
-if "%BRAND_CHOICE%"=="3" set "BRAND_ARG=--brand-title translated"
+if "%ERRORLEVEL%"=="2" set "BRAND_ARG=--brand-title hidden"
+if "%ERRORLEVEL%"=="3" set "BRAND_ARG=--brand-title translated"
 
 echo.
 echo [1/3] 正在關閉 Antigravity 進程...
