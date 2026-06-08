@@ -687,6 +687,29 @@ function install20(resourcesDir) {
         console.log(`[修改] 加载页汉化注入成功！`);
     }
 
+    // 3.4 注入 updater.js (更新弹窗汉化)
+    const updaterPath = path.join(tempDir, "dist", "updater.js");
+    if (fs.existsSync(updaterPath)) {
+        console.log(`[修改] 正在向 updater.js 注入更新弹窗汉化...`);
+        let updaterContent = fs.readFileSync(updaterPath, 'utf-8');
+        
+        // 替换 Check for Updates 弹窗的属性
+        const targetOptions = `                title: 'Check for Updates',
+                message: 'No updates available',
+                buttons: ['OK'],`;
+        const replacementOptions = USE_TW
+            ? `                title: '檢查更新',
+                message: '暫無可用更新',
+                buttons: ['確定'],`
+            : `                title: '检查更新',
+                message: '暂无可用更新',
+                buttons: ['确定'],`;
+        
+        updaterContent = updaterContent.replace(targetOptions, replacementOptions);
+        fs.writeFileSync(updaterPath, updaterContent, 'utf-8');
+        console.log(`[修改] 更新弹窗汉化注入成功！`);
+    }
+
     // 4. 重新打包
     console.log(`[打包] 正在将修改后的内容打包回 app.asar...`);
     const packRes = runCommandSync(`npx -y @electron/asar pack "${tempDir}" "${asarPath}"`);
