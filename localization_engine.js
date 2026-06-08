@@ -166,7 +166,22 @@ function generateJs() {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
                 // 1. 快速排除基础禁止标签
-                if (BLOCKED_TAGS.includes(tag)) return;
+                if (BLOCKED_TAGS.includes(tag)) {
+                    // 对于 INPUT 和 TEXTAREA，虽然不翻译其子元素或内容，但需要翻译其 placeholder 等属性
+                    if (tag === 'INPUT' || tag === 'TEXTAREA') {
+                        if (!isInBlockedZone(node)) {
+                            for (const attr of ['placeholder', 'title', 'aria-label']) {
+                                const v = node.getAttribute(attr);
+                                if (v) {
+                                    const t = norm(v);
+                                    if (map.has(t)) node.setAttribute(attr, map.get(t));
+                                    else if (lowerMap.has(t.toLowerCase())) node.setAttribute(attr, lowerMap.get(t.toLowerCase()));
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
                 
                 // 2. 只有当确实不在禁区时，才翻译其属性
                 if (!isInBlockedZone(node)) {

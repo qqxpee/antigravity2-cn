@@ -192,5 +192,8 @@
     "Add Context": "添加上下文",
     "Media": "媒体",
     "Mentions": "提及",
-    "Actions": "操作"
+    "Actions": "操作",
+    "New": "新建",
+    "Complete": "已完成",
+    "Archived": "已归档"
 }

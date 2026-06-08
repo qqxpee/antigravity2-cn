@@ -160,7 +160,7 @@
     "Create New Project": "建立新專案",
     "Project Settings": "專案設定",
     "New Conversation in Project": "在此專案中建立對話",
-    "+ New": "+ 新建",
+    "+ New": "+ 新增",
     "Search tasks...": "搜尋任務...",
     "No scheduled tasks configured.": "未配置計劃任務。",
     "Search conversations...": "搜尋會話...",
@@ -192,5 +192,8 @@
     "Add Context": "新增上下文",
     "Media": "媒體",
     "Mentions": "提及",
-    "Actions": "操作"
+    "Actions": "操作",
+    "New": "新增",
+    "Complete": "已完成",
+    "Archived": "已封存"
 }
