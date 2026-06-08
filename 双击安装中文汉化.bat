@@ -10,7 +10,7 @@ echo 请选择左上角品牌显示方式：
 echo [1] 显示英文 Antigravity（推荐）
 echo [2] 不显示品牌名
 echo [3] 显示中文品牌名
-echo 请按 1、2 或 3 选择：
+echo Choice: 1 / 2 / 3
 choice /c 123 /n /m "Choice [1/2/3]: "
 set "BRAND_ARG=--brand-title english"
 if "%ERRORLEVEL%"=="2" set "BRAND_ARG=--brand-title hidden"
