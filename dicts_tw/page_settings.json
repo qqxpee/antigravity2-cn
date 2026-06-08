@@ -415,5 +415,8 @@
     "One Dark Pro": "One Dark Pro 深色",
     "Tokyo Night": "Tokyo Night 東京之夜",
     "Monokai": "Monokai",
+    "Useful for typical development with an emphasis on security. It prioritizes safety over speed by requiring manual approval for all terminal commands and files outside the project directory.": "適用於以安全為重的典型開發。透過要求對專案目錄外的所有終端命令和檔案進行人工核准，將安全性置於速度之上。",
+    "Useful for tasks that require file access across your full machine. The agent has full read and write access to all local files, but all proposed terminal commands require manual review and approval before running.": "適用於需要存取整部機器檔案的任務。代理對所有本機檔案擁有完全的讀寫權限，但所有擬執行的終端命令在執行前均需人工審查和核准。",
+    "A high-risk mode that disables all safety barriers. The agent operates with full system access, auto-executes all terminal commands, and reads or writes to all local files without review prompts.": "一種停用所有安全屏障的高風險模式。代理在擁有完全系統存取權限下執行，自動執行所有終端命令，讀寫所有本機檔案且無需審查提示。",
     "Specifies Agent’s behavior when asking for review on artifacts, which are documents it creates to enable a richer conversation experience.": "指定代理在請求審查成品時的行為。成品 (Artifact) 是代理為了提供更豐富的互動體驗而生成的文件。"
 }
