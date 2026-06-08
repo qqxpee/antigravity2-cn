@@ -203,5 +203,6 @@
     "Run an instruction on a recurring schedule or as a one-time timer": "按週期計劃或作為一次性定時器執行指令",
     "Invoke a browser agent for web tasks": "呼叫瀏覽器代理執行網頁任務",
     "Interview me to align on a plan": "透過訪談與我對齊方案",
-    "Invoke a team of agents to autonomously tackle large projects": "呼叫代理團隊自主應對大型專案"
+    "Invoke a team of agents to autonomously tackle large projects": "呼叫代理團隊自主應對大型專案",
+    "See all": "顯示全部"
 }

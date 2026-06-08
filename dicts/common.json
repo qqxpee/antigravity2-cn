@@ -203,5 +203,6 @@
     "Run an instruction on a recurring schedule or as a one-time timer": "按周期计划或作为一次性定时器运行指令",
     "Invoke a browser agent for web tasks": "调用浏览器智能体执行网页任务",
     "Interview me to align on a plan": "通过访谈与我对齐方案",
-    "Invoke a team of agents to autonomously tackle large projects": "调用智能体团队自主应对大型项目"
+    "Invoke a team of agents to autonomously tackle large projects": "调用智能体团队自主应对大型项目",
+    "See all": "显示全部"
 }
