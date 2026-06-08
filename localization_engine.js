@@ -419,20 +419,67 @@ function detectInstallationDir(manualDir) {
     }
 
     const candidates = [];
+    const seenCandidates = new Set();
+    const addCandidate = (candidate) => {
+        if (!candidate) return;
+        const normalized = path.resolve(candidate);
+        const key = normalized.toLowerCase();
+        if (!seenCandidates.has(key)) {
+            candidates.push(normalized);
+            seenCandidates.add(key);
+        }
+    };
+    const hasAntigravityResources = (candidate) => {
+        return fs.existsSync(path.join(candidate, "resources", "app.asar")) ||
+            fs.existsSync(path.join(candidate, "app.asar")) ||
+            fs.existsSync(path.join(candidate, "Contents", "Resources", "app.asar")) ||
+            fs.existsSync(path.join(candidate, "resources", "app", "product.json"));
+    };
+
     if (process.platform === 'win32') {
+        addCandidate(process.env.ANTIGRAVITY_INSTALL_DIR);
+        addCandidate(process.env.ANTIGRAVITY_HOME);
+
+        const registryRoots = [
+            'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+            'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+            'HKLM\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+        ];
+        for (const root of registryRoots) {
+            try {
+                const output = child_process.execSync(`reg query "${root}" /s /f Antigravity /d`, { encoding: 'utf-8', stdio: 'pipe' });
+                for (const line of output.split(/\r?\n/)) {
+                    const match = line.match(/^\s*(InstallLocation|DisplayIcon)\s+REG_\w+\s+(.+)$/i);
+                    if (!match) continue;
+                    let value = match[2].trim().replace(/^"|"$/g, '');
+                    if (/Antigravity\.exe/i.test(value)) {
+                        value = path.dirname(value);
+                    }
+                    addCandidate(value);
+                }
+            } catch (e) {
+                // Registry probing is best-effort; fall back to common locations below.
+            }
+        }
+
+        const driveLetters = ['C', 'D', 'E', 'F'];
+        for (const drive of driveLetters) {
+            addCandidate(`${drive}:\\Programs\\Antigravity`);
+            addCandidate(`${drive}:\\Antigravity`);
+        }
+        addCandidate("C:\\Program Files\\Antigravity");
+
         const localAppdata = process.env.LOCALAPPDATA;
         if (localAppdata) {
-            candidates.push(path.join(localAppdata, 'Programs', 'antigravity'));
+            addCandidate(path.join(localAppdata, 'Programs', 'antigravity'));
         }
-        candidates.push("D:\\Antigravity");
-        candidates.push("C:\\Program Files\\Antigravity");
     } else if (process.platform === 'darwin') {
-        candidates.push("/Applications/Antigravity.app");
-        candidates.push(path.join(process.env.HOME || '', 'Applications', 'Antigravity.app'));
+        addCandidate("/Applications/Antigravity.app");
+        addCandidate(path.join(process.env.HOME || '', 'Applications', 'Antigravity.app'));
     }
 
     for (const p of candidates) {
-        if (fs.existsSync(p)) {
+        if (fs.existsSync(p) && hasAntigravityResources(p)) {
             console.log(`[探测] 成功自动识别到 Antigravity 安装目录: ${p}`);
             return path.resolve(p);
         }
