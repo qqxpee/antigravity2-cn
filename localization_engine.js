@@ -285,7 +285,7 @@ function generateJs() {
                 if (newVal !== originalVal) {
                     node.nodeValue = newVal;
                     done.add(node);
-                    setTimeout(() => done.delete(node), 1000); 
+                    setTimeout(() => done.delete(node), 50); 
                 }
             }
         } catch (e) {}
