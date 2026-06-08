@@ -290,6 +290,10 @@ function generateJs() {
                     newVal = valNorm.replace(/^(.+?): i\\/o timeout$/i, (match, prefix) => {
                         return prefix + ${USE_TW ? '": I\\/O 超時 (i\\/o timeout)"' : '": I\\/O 超时 (i\\/o timeout)"'};
                     });
+                } else if (/^Are you sure you want to delete the project (.+?)\\??$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Are you sure you want to delete the project (.+?)\\??$/i, (match, name) => {
+                        return ${USE_TW ? '"您確定要刪除專案 " + name + " 嗎？"' : '"您确定要删除项目 " + name + " 吗？"'};
+                    });
                 } else {
                     // 2. 长句子串滑动替换
                     for (const [key, translated] of longEntries) {

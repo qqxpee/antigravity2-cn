@@ -205,5 +205,6 @@
     "Interview me to align on a plan": "通过访谈与我对齐方案",
     "Invoke a team of agents to autonomously tackle large projects": "调用智能体团队自主应对大型项目",
     "See all": "显示全部",
-    "Create a new project. You can add folders to it now or later.": "创建一个新项目。您现在或稍后都可以为其添加文件夹。"
+    "Create a new project. You can add folders to it now or later.": "创建一个新项目。您现在或稍后都可以为其添加文件夹。",
+    "This will permanently delete the project and all conversations within it. This action cannot be undone.": "这将永久删除该项目及其包含的所有会话。此操作无法撤销。"
 }
