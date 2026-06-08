@@ -204,5 +204,6 @@
     "Invoke a browser agent for web tasks": "呼叫瀏覽器代理執行網頁任務",
     "Interview me to align on a plan": "透過訪談與我對齊方案",
     "Invoke a team of agents to autonomously tackle large projects": "呼叫代理團隊自主應對大型專案",
-    "See all": "顯示全部"
+    "See all": "顯示全部",
+    "Create a new project. You can add folders to it now or later.": "建立新專案。您現在或稍後都可以為其新增資料夾。"
 }
