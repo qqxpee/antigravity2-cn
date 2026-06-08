@@ -257,8 +257,8 @@ function generateJs() {
                     newVal = valNorm.replace(/^(\\d+) tools? enabled$/i, (match, num) => {
                         return ${USE_TW ? 'num + " 個工具已啟用"' : 'num + " 个工具已启用"'};
                     });
-                } else if (/^Show (\\d+) more\\.\\.\\.$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Show (\\d+) more\\.\\.\\.$/i, (match, num) => {
+                } else if (/^Show (\\d+) more(\\.\\.\\.|…)?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Show (\\d+) more(\\.\\.\\.|…)?$/i, (match, num) => {
                         return ${USE_TW ? '"顯示另外 " + num + " 個..."' : '"显示另外 " + num + " 个..."'};
                     });
                 } else if (/^See all \\((\\d+)\\)$/i.test(valNorm)) {
@@ -608,6 +608,8 @@ function install20(resourcesDir) {
                 item.label = translations[cleanLabel] + mnemonic;
             } else if (translations[label]) {
                 item.label = translations[label];
+            } else if (/^Version\\s+([\\d\\.]+)$/i.test(cleanLabel)) {
+                item.label = cleanLabel.replace(/^Version\\s+([\\d\\.]+)$/i, "版本 $1");
             }
             if (item.submenu && item.submenu.items) {
                 translateMenu(item.submenu.items);
