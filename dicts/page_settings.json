@@ -404,6 +404,7 @@
     "Toggle Model Selector": "切换模型选择器",
     "Start Voice Recording": "开始录音",
     "Stop Voice Recording": "停止录音",
+    "Toggle Voice Recording": "切换录音",
     "Find in Pane": "在面板中查找",
     "LAYOUT CONTROLS": "布局控制",
     "Toggle Auxiliary Pane": "切换辅助面板",
@@ -412,5 +413,6 @@
     "One Light": "One Light 浅色",
     "Solarized Light": "Solarized Light 浅色",
     "One Dark Pro": "One Dark Pro 深色",
-    "Tokyo Night": "Tokyo Night 东京之夜"
+    "Tokyo Night": "Tokyo Night 东京之夜",
+    "Monokai": "Monokai"
 }

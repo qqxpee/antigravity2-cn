@@ -53,5 +53,13 @@
     "Zoom Out": "缩小",
     "Reset Zoom": "重置缩放",
     "Toggle Developer Tools": "切换开发者工具",
-    "New Window": "新建窗口"
+    "New Window": "新建窗口",
+    "Close Tab": "关闭标签页",
+    "New Editor Window": "新建编辑器窗口",
+    "Open Conversation History": "打开会话历史",
+    "Open Launchpad": "打开启动台",
+    "Open Keyboard Shortcuts": "打开键盘快捷键",
+    "Copy conversation markdown": "复制会话 Markdown",
+    "Open Command Palette": "打开命令面板",
+    "Open Project Picker": "打开项目选择器"
 }
