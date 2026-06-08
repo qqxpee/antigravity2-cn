@@ -57,7 +57,26 @@
 2. 进入您解压或克隆出来的 `antigravity2-cn` 文件夹：
    - **Windows**：双击运行 **`双击安装中文汉化.bat`**。
    - **macOS**：双击运行 **`双击安装中文汉化.command`**。
-3. 运行完成后，重新启动 Antigravity 软件，即可畅享全中文界面！
+3. 按提示选择左上角品牌显示方式：
+   - **显示英文 Antigravity（默认推荐）**：保留官方品牌名，避免左上角显示过长。
+   - **不显示品牌名**：隐藏左上角的品牌文字。
+   - **显示中文品牌名**：保持原汉化效果，显示“反重力智能编程”。
+4. 运行完成后，重新启动 Antigravity 软件，即可畅享全中文界面！
+
+### 品牌显示命令行参数
+
+如果您通过命令行运行 `localization_engine.js`，可使用 `--brand-title` 控制左上角品牌名：
+
+```bash
+# 默认推荐：左上角显示 Antigravity
+node localization_engine.js --brand-title english
+
+# 隐藏左上角品牌名
+node localization_engine.js --brand-title hidden
+
+# 显示中文品牌名
+node localization_engine.js --brand-title translated
+```
 
 ---
 

@@ -20,15 +20,32 @@
 ### Windows 使用者
 1. **完全退出** Antigravity 軟體。
 2. 雙擊 `双击安装繁体中文.bat` 安裝繁體中文化。
-3. 重新啟動 Antigravity 即可。
-4. 如需還原英文版，雙擊 `双击卸载还原官方英文.bat`。
+3. 依提示選擇左上角品牌顯示方式：顯示英文 Antigravity（預設推薦）、不顯示品牌名稱、或顯示繁體中文品牌名。
+4. 重新啟動 Antigravity 即可。
+5. 如需還原英文版，雙擊 `双击卸载还原官方英文.bat`。
 
 ### macOS 使用者
 1. **完全退出** Antigravity 軟體。
 2. 首次執行前如果提示權限不足，可在終端機執行 `chmod +x *.command`。
 3. 雙擊 `双击安装繁体中文.command` 安裝繁體中文化。
-4. 重新啟動 Antigravity 即可。
-5. 如需還原英文版，雙擊 `双击卸载还原官方英文.command`。
+4. 依提示選擇左上角品牌顯示方式：顯示英文 Antigravity（預設推薦）、不顯示品牌名稱、或顯示繁體中文品牌名。
+5. 重新啟動 Antigravity 即可。
+6. 如需還原英文版，雙擊 `双击卸载还原官方英文.command`。
+
+### 品牌顯示命令列參數
+
+如果您透過命令列執行 `localization_engine.js`，可使用 `--brand-title` 控制左上角品牌名：
+
+```bash
+# 預設推薦：左上角顯示 Antigravity
+node localization_engine.js --tw --brand-title english
+
+# 隱藏左上角品牌名
+node localization_engine.js --tw --brand-title hidden
+
+# 顯示繁體中文品牌名
+node localization_engine.js --tw --brand-title translated
+```
 
 ## 翻譯字典說明
 

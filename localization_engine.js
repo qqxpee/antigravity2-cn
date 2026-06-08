@@ -5,6 +5,33 @@ const child_process = require('child_process');
 // --tw 參數：使用繁體中文字典 (dicts_tw/)，否則使用預設簡體字典 (dicts/)
 const USE_TW = process.argv.includes('--tw');
 const DICTS_FOLDER = USE_TW ? 'dicts_tw' : 'dicts';
+const BRAND_TITLE_ALIASES = {
+    english: 'english',
+    en: 'english',
+    default: 'english',
+    hidden: 'hidden',
+    hide: 'hidden',
+    none: 'hidden',
+    translated: 'translated',
+    chinese: 'translated',
+    cn: 'translated',
+    zh: 'translated'
+};
+
+function getOptionValue(name, defaultValue) {
+    const args = process.argv.slice(2);
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === name) {
+            return args[i + 1] || defaultValue;
+        }
+        if (args[i].startsWith(name + '=')) {
+            return args[i].slice(name.length + 1);
+        }
+    }
+    return defaultValue;
+}
+
+const BRAND_TITLE_MODE = BRAND_TITLE_ALIASES[String(getOptionValue('--brand-title', 'english')).toLowerCase()] || 'english';
 
 if (USE_TW) {
     const logTranslations = {
@@ -107,6 +134,11 @@ function loadDictionary() {
                 }
             }
         }
+    }
+    if (BRAND_TITLE_MODE === 'english') {
+        delete totalMap[normalizeText('Antigravity')];
+    } else if (BRAND_TITLE_MODE === 'hidden') {
+        totalMap[normalizeText('Antigravity')] = '';
     }
     return totalMap;
 }
@@ -925,6 +957,8 @@ function main() {
             huifu = true;
         } else if (args[i] === '--install-dir') {
             manualDir = args[i + 1] || "";
+            i++;
+        } else if (args[i] === '--brand-title') {
             i++;
         }
     }
