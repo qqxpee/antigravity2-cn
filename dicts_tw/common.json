@@ -195,5 +195,13 @@
     "Actions": "操作",
     "New": "新增",
     "Complete": "已完成",
-    "Archived": "已封存"
+    "Archived": "已封存",
+    "goal": "目標",
+    "grill-me": "訪談對齊",
+    "teamwork-preview": "團隊協作預覽",
+    "Run until the specified goal is completely finished": "持續執行，直到指定的目標完全完成",
+    "Run an instruction on a recurring schedule or as a one-time timer": "按週期計劃或作為一次性定時器執行指令",
+    "Invoke a browser agent for web tasks": "呼叫瀏覽器代理執行網頁任務",
+    "Interview me to align on a plan": "透過訪談與我對齊方案",
+    "Invoke a team of agents to autonomously tackle large projects": "呼叫代理團隊自主應對大型專案"
 }
