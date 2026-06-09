@@ -1,0 +1,30 @@
+# AI Rules for Antigravity2-cn
+
+When working on this project (translating / localizing Antigravity to Chinese), you MUST follow these guidelines:
+
+## 1. Dictionary Consistency Check (Mandatory)
+Whenever you modify, add, or delete any translation keys in `dicts/` or `dicts_tw/`:
+- You **MUST** run the verification script in the terminal:
+  ```bash
+  node scratch/compare_dicts.js
+  ```
+- If the script outputs any errors (missing keys in either Simplified or Traditional Chinese dictionaries), you **MUST** fix them to ensure both directories are perfectly aligned. Do not finish your task until the command runs successfully and prints `All dictionaries are perfectly aligned!`.
+
+## 2. Localization Standards & Mapping
+- `dicts/` contains Simplified Chinese (SC) localization.
+- `dicts_tw/` contains Traditional Chinese (TC) localization.
+- Ensure proper terminology mappings between Simplified and Traditional Chinese. Refer to `README_TW.md` for terms.
+  * 智能体 -> 代理
+  * 设置 -> 設定
+  * 文件 -> 檔案
+  * 浏览器 -> 瀏覽器
+  * 账户 -> 帳戶
+  * 窗口 -> 視窗
+  * 插件 -> 外掛程式
+  * 快捷键 -> 快速鍵
+  * 主题 -> 佈景主題
+  * 终端 -> 終端機
+
+## 3. Do NOT Run Installer Scripts / localization_engine.js
+- You **MUST NOT** run `node localization_engine.js` or any other commands that apply/inject/install the translation to the client application.
+- After finishing the dictionary changes and validating them with `compare_dicts.js`, inform the user that changes are completed. The user will manually run `双击安装中文汉化.bat` or `双击安装繁体中文.bat` to install them.

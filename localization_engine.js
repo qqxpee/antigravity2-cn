@@ -5,6 +5,33 @@ const child_process = require('child_process');
 // --tw 參數：使用繁體中文字典 (dicts_tw/)，否則使用預設簡體字典 (dicts/)
 const USE_TW = process.argv.includes('--tw');
 const DICTS_FOLDER = USE_TW ? 'dicts_tw' : 'dicts';
+const BRAND_TITLE_ALIASES = {
+    english: 'english',
+    en: 'english',
+    default: 'english',
+    hidden: 'hidden',
+    hide: 'hidden',
+    none: 'hidden',
+    translated: 'translated',
+    chinese: 'translated',
+    cn: 'translated',
+    zh: 'translated'
+};
+
+function getOptionValue(name, defaultValue) {
+    const args = process.argv.slice(2);
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === name) {
+            return args[i + 1] || defaultValue;
+        }
+        if (args[i].startsWith(name + '=')) {
+            return args[i].slice(name.length + 1);
+        }
+    }
+    return defaultValue;
+}
+
+const BRAND_TITLE_MODE = BRAND_TITLE_ALIASES[String(getOptionValue('--brand-title', 'english')).toLowerCase()] || 'english';
 
 if (USE_TW) {
     const logTranslations = {
@@ -12,6 +39,7 @@ if (USE_TW) {
         "====== 正在卸载中文汉化，恢复官方原版 ======": "====== 正在卸載中文漢化，恢復官方原版 ======",
         "====== 检测到 Antigravity 1.0 架构，正在使用 HTML 注入引擎 ======": "====== 偵測到 Antigravity 1.0 架構，正在使用 HTML 注入引擎 ======",
         "====== 正在恢复 Antigravity 1.0 官方原版 ======": "====== 正在恢復 Antigravity 1.0 官方原版 ======",
+        "[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...": "[1] 偵測到 Antigravity 用戶端正在執行，正在關閉以解除檔案鎖...",
         "[1] 正在关闭 Antigravity 运行进程以解除文件锁...": "[1] 正在關閉 Antigravity 執行進程以解除檔案鎖...",
         "[备份] 正在创建官方原始包备份: app.asar.bak ...": "[備份] 正在建立官方原始包備份: app.asar.bak ...",
         "[备份] 备份成功！": "[備份] 備份成功！",
@@ -25,11 +53,15 @@ if (USE_TW) {
         "[修改] 任务栏菜单汉化注入成功！": "[修改] 系統匣選單漢化注入成功！",
         "[修改] 正在向 loadingOverlay.js 注入加载页汉化...": "[修改] 正在向 loadingOverlay.js 注入載入頁漢化...",
         "[修改] 加载页汉化注入成功！": "[修改] 載入頁漢化注入成功！",
+        "[修改] 正在向 updater.js 注入更新弹窗汉化...": "[修改] 正在向 updater.js 注入更新彈出視窗漢化...",
+        "[修改] 更新弹窗汉化注入成功！": "[修改] 更新彈出視窗漢化注入成功！",
         "[打包] 正在将修改后的内容打包回 app.asar...": "[打包] 正在將修改後的內容打包回 app.asar...",
         "[√] Antigravity 2.0 汉化部署完成！": "[√] Antigravity 2.0 漢化部署完成！",
         "[√] Antigravity 1.0 汉化部署完成！": "[√] Antigravity 1.0 漢化部署完成！",
         "[!] 未找到备份文件 app.asar.bak，可能尚未安装过汉化或备份被删除。": "[!] 未找到備份檔案 app.asar.bak，可能尚未安裝過漢化或備份已被刪除。",
         "[还原] 正在用官方备份文件恢复...": "[還原] 正在用官方備份檔案恢復...",
+        "[还原] 已重置当前 app.asar 为官方原始备份包，以进行全新注入...": "[還原] 已重置目前 app.asar 為官方原始備份包，以進行全新注入...",
+        "[提示] 当前 app.asar 被锁定（可能是客户端正在运行），将使用当前包进行增量注入。": "[提示] 目前 app.asar 被鎖定（可能是用戶端正在執行），將使用目前包進行增量注入。",
         "[还原] 已恢复 HTML: ": "[還原] 已恢復 HTML: ",
         "[还原] 已删除汉化脚本": "[還原] 已刪除漢化指令碼",
         "[√] 官方 app.asar 已成功恢复！": "[√] 官方 app.asar 已成功恢復！",
@@ -50,7 +82,13 @@ if (USE_TW) {
         "[探测] 成功自动识别到 Antigravity 安装目录: ": "[偵測] 成功自動識別到 Antigravity 安裝目錄: ",
         "[错误] 未找到默认安装目录，请使用 --install-dir 手动指定您的安装路径！": "[錯誤] 未找到預設安裝目錄，請使用 --install-dir 手動指定您的安裝路徑！",
         "[!] 未找到 1.0 备份文件。": "[!] 未找到 1.0 備份檔案。",
-        "详情: ": "詳情: "
+        "详情: ": "詳情: ",
+        "[√] 注入成功: ": "[√] 注入成功: ",
+        "[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。": "[跳過] 偵測到 --no-kill 參數，跳過關閉 Antigravity 執行進程。",
+        "[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...": "[啟動] 偵測到安裝前反重力用戶端處於開啟狀態，正在重新啟動用戶端...",
+        "[启动] 客户端启动成功！": "[啟動] 用戶端啟動成功！",
+        "[警告] 未找到客户端主程序: ": "[警告] 未找到用戶端主程式: ",
+        "[警告] 客户端启动失败: ": "[警告] 用戶端啟動失敗: "
     };
     const translateMsg = (args) => {
         return args.map(arg => {
@@ -108,6 +146,11 @@ function loadDictionary() {
             }
         }
     }
+    if (BRAND_TITLE_MODE === 'english') {
+        delete totalMap[normalizeText('Antigravity')];
+    } else if (BRAND_TITLE_MODE === 'hidden') {
+        totalMap[normalizeText('Antigravity')] = '';
+    }
     return totalMap;
 }
 
@@ -136,6 +179,26 @@ function generateJs() {
     function norm(s) {
         if (!s) return '';
         return s.replace(/\\s+/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
+    }
+
+    function translateWithShortcut(val) {
+        if (!val) return null;
+        const match = val.match(/^(.+?)\\s*\\((Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\\+?([^)]*)\\)$/i);
+        if (match) {
+            const prefix = match[1].trim();
+            const normPref = norm(prefix);
+            const lowerPref = normPref.toLowerCase();
+            let transPref = null;
+            if (map.has(normPref)) {
+                transPref = map.get(normPref);
+            } else if (lowerMap.has(lowerPref)) {
+                transPref = lowerMap.get(lowerPref);
+            }
+            if (transPref) {
+                return transPref + " (" + match[2] + (match[3] ? "+" + match[3] : "") + ")";
+            }
+        }
+        return null;
     }
 
     // 核心隔离判断：回溯检查当前节点是否逻辑上属于“禁止汉化区”
@@ -167,14 +230,16 @@ function generateJs() {
                 const tag = node.tagName.toUpperCase();
                 // 1. 快速排除基础禁止标签
                 if (BLOCKED_TAGS.includes(tag)) {
-                    // 对于 INPUT 和 TEXTAREA，虽然不翻译其子元素或内容，但需要翻译其 placeholder 等属性
-                    if (tag === 'INPUT' || tag === 'TEXTAREA') {
+                    // 对于 INPUT, TEXTAREA 和 SVG，虽然不翻译其子元素或内容，但需要翻译其 placeholder, title, aria-label 等属性
+                    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SVG') {
                         if (!isInBlockedZone(node.parentElement)) {
                             for (const attr of ['placeholder', 'title', 'aria-label']) {
                                 const v = node.getAttribute(attr);
                                 if (v) {
                                     const t = norm(v);
-                                    if (map.has(t)) node.setAttribute(attr, map.get(t));
+                                    const shortcutTrans = translateWithShortcut(t);
+                                    if (shortcutTrans) node.setAttribute(attr, shortcutTrans);
+                                    else if (map.has(t)) node.setAttribute(attr, map.get(t));
                                     else if (lowerMap.has(t.toLowerCase())) node.setAttribute(attr, lowerMap.get(t.toLowerCase()));
                                 }
                             }
@@ -189,7 +254,9 @@ function generateJs() {
                         const v = node.getAttribute(attr);
                         if (v) {
                             const t = norm(v);
-                            if (map.has(t)) node.setAttribute(attr, map.get(t));
+                            const shortcutTrans = translateWithShortcut(t);
+                            if (shortcutTrans) node.setAttribute(attr, shortcutTrans);
+                            else if (map.has(t)) node.setAttribute(attr, map.get(t));
                             else if (lowerMap.has(t.toLowerCase())) node.setAttribute(attr, lowerMap.get(t.toLowerCase()));
                         }
                     }
@@ -211,8 +278,11 @@ function generateJs() {
                 const valNorm = norm(originalVal);
                 const valLower = valNorm.toLowerCase();
                 
-                // 1. 精确匹配（含大小写自动纠正）
-                if (map.has(valNorm)) {
+                // 1. 精确匹配（含大小写自动纠正与快捷键检测）
+                const shortcutTrans = translateWithShortcut(valNorm);
+                if (shortcutTrans) {
+                    newVal = shortcutTrans;
+                } else if (map.has(valNorm)) {
                     newVal = map.get(valNorm);
                 } else if (lowerMap.has(valLower)) {
                     newVal = lowerMap.get(valLower);
@@ -269,6 +339,10 @@ function generateJs() {
                     newVal = valNorm.replace(/^Available AI Credits: (\\d+)$/i, (match, num) => {
                         return ${USE_TW ? '"可用 AI 額度: " + num' : '"可用 AI 额度: " + num'};
                     });
+                } else if (/^Version\\s+([\\d\\.]+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Version\\s+([\\d\\.]+)$/i, (match, v) => {
+                        return "版本 " + v;
+                    });
                 } else if (/^(\\d+)(s|m|h|d|w|mo|yr)$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^(\\d+)(s|m|h|d|w|mo|yr)$/i, (match, num, unit) => {
                         const unitLower = unit.toLowerCase();
@@ -290,8 +364,8 @@ function generateJs() {
                     newVal = valNorm.replace(/^(.+?): i\\/o timeout$/i, (match, prefix) => {
                         return prefix + ${USE_TW ? '": I\\/O 超時 (i\\/o timeout)"' : '": I\\/O 超时 (i\\/o timeout)"'};
                     });
-                } else if (/^Are you sure you want to delete the project (.+?)\\??$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Are you sure you want to delete the project (.+?)\\??$/i, (match, name) => {
+                } else if (/^Are you sure you want to delete (the |this )?project (.+?)\\??$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Are you sure you want to delete (the |this )?project (.+?)\\??$/i, (match, article, name) => {
                         return ${USE_TW ? '"您確定要刪除專案 " + name + " 嗎？"' : '"您确定要删除项目 " + name + " 吗？"'};
                     });
                 } else {
@@ -389,8 +463,25 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+let wasAppRunning = false;
+
+function checkIfAppIsRunning() {
+    try {
+        if (process.platform === 'win32') {
+            const stdout = child_process.execSync('tasklist /fi "imagename eq Antigravity.exe" /nh', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            return stdout.toLowerCase().includes('antigravity.exe');
+        } else if (process.platform === 'darwin') {
+            const stdout = child_process.execSync('pgrep -f Antigravity', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            return stdout.trim().length > 0;
+        }
+    } catch (e) {
+        // ignore
+    }
+    return false;
+}
+
 function closeAntigravityProcesses() {
-    console.log("[1] 正在关闭 Antigravity 运行进程以解除文件锁...");
+    console.log("[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...");
     try {
         if (process.platform === 'win32') {
             child_process.execSync('taskkill /f /im Antigravity.exe /t >nul 2>nul');
@@ -419,20 +510,67 @@ function detectInstallationDir(manualDir) {
     }
 
     const candidates = [];
+    const seenCandidates = new Set();
+    const addCandidate = (candidate) => {
+        if (!candidate) return;
+        const normalized = path.resolve(candidate);
+        const key = normalized.toLowerCase();
+        if (!seenCandidates.has(key)) {
+            candidates.push(normalized);
+            seenCandidates.add(key);
+        }
+    };
+    const hasAntigravityResources = (candidate) => {
+        return fs.existsSync(path.join(candidate, "resources", "app.asar")) ||
+            fs.existsSync(path.join(candidate, "app.asar")) ||
+            fs.existsSync(path.join(candidate, "Contents", "Resources", "app.asar")) ||
+            fs.existsSync(path.join(candidate, "resources", "app", "product.json"));
+    };
+
     if (process.platform === 'win32') {
+        addCandidate(process.env.ANTIGRAVITY_INSTALL_DIR);
+        addCandidate(process.env.ANTIGRAVITY_HOME);
+
+        const registryRoots = [
+            'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+            'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+            'HKLM\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+        ];
+        for (const root of registryRoots) {
+            try {
+                const output = child_process.execSync(`reg query "${root}" /s /f Antigravity /d`, { encoding: 'utf-8', stdio: 'pipe' });
+                for (const line of output.split(/\r?\n/)) {
+                    const match = line.match(/^\s*(InstallLocation|DisplayIcon)\s+REG_\w+\s+(.+)$/i);
+                    if (!match) continue;
+                    let value = match[2].trim().replace(/^"|"$/g, '');
+                    if (/Antigravity\.exe/i.test(value)) {
+                        value = path.dirname(value);
+                    }
+                    addCandidate(value);
+                }
+            } catch (e) {
+                // Registry probing is best-effort; fall back to common locations below.
+            }
+        }
+
+        const driveLetters = ['C', 'D', 'E', 'F'];
+        for (const drive of driveLetters) {
+            addCandidate(`${drive}:\\Programs\\Antigravity`);
+            addCandidate(`${drive}:\\Antigravity`);
+        }
+        addCandidate("C:\\Program Files\\Antigravity");
+
         const localAppdata = process.env.LOCALAPPDATA;
         if (localAppdata) {
-            candidates.push(path.join(localAppdata, 'Programs', 'antigravity'));
+            addCandidate(path.join(localAppdata, 'Programs', 'antigravity'));
         }
-        candidates.push("D:\\Antigravity");
-        candidates.push("C:\\Program Files\\Antigravity");
     } else if (process.platform === 'darwin') {
-        candidates.push("/Applications/Antigravity.app");
-        candidates.push(path.join(process.env.HOME || '', 'Applications', 'Antigravity.app'));
+        addCandidate("/Applications/Antigravity.app");
+        addCandidate(path.join(process.env.HOME || '', 'Applications', 'Antigravity.app'));
     }
 
     for (const p of candidates) {
-        if (fs.existsSync(p)) {
+        if (fs.existsSync(p) && hasAntigravityResources(p)) {
             console.log(`[探测] 成功自动识别到 Antigravity 安装目录: ${p}`);
             return path.resolve(p);
         }
@@ -491,13 +629,19 @@ function install20(resourcesDir) {
         return false;
     }
 
-    closeAntigravityProcesses();
-
     // 1. 备份
     if (!fs.existsSync(bakPath)) {
         console.log(`[备份] 正在创建官方原始包备份: app.asar.bak ...`);
         fs.copyFileSync(asarPath, bakPath);
         console.log(`[备份] 备份成功！`);
+    } else {
+        // 尝试用官方备份覆盖当前 app.asar，以确保每次汉化都基于最干净的官方英文包
+        try {
+            fs.copyFileSync(bakPath, asarPath);
+            console.log(`[还原] 已重置当前 app.asar 为官方原始备份包，以进行全新注入...`);
+        } catch (e) {
+            console.log(`[提示] 当前 app.asar 被锁定（可能是客户端正在运行），将使用当前包进行增量注入。`);
+        }
     }
 
     // 2. 临时提取目录
@@ -570,7 +714,8 @@ function install20(resourcesDir) {
         'Reset Zoom': '重設縮放',
         'Zoom In': '放大',
         'Zoom Out': '縮小',
-        'Toggle Full Screen': '切換全螢幕'
+        'Toggle Full Screen': '切換全螢幕',
+        'Version': '版本'
     }` : `{
         'File': '文件',
         'Edit': '编辑',
@@ -596,7 +741,8 @@ function install20(resourcesDir) {
         'Reset Zoom': '重置缩放',
         'Zoom In': '放大',
         'Zoom Out': '缩小',
-        'Toggle Full Screen': '切换全屏'
+        'Toggle Full Screen': '切换全屏',
+        'Version': '版本'
     }`};
     function translateMenu(items) {
         for (const item of items) {
@@ -612,8 +758,8 @@ function install20(resourcesDir) {
                 item.label = translations[cleanLabel] + mnemonic;
             } else if (translations[label]) {
                 item.label = translations[label];
-            } else if (/^Version\\s+([\\d\\.]+)$/i.test(cleanLabel)) {
-                item.label = cleanLabel.replace(/^Version\\s+([\\d\\.]+)$/i, "版本 $1");
+            } else if (/^Version\\s*([\\d\\.]*)$/i.test(cleanLabel)) {
+                item.label = cleanLabel.replace(/^Version\\s*([\\d\\.]*)$/i, (match, v) => v ? "版本 " + v : "版本");
             }
             if (item.submenu && item.submenu.items) {
                 translateMenu(item.submenu.items);
@@ -743,8 +889,6 @@ function restore20(resourcesDir) {
         return false;
     }
 
-    closeAntigravityProcesses();
-    
     console.log("[还原] 正在用官方备份文件恢复...");
     fs.copyFileSync(bakPath, asarPath);
     fs.unlinkSync(bakPath);
@@ -871,6 +1015,7 @@ function restore10(installDir) {
 function main() {
     let huifu = false;
     let manualDir = "";
+    let noKill = false;
 
     const args = process.argv.slice(2);
     for (let i = 0; i < args.length; i++) {
@@ -879,13 +1024,25 @@ function main() {
         } else if (args[i] === '--install-dir') {
             manualDir = args[i + 1] || "";
             i++;
+        } else if (args[i] === '--no-kill') {
+            noKill = true;
+        } else if (args[i] === '--brand-title') {
+            i++;
         }
     }
 
     // 1. 探测路径
     const installDir = detectInstallationDir(manualDir);
     
-    // 2. 找到 resources 资源目录
+    // 2. 检测客户端是否正在运行，并根据参数决定是否关闭以解除文件锁定
+    wasAppRunning = checkIfAppIsRunning();
+    if (noKill) {
+        console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
+    } else {
+        closeAntigravityProcesses();
+    }
+
+    // 3. 找到 resources 资源目录
     let resourcesDir = "";
     if (fs.existsSync(path.join(installDir, "resources"))) {
         resourcesDir = path.join(installDir, "resources");
@@ -906,23 +1063,49 @@ function main() {
         process.exit(1);
     }
 
-    // 3. 根据架构执行
+    // 4. 根据架构执行
     const asarPath = path.join(resourcesDir, "app.asar");
     const isV2 = fs.existsSync(asarPath);
+    let success = false;
 
     if (huifu) {
         console.log("====== 正在卸载中文汉化，恢复官方原版 ======");
         if (isV2) {
-            restore20(resourcesDir);
+            success = restore20(resourcesDir);
         } else {
-            restore10(installDir);
+            success = restore10(installDir);
         }
     } else {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
         if (isV2) {
-            install20(resourcesDir);
+            success = install20(resourcesDir);
         } else {
-            install10(installDir);
+            success = install10(installDir);
+        }
+    }
+
+    // 5. 校验通过且原来客户端在运行，则自动重新启动客户端
+    if (success && wasAppRunning) {
+        console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
+        try {
+            if (process.platform === 'win32') {
+                const exePath = path.join(installDir, 'Antigravity.exe');
+                if (fs.existsSync(exePath)) {
+                    const child = child_process.spawn(exePath, [], {
+                        detached: true,
+                        stdio: 'ignore'
+                    });
+                    child.unref();
+                    console.log("[启动] 客户端启动成功！");
+                } else {
+                    console.warn(`[警告] 未找到客户端主程序: ${exePath}`);
+                }
+            } else if (process.platform === 'darwin') {
+                child_process.exec(`open "${installDir}"`);
+                console.log("[启动] 客户端启动成功！");
+            }
+        } catch (e) {
+            console.warn(`[警告] 客户端启动失败: ${e.message}`);
         }
     }
 }
