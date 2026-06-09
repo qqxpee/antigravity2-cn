@@ -1,31 +1,36 @@
 @echo off
+chcp 65001 >nul
 :: ========================================================
 :: Antigravity Agent Manager HanHua Tool V6.0
 :: ========================================================
 title Antigravity HanHua Tool
 
 echo.
-echo è¯·é€‰æ‹©å·¦ä¸Šè§’å“ç‰Œæ˜¾ç¤ºæ–¹å¼ï¼š
-echo [1] æ˜¾ç¤ºè‹±æ–‡ Antigravityï¼ˆæŽ¨èï¼‰
-echo [2] ä¸æ˜¾ç¤ºå“ç‰Œå
-echo [3] æ˜¾ç¤ºä¸­æ–‡å“ç‰Œå?echo Choice: 1 / 2 / 3
+echo ÇëÑ¡Ôñ×óÉÏ½ÇÆ·ÅÆÏÔÊ¾·½Ê½£º
+echo [1] ÏÔÊ¾Ó¢ÎÄ Antigravity£¨ÍÆ¼ö£©
+echo [2] ²»ÏÔÊ¾Æ·ÅÆÃû
+echo [3] ÏÔÊ¾ÖÐÎÄÆ·ÅÆÃû
+echo Choice: 1 / 2 / 3
 choice /c 123 /n /m "Choice [1/2/3]: "
 set "BRAND_ARG=--brand-title english"
 if "%ERRORLEVEL%"=="2" set "BRAND_ARG=--brand-title hidden"
 if "%ERRORLEVEL%"=="3" set "BRAND_ARG=--brand-title translated"
 
 echo.
-echo [1/2] æ­£åœ¨æ³¨å…¥æ±‰åŒ–æ ¸å¿ƒ...
+echo [1/2] ÕýÔÚ×¢Èëºº»¯ºËÐÄ...
 node "%~dp0localization_engine.js" %BRAND_ARG% %*
 
 if %errorlevel% neq 0 (
     echo.
-    echo [é”™è¯¯] æ³¨å…¥å¤±è´¥ï¼è¯·æ£€æŸ¥ä¸Šæ–¹é”™è¯¯ä¿¡æ¯ã€?    pause
+    echo [´íÎó] ×¢ÈëÊ§°Ü£¡Çë¼ì²éÉÏ·½´íÎóÐÅÏ¢¡£
+    pause
     exit /b 1
 )
 
 echo.
-echo [2/2] æ³¨å…¥å®Œæˆï¼?echo.
-echo æç¤ºï¼šæ±‰åŒ–å·²æˆåŠŸéƒ¨ç½²ã€?echo.
+echo [2/2] ×¢ÈëÍê³É£¡
+echo.
+echo ÌáÊ¾£ººº»¯ÒÑ³É¹¦²¿Êð¡£
+echo.
 pause
 
