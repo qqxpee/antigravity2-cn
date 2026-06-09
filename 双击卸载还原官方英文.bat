@@ -1,7 +1,4 @@
 @echo off
-:: ========================================================
-:: Antigravity Agent Manager HanHua Restore Tool
-:: ========================================================
 title Antigravity Restore Tool
 
 echo.
@@ -22,4 +19,3 @@ echo [Note] Antigravity has been restored to its original state.
 echo.
 echo The window will close automatically in 5 seconds...
 timeout /t 5
-
