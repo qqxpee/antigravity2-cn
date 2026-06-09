@@ -29,4 +29,5 @@ echo [2/2] 完成！
 echo.
 echo 提示：繁體中文漢化已成功部署。
 echo.
-pause
+echo 視窗將在 5 秒後自動關閉...
+timeout /t 5

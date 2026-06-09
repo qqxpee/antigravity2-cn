@@ -28,4 +28,5 @@ echo [2/2] 注入完成！
 echo.
 echo 提示：汉化已成功部署。
 echo.
-pause
+echo 窗口将在 5 秒后自动关闭...
+timeout /t 5
