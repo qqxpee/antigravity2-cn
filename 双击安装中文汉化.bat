@@ -3,7 +3,7 @@ title Antigravity HanHua Tool
 
 echo.
 echo 请选择左上角品牌显示方式：
-echo [1] 显示英文 Antigravity（推荐）
+echo [1] 显示英文 Antigravity
 echo [2] 不显示品牌名
 echo [3] 显示中文品牌名
 set "CHOICE_VAL=3"

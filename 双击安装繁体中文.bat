@@ -3,7 +3,7 @@ title Antigravity - Install Traditional Chinese
 
 echo.
 echo 請選擇左上角品牌顯示方式：
-echo [1] 顯示英文 Antigravity（推薦）
+echo [1] 顯示英文 Antigravity
 echo [2] 不顯示品牌名稱
 echo [3] 顯示繁體中文品牌名
 set "CHOICE_VAL=3"
