@@ -13,13 +13,13 @@
 以下是部分功能板塊的實際中文化效果展示，涵蓋登入引導頁、主編輯器介面與詳細設定面板：
 
 ### 1. 歡迎頁與登入新手引導
-![歡迎頁與登入新手引導](./showimg/showlogin.png)
+![歡迎頁與登入新手引導](./showimg/showlogin_tw.png)
 
 ### 2. 主編輯器介面與選單
-![主編輯器介面與選單](./showimg/showmain.png)
+![主編輯器介面與選單](./showimg/showmain_tw.png)
 
 ### 3. 詳細參數設定面板
-![詳細參數設定面板](./showimg/showmenu.png)
+![詳細參數設定面板](./showimg/showmenu_tw.png)
 
 ---
 
