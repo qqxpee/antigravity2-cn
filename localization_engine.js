@@ -228,6 +228,32 @@ function generateJs() {
             
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
+                
+                // 给禁区元素打上 translate="no" 和 class="notranslate" 标记，物理防御网页自动翻译
+                let isBlocked = BLOCKED_TAGS.includes(tag);
+                if (!isBlocked) {
+                    const className = node.className || '';
+                    if (typeof className === 'string') {
+                        if (BLOCKED_CLASSES.some(cls => className.includes(cls))) {
+                            isBlocked = true;
+                        }
+                    }
+                }
+                if (node.getAttribute('contenteditable') === 'true') {
+                    isBlocked = true;
+                }
+                
+                if (isBlocked) {
+                    if (node.getAttribute('translate') !== 'no') {
+                        node.setAttribute('translate', 'no');
+                    }
+                    try {
+                        if (!node.classList.contains('notranslate')) {
+                            node.classList.add('notranslate');
+                        }
+                    } catch (e) {}
+                }
+
                 // 1. 快速排除基础禁止标签
                 if (BLOCKED_TAGS.includes(tag)) {
                     // 对于 INPUT, TEXTAREA 和 SVG，虽然不翻译其子元素或内容，但需要翻译其 placeholder, title, aria-label 等属性
@@ -268,6 +294,22 @@ function generateJs() {
             } else if (node.nodeType === Node.TEXT_NODE) {
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
+
+                // 核心：如果是 skeleton 骨架占位文本，强制打上不翻译标记，防止自动翻译（例如 Google Translate 网页翻译）将其翻译为“装。资料。包装。资料。”
+                if (originalVal.toLowerCase().includes('pack.info')) {
+                    const parent = node.parentElement;
+                    if (parent) {
+                        if (parent.getAttribute('translate') !== 'no') {
+                            parent.setAttribute('translate', 'no');
+                        }
+                        try {
+                            if (!parent.classList.contains('notranslate')) {
+                                parent.classList.add('notranslate');
+                            }
+                        } catch (e) {}
+                    }
+                    return;
+                }
 
                 // 核心：在处理文本节点前，必须确认其不在“禁止区”
                 if (isInBlockedZone(node)) return;
