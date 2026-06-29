@@ -181,6 +181,12 @@
     "Archive Conversation": "封存對話",
     "Unarchive Conversation": "取消封存對話",
     "Archive": "封存",
+    "Pin": "置頂",
+    "Unpin": "取消置頂",
+    "Copy Conversation Name": "複製對話名稱",
+    "Copy Conversation ID": "複製對話 ID",
+    "Copy Workspace Name": "複製工作區名稱",
+    "Copy Project Name": "複製專案名稱",
     "Conversation archived": "對話已封存",
     "Undo": "復原",
     "Delete Permanently": "徹底刪除",
@@ -250,5 +256,13 @@
     "Updating": "正在更新",
     "Updating...": "正在更新...",
     "Updated": "已更新",
-    "Stop": "停止"
+    "Stop": "停止",
+    "Pending messages": "等待中的訊息",
+    "Messages can be sent while the agent is still working. Your message will be queued and inserted at the next available break in reasoning.": "在代理工作時仍可傳送訊息。您的訊息將排入佇列，並在下一個可用的推理間隙插入。",
+    "Update Available": "更新可用",
+    "Update Available →": "更新可用 →",
+    "Update Available ->": "更新可用 ->",
+    "Downloading Update": "正在下載更新",
+    "Downloading update": "正在下載更新",
+    "Downloading Update...": "正在下載更新..."
 }

@@ -348,6 +348,34 @@ function generateJs() {
                     newVal = valNorm.replace(/^Refreshes in (\\d+) minutes?$/i, (match, m) => {
                         return ${USE_TW ? 'm + " 分鐘後更新"' : 'm + " 分钟后刷新"'};
                     });
+                } else if (/^You have used some of your weekly limit, it will fully refresh in (\\d+) days?, (\\d+) hours?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your weekly limit, it will fully refresh in (\\d+) days?, (\\d+) hours?\\.?$/i, (match, d, h) => {
+                        return ${USE_TW ? '"您已使用了部分每週限制，將在 " + d + " 天 " + h + " 小時後完全更新。"' : '"您已使用了部分每周限制，将在 " + d + " 天 " + h + " 小时后完全刷新。"'};
+                    });
+                } else if (/^You have used some of your weekly limit, it will fully refresh in (\\d+) days?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your weekly limit, it will fully refresh in (\\d+) days?\\.?$/i, (match, d) => {
+                        return ${USE_TW ? '"您已使用了部分每週限制，將在 " + d + " 天後完全更新。"' : '"您已使用了部分每周限制，将在 " + d + " 天后完全刷新。"'};
+                    });
+                } else if (/^You have used some of your weekly limit, it will fully refresh in (\\d+) hours?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your weekly limit, it will fully refresh in (\\d+) hours?\\.?$/i, (match, h) => {
+                        return ${USE_TW ? '"您已使用了部分每週限制，將在 " + h + " 小時後完全更新。"' : '"您已使用了部分每周限制，将在 " + h + " 小时后完全刷新。"'};
+                    });
+                } else if (/^You have used some of your weekly limit, it will fully refresh in (\\d+) minutes?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your weekly limit, it will fully refresh in (\\d+) minutes?\\.?$/i, (match, m) => {
+                        return ${USE_TW ? '"您已使用了部分每週限制，將在 " + m + " 分鐘後完全更新。"' : '"您已使用了部分每周限制，将在 " + m + " 分钟后完全刷新。"'};
+                    });
+                } else if (/^You have used some of your 5-hour limit, it will fully refresh in (\\d+) hours?, (\\d+) minutes?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your 5-hour limit, it will fully refresh in (\\d+) hours?, (\\d+) minutes?\\.?$/i, (match, h, m) => {
+                        return ${USE_TW ? '"您已使用了部分 5 小時限制，將在 " + h + " 小時 " + m + " 分鐘後完全更新。"' : '"您已使用了部分 5 小时限制，将在 " + h + " 小时 " + m + " 分钟后完全刷新。"'};
+                    });
+                } else if (/^You have used some of your 5-hour limit, it will fully refresh in (\\d+) hours?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your 5-hour limit, it will fully refresh in (\\d+) hours?\\.?$/i, (match, h) => {
+                        return ${USE_TW ? '"您已使用了部分 5 小時限制，將在 " + h + " 小時後完全更新。"' : '"您已使用了部分 5 小时限制，将在 " + h + " 小时后完全刷新。"'};
+                    });
+                } else if (/^You have used some of your 5-hour limit, it will fully refresh in (\\d+) minutes?\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have used some of your 5-hour limit, it will fully refresh in (\\d+) minutes?\\.?$/i, (match, m) => {
+                        return ${USE_TW ? '"您已使用了部分 5 小時限制，將在 " + m + " 分鐘後完全更新。"' : '"您已使用了部分 5 小时限制，将在 " + m + " 分钟后完全刷新。"'};
+                    });
                 } else if (/^Learn more about (.+)$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Learn more about (.+)$/i, (match, p) => {
                         let translatedPreset = p;
@@ -1149,6 +1177,10 @@ function main() {
         } catch (e) {
             console.warn(`[警告] 客户端启动失败: ${e.message}`);
         }
+    }
+
+    if (!success) {
+        process.exit(1);
     }
 }
 

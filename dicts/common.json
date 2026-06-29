@@ -181,6 +181,12 @@
     "Archive Conversation": "归档会话",
     "Unarchive Conversation": "取消归档会话",
     "Archive": "归档",
+    "Pin": "置顶",
+    "Unpin": "取消置顶",
+    "Copy Conversation Name": "复制会话名称",
+    "Copy Conversation ID": "复制会话 ID",
+    "Copy Workspace Name": "复制工作区名称",
+    "Copy Project Name": "复制项目名称",
     "Conversation archived": "会话已归档",
     "Undo": "撤销",
     "Delete Permanently": "彻底删除",
@@ -250,5 +256,13 @@
     "Updating": "正在更新",
     "Updating...": "正在更新...",
     "Updated": "已更新",
-    "Stop": "停止"
+    "Stop": "停止",
+    "Pending messages": "等待中的消息",
+    "Messages can be sent while the agent is still working. Your message will be queued and inserted at the next available break in reasoning.": "在智能体工作时仍可发送消息。您的消息将进入队列，并在下一个可用的推理间隙插入。",
+    "Update Available": "更新可用",
+    "Update Available →": "更新可用 →",
+    "Update Available ->": "更新可用 ->",
+    "Downloading Update": "正在下载更新",
+    "Downloading update": "正在下载更新",
+    "Downloading Update...": "正在下载更新..."
 }

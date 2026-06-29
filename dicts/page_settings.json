@@ -419,5 +419,10 @@
     "Useful for tasks that require file access across your full machine. The agent has full read and write access to all local files, but all proposed terminal commands require manual review and approval before running.": "适用于需要访问整机文件的任务。智能体对所有本地文件拥有完全的读写权限，但所有拟执行的终端命令在运行前均需人工审查和批准。",
     "A high-risk mode that disables all safety barriers. The agent operates with full system access, auto-executes all terminal commands, and reads or writes to all local files without review prompts.": "一种禁用所有安全屏障的高风险模式。智能体在拥有完全系统访问权限下运行，自动执行所有终端命令，读写所有本地文件且无需审查提示。",
     "Artifact Review Policy": "交付件审查策略",
-    "Controls whether terminal commands require your approval before running.": "控制终端命令在运行前是否需要您的批准。"
+    "Controls whether terminal commands require your approval before running.": "控制终端命令在运行前是否需要您的批准。",
+    "Within each group, models share a weekly limit and a 5-hour limit. Quota is consumed proportionally to the cost of the tokens. Thus, limits will last longer with shorter tasks or using more cost-effective models. The 5-hour limit smooths out aggregate demand to fairly distribute global capacity across all users, while your weekly limit is tied directly to your individual tier.": "在每个群组内，模型共享每周限制和 5 小时限制。配额的消耗与 Token 的成本成正比。因此，通过较短的任务或使用更具性价比的模型，限制额度可以维持得更久。5 小时限制可以平滑总体需求，以便在所有用户之间公平分配全局容量，而您的每周限制则直接与您的个人层级挂钩。",
+    "Gemini Models": "Gemini 模型",
+    "Weekly Limit": "每周限制",
+    "Five Hour Limit": "五小时限制",
+    "Claude and GPT models": "Claude 和 GPT 模型"
 }

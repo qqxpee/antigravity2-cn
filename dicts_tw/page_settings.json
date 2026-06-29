@@ -420,5 +420,10 @@
     "A high-risk mode that disables all safety barriers. The agent operates with full system access, auto-executes all terminal commands, and reads or writes to all local files without review prompts.": "一種停用所有安全屏障的高風險模式。代理在擁有完全系統存取權限下執行，自動執行所有終端命令，讀寫所有本機檔案且無需審查提示。",
     "Specifies Agent’s behavior when asking for review on artifacts, which are documents it creates to enable a richer conversation experience.": "指定代理在請求審查成品時的行為。成品 (Artifact) 是代理為了提供更豐富的互動體驗而生成的文件。",
     "Artifact Review Policy": "交付件審查策略",
-    "Controls whether terminal commands require your approval before running.": "控制終端命令在執行前是否需要您的核准。"
+    "Controls whether terminal commands require your approval before running.": "控制終端命令在執行前是否需要您的核准。",
+    "Within each group, models share a weekly limit and a 5-hour limit. Quota is consumed proportionally to the cost of the tokens. Thus, limits will last longer with shorter tasks or using more cost-effective models. The 5-hour limit smooths out aggregate demand to fairly distribute global capacity across all users, while your weekly limit is tied directly to your individual tier.": "在每個群組內，模型共享每週限制和 5 小時限制。配額的消耗與 Token 的成本成正比。因此，透過較短的任務或使用更具性價比的模型，限制額度可以維持得更久。5 小時限制可以平滑總體需求，以便在所有使用者之間公平分配全局容量，而您的每週限制則直接與您的個人層級掛鉤。",
+    "Gemini Models": "Gemini 模型",
+    "Weekly Limit": "每週限制",
+    "Five Hour Limit": "五小時限制",
+    "Claude and GPT models": "Claude 和 GPT 模型"
 }
