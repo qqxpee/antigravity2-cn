@@ -140,6 +140,17 @@ function translateDynamicText(valNorm, useTw) {
     return null;
 }
 
+function translateDynamicTextParts(parts, useTw) {
+    if (!Array.isArray(parts) || parts.length < 2) return null;
+    const joined = parts.join('');
+    const translated = translateDynamicText(normalizeText(joined), useTw);
+    if (!translated) return null;
+
+    const leading = (joined.match(/^\s*/) || [''])[0];
+    const trailing = (joined.match(/\s*$/) || [''])[0];
+    return [leading + translated + trailing, ...parts.slice(1).map(() => '')];
+}
+
 function loadDictionary() {
     const totalMap = {};
     const dictsDir = path.join(__dirname, DICTS_FOLDER);
@@ -176,6 +187,7 @@ function generateJs() {
     const dictJson = JSON.stringify(fullDict, null, 4);
     const entriesJson = JSON.stringify(longEntries);
     const dynamicTranslatorSource = translateDynamicText.toString();
+    const dynamicPartsTranslatorSource = translateDynamicTextParts.toString();
 
     const jsSource = `${SIGNATURE_START}
 (() => {
@@ -229,6 +241,7 @@ function generateJs() {
     }
 
     const translateDynamicText = ${dynamicTranslatorSource};
+    const translateDynamicTextParts = ${dynamicPartsTranslatorSource};
 
     function translateNode(node) {
         try {
@@ -239,6 +252,23 @@ function generateJs() {
                 if (SKIP_TAGS.includes(tag)) return;
                 if (node.isContentEditable) return;
                 if (node.classList && node.classList.contains('monaco-editor')) return;
+
+                const directTextNodes = Array.from(node.childNodes).filter(child => child.nodeType === Node.TEXT_NODE);
+                for (let start = 0; start < directTextNodes.length - 1; start++) {
+                    for (let end = start + 1; end < directTextNodes.length; end++) {
+                        const replacements = translateDynamicTextParts(
+                            directTextNodes.slice(start, end + 1).map(child => child.nodeValue || ''),
+                            USE_TW
+                        );
+                        if (replacements) {
+                            directTextNodes[start].nodeValue = replacements[0];
+                            for (let i = start + 1; i <= end; i++) {
+                                directTextNodes[i].nodeValue = replacements[i - start];
+                            }
+                            break;
+                        }
+                    }
+                }
 
                 // 翻译属性：placeholder, title, aria-label
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
@@ -1275,4 +1305,4 @@ if (require.main === module) {
     main();
 }
 
-module.exports = { generateJs, normalizeText, translateDynamicText };
+module.exports = { generateJs, normalizeText, translateDynamicText, translateDynamicTextParts };
