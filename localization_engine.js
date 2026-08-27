@@ -128,7 +128,7 @@ function normalizeText(text) {
 }
 
 function translateDynamicText(valNorm, useTw) {
-    const projectConversations = valNorm.match(/^(.+?)\s+including\s+(\d+)\s+active conversations$/i);
+    const projectConversations = valNorm.match(/^(.+?)\s+including\s+(\d+)\s+active conversations?$/i);
     if (projectConversations) {
         const projectName = projectConversations[1];
         const count = projectConversations[2];
