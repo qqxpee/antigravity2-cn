@@ -127,6 +127,18 @@ function normalizeText(text) {
                .replace(/…/g, '...');
 }
 
+function translateDynamicText(valNorm, useTw) {
+    const projectConversations = valNorm.match(/^(.+?)\s+including\s+(\d+)\s+active conversations$/i);
+    if (projectConversations) {
+        const projectName = projectConversations[1];
+        const count = projectConversations[2];
+        return useTw
+            ? `${projectName}（包含 ${count} 個活躍會話）`
+            : `${projectName}（包含 ${count} 个活跃会话）`;
+    }
+    return null;
+}
+
 function loadDictionary() {
     const totalMap = {};
     const dictsDir = path.join(__dirname, DICTS_FOLDER);
@@ -162,6 +174,7 @@ function generateJs() {
     
     const dictJson = JSON.stringify(fullDict, null, 4);
     const entriesJson = JSON.stringify(longEntries);
+    const dynamicTranslatorSource = translateDynamicText.toString();
 
     const jsSource = `${SIGNATURE_START}
 (() => {
@@ -213,6 +226,8 @@ function generateJs() {
         }
         return null;
     }
+
+    const translateDynamicText = ${dynamicTranslatorSource};
 
     function translateNode(node) {
         try {
@@ -287,6 +302,8 @@ function generateJs() {
                     newVal = map.get(valNorm);
                 } else if (lowerMap.has(valLower)) {
                     newVal = lowerMap.get(valLower);
+                } else if (translateDynamicText(valNorm, USE_TW)) {
+                    newVal = translateDynamicText(valNorm, USE_TW);
                 } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
                     newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
                 } else if (/^The Cloud SQL remote/i.test(valNorm)) {
@@ -1253,4 +1270,8 @@ function main() {
     }
 }
 
-main();
+if (require.main === module) {
+    main();
+}
+
+module.exports = { generateJs, normalizeText, translateDynamicText };
