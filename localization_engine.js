@@ -128,13 +128,14 @@ function normalizeText(text) {
 }
 
 function translateDynamicText(valNorm, useTw) {
-    const projectConversations = valNorm.match(/^(.+?)\s+including\s+(\d+)\s+active conversations?$/i);
+    const projectConversations = valNorm.match(/^(.+?)\s+including\s+(\d+)\s+active conversations?([.。])?$/i);
     if (projectConversations) {
         const projectName = projectConversations[1];
         const count = projectConversations[2];
+        const punctuation = projectConversations[3] ? "。" : "";
         return useTw
-            ? `${projectName}（包含 ${count} 個活躍會話）`
-            : `${projectName}（包含 ${count} 个活跃会话）`;
+            ? `${projectName}（包含 ${count} 個活躍會話）${punctuation}`
+            : `${projectName}（包含 ${count} 个活跃会话）${punctuation}`;
     }
     return null;
 }
