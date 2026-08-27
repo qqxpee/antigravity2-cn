@@ -146,8 +146,21 @@ function translateDynamicText(valNorm, useTw) {
 function translateDynamicTextParts(parts, useTw) {
     if (!Array.isArray(parts) || parts.length < 2) return null;
     const joined = parts.join('');
-    const match = joined.match(/^(\s*)(?:(Permanently delete)(\s+))?(.+?)(\s+including\s+)(\d+\s+active conversations?)([.。])?(\s*)$/i);
-    if (!match) return null;
+    const exactPattern = /^(\s*)(?:(Permanently delete)(\s+))?(.+?)(\s+including\s+)(\d+\s+active conversations?)([.。])?(\s*)$/i;
+    let match = joined.match(exactPattern);
+    let matchOffset = 0;
+
+    // The delete-project dialog can put the translated description and the
+    // dynamic project summary in the same text container. Translate only the
+    // summary fragment so unrelated surrounding text is preserved.
+    if (!match) {
+        const contextualMatch = joined.match(/(?:^|[.!?。！？]\s*)(?:(Permanently delete)(\s+))?(.+?)(\s+including\s+)(\d+\s+active conversations?)([.。])?/i);
+        if (!contextualMatch) return null;
+        const boundary = contextualMatch[0].match(/^[.!?。！？]\s*/)?.[0] || '';
+        matchOffset = contextualMatch.index + boundary.length;
+        match = contextualMatch[0].slice(boundary.length).match(exactPattern);
+        if (!match) return null;
+    }
 
     const leading = match[1] || '';
     const deletePrefix = match[2] || '';
@@ -161,7 +174,7 @@ function translateDynamicTextParts(parts, useTw) {
 
     const count = countMatch[1];
     const segments = [];
-    let cursor = leading.length;
+    let cursor = matchOffset + leading.length;
     if (deletePrefix) {
         segments.push({
             start: cursor,
@@ -198,23 +211,25 @@ function translateDynamicTextParts(parts, useTw) {
         offset += part.length;
     }
 
-    const replacements = [...parts];
-    for (const segment of segments) {
-        const overlapping = [];
-        for (let i = 0; i < parts.length; i++) {
-            const partStart = offsets[i];
-            const partEnd = partStart + parts[i].length;
-            if (segment.start < partEnd && segment.end > partStart) overlapping.push(i);
-        }
-        if (!overlapping.length) return null;
+    const replacements = parts.map((part, partIndex) => {
+        const partStart = offsets[partIndex];
+        const partEnd = partStart + part.length;
+        const overlapping = segments.filter(segment => segment.start < partEnd && segment.end > partStart);
+        if (!overlapping.length) return part;
 
-        const first = overlapping[0];
-        const last = overlapping[overlapping.length - 1];
-        const before = parts[first].slice(0, Math.max(0, segment.start - offsets[first]));
-        const after = parts[last].slice(Math.max(0, segment.end - offsets[last]));
-        replacements[first] = before + segment.replacement + after;
-        for (let i = first + 1; i <= last; i++) replacements[i] = '';
-    }
+        let cursor = 0;
+        let result = '';
+        for (const segment of overlapping) {
+            const localStart = Math.max(0, segment.start - partStart);
+            const localEnd = Math.min(part.length, segment.end - partStart);
+            result += part.slice(cursor, localStart);
+            if (segment.start >= partStart && segment.start < partEnd) {
+                result += segment.replacement;
+            }
+            cursor = Math.max(cursor, localEnd);
+        }
+        return result + part.slice(cursor);
+    });
     return replacements;
 }
 
@@ -266,7 +281,17 @@ function generateJs() {
     for (const [k, v] of map.entries()) lowerMap.set(k.toLowerCase(), v);
     
     const longEntries = REPLACEMENT_ENTRIES_PLACEHOLDER;
+    const longEntryBuckets = new Map();
+    for (let i = 0; i < longEntries.length; i++) {
+        const prefix = longEntries[i][0].slice(0, 3).toLowerCase();
+        if (prefix.length < 3) continue;
+        if (!longEntryBuckets.has(prefix)) longEntryBuckets.set(prefix, []);
+        longEntryBuckets.get(prefix).push(i);
+    }
     const translatedValues = new WeakMap();
+    const dynamicContainerTexts = new WeakMap();
+    const DYNAMIC_SUMMARY_RE = /including\\s+\\d+\\s+active conversations?/i;
+    const DYNAMIC_FRAGMENT_RE = /(?:Permanently delete|including|active conversations?)/i;
 
     // 轻量级安全隔离：跳过脚本、样式、代码块(pre/code)以及编辑器区域
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
@@ -310,11 +335,37 @@ function generateJs() {
     const translateDynamicText = ${dynamicTranslatorSource};
     const translateDynamicTextParts = ${dynamicPartsTranslatorSource};
 
-    function translateDynamicContainer(node) {
+    function findLongEntry(valNorm, valLower) {
+        if (valNorm.length <= 15) return null;
+
+        const candidateIndexes = new Set();
+        for (let i = 0; i <= valLower.length - 3; i++) {
+            const bucket = longEntryBuckets.get(valLower.slice(i, i + 3));
+            if (!bucket) continue;
+            for (const index of bucket) candidateIndexes.add(index);
+        }
+        if (!candidateIndexes.size) return null;
+
+        const orderedIndexes = Array.from(candidateIndexes).sort((a, b) => a - b);
+        for (const index of orderedIndexes) {
+            const [key, translated] = longEntries[index];
+            if (key.length > 15 && valNorm.includes(key)) {
+                return { key, translated, contains: true };
+            }
+            if (key.length >= 18 && valNorm.length >= 18 && valLower.slice(0, 18) === key.slice(0, 18).toLowerCase()) {
+                return { translated, contains: false };
+            }
+        }
+        return null;
+    }
+
+    function translateDynamicContainer(node, knownText) {
         try {
             if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
-            const elementText = node.textContent || '';
-            if (elementText.length > 300 || !/including\\s+\\d+\\s+active conversations?/i.test(elementText)) return false;
+            const elementText = knownText === undefined ? (node.textContent || '') : knownText;
+            if (elementText.length > 300 || !DYNAMIC_SUMMARY_RE.test(elementText)) return false;
+            if (dynamicContainerTexts.get(node) === elementText) return false;
+            dynamicContainerTexts.set(node, elementText);
 
             const dynamicTextNodes = [];
             const collectTextNodes = current => {
@@ -344,16 +395,23 @@ function generateJs() {
         }
     }
 
-    function translateDynamicAncestors(node) {
-        let ancestor = node && node.parentElement;
-        while (ancestor) {
-            if (translateDynamicContainer(ancestor)) return true;
-            ancestor = ancestor.parentElement;
+    function translateDynamicCandidate(node) {
+        let candidate = node && node.nodeType === Node.ELEMENT_NODE ? node : node && node.parentElement;
+        if (!candidate) return false;
+        let candidateText = candidate.textContent || '';
+        if (!DYNAMIC_FRAGMENT_RE.test(candidateText)) return false;
+        while (candidate) {
+            if (candidateText.length > 300) break;
+            if (DYNAMIC_SUMMARY_RE.test(candidateText) && translateDynamicContainer(candidate, candidateText)) {
+                return true;
+            }
+            candidate = candidate.parentElement;
+            candidateText = candidate ? (candidate.textContent || '') : '';
         }
         return false;
     }
 
-    function translateNode(node) {
+    function translateNode(node, scanDynamic = false) {
         try {
             if (!node) return;
             
@@ -363,7 +421,7 @@ function generateJs() {
                 if (node.isContentEditable) return;
                 if (node.classList && node.classList.contains('monaco-editor')) return;
 
-                translateDynamicContainer(node);
+                if (scanDynamic) translateDynamicContainer(node);
 
                 // 翻译属性：placeholder, title, aria-label
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
@@ -389,12 +447,11 @@ function generateJs() {
                     }
                 }
 
-                if (node.shadowRoot) translateNode(node.shadowRoot);
-                for (const child of node.childNodes) translateNode(child);
+                if (node.shadowRoot) translateNode(node.shadowRoot, scanDynamic);
+                for (const child of node.childNodes) translateNode(child, scanDynamic);
 
             } else if (node.nodeType === Node.TEXT_NODE) {
                 if (isCodeOrEditor(node)) return;
-                translateDynamicAncestors(node);
 
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
@@ -584,14 +641,11 @@ function generateJs() {
                     });
                 } else {
                     // 2. 长句子串滑动替换与前缀截断智能匹配 (缩短至前 18 字符即可高精度命中)
-                    for (const [key, translated] of longEntries) {
-                        if (key.length > 15 && valNorm.includes(key)) {
-                            newVal = newVal.split(key).join(translated);
-                            break;
-                        } else if (key.length >= 18 && valNorm.length >= 18 && valLower.slice(0, 18) === key.slice(0, 18).toLowerCase()) {
-                            newVal = translated;
-                            break;
-                        }
+                    const longMatch = findLongEntry(valNorm, valLower);
+                    if (longMatch) {
+                        newVal = longMatch.contains
+                            ? newVal.split(longMatch.key).join(longMatch.translated)
+                            : longMatch.translated;
                     }
                 }
 
@@ -603,26 +657,86 @@ function generateJs() {
         } catch (e) {}
     }
 
+    const pendingTranslationRoots = new Set();
+    const pendingDynamicCandidates = new Set();
+    let translationFlushScheduled = false;
+    const MAX_ROOTS_PER_FLUSH = 40;
+
+    function scheduleTranslationFlush() {
+        if (translationFlushScheduled) return;
+        translationFlushScheduled = true;
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(flushTranslationQueue, { timeout: 100 });
+        } else {
+            setTimeout(flushTranslationQueue, 0);
+        }
+    }
+
+    function flushTranslationQueue() {
+        translationFlushScheduled = false;
+        let processed = 0;
+        while (pendingTranslationRoots.size && processed < MAX_ROOTS_PER_FLUSH) {
+            const root = pendingTranslationRoots.values().next().value;
+            pendingTranslationRoots.delete(root);
+            // A modal can arrive as one large subtree. Scan dynamic containers
+            // inside that new subtree, but never rescan the existing document.
+            translateNode(root, root.nodeType === Node.ELEMENT_NODE);
+            processed += 1;
+        }
+
+        if (!pendingTranslationRoots.size) {
+            const candidates = Array.from(pendingDynamicCandidates);
+            pendingDynamicCandidates.clear();
+            for (const candidate of candidates.slice(0, MAX_ROOTS_PER_FLUSH)) {
+                translateDynamicCandidate(candidate);
+            }
+            for (const candidate of candidates.slice(MAX_ROOTS_PER_FLUSH)) {
+                pendingDynamicCandidates.add(candidate);
+            }
+        }
+
+        if (pendingTranslationRoots.size || pendingDynamicCandidates.size) {
+            scheduleTranslationFlush();
+        }
+    }
+
     const observer = new MutationObserver(mutations => {
         for (const m of mutations) {
             if (m.type === 'childList') {
-                translateNode(m.target);
-                for (const n of m.addedNodes) translateNode(n);
+                for (const n of m.addedNodes) {
+                    pendingTranslationRoots.add(n);
+                    if (n.nodeType === Node.ELEMENT_NODE) pendingDynamicCandidates.add(n);
+                    else if (n.parentElement) pendingDynamicCandidates.add(n.parentElement);
+                }
             } else if (m.type === 'characterData') {
-                if (m.target.parentElement) translateNode(m.target.parentElement);
-                translateNode(m.target);
+                pendingTranslationRoots.add(m.target);
+                if (DYNAMIC_SUMMARY_RE.test(m.target.nodeValue || '')) {
+                    pendingDynamicCandidates.add(m.target.parentElement);
+                }
             }
+        }
+        if (pendingTranslationRoots.size || pendingDynamicCandidates.size) {
+            scheduleTranslationFlush();
         }
     });
 
     const obsOpts = { childList: true, subtree: true, characterData: true };
 
+    let observedTarget = null;
+    let initialScanTarget = null;
     const startEngine = () => {
         const target = document.body || document.documentElement;
         if (target) {
             try {
-                observer.observe(target, obsOpts);
-                translateNode(target);
+                if (observedTarget !== target) {
+                    observer.observe(target, obsOpts);
+                    observedTarget = target;
+                }
+                // 只对每个根节点做一次全量扫描；后续更新仅处理新增子树。
+                if (initialScanTarget !== target) {
+                    translateNode(target, true);
+                    initialScanTarget = target;
+                }
             } catch (e) {}
         }
     };
