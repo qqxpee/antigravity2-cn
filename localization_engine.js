@@ -146,12 +146,76 @@ function translateDynamicText(valNorm, useTw) {
 function translateDynamicTextParts(parts, useTw) {
     if (!Array.isArray(parts) || parts.length < 2) return null;
     const joined = parts.join('');
-    const translated = translateDynamicText(normalizeText(joined), useTw);
-    if (!translated) return null;
+    const match = joined.match(/^(\s*)(?:(Permanently delete)(\s+))?(.+?)(\s+including\s+)(\d+\s+active conversations?)([.。])?(\s*)$/i);
+    if (!match) return null;
 
-    const leading = (joined.match(/^\s*/) || [''])[0];
-    const trailing = (joined.match(/\s*$/) || [''])[0];
-    return [leading + translated + trailing, ...parts.slice(1).map(() => '')];
+    const leading = match[1] || '';
+    const deletePrefix = match[2] || '';
+    const prefixSeparator = match[3] || '';
+    const projectName = match[4];
+    const including = match[5];
+    const countPhrase = match[6];
+    const punctuation = match[7] || '';
+    const countMatch = countPhrase.match(/^(\d+)\s+active conversations?$/i);
+    if (!countMatch) return null;
+
+    const count = countMatch[1];
+    const segments = [];
+    let cursor = leading.length;
+    if (deletePrefix) {
+        segments.push({
+            start: cursor,
+            end: cursor + deletePrefix.length,
+            replacement: useTw ? '永久刪除' : '永久删除'
+        });
+        cursor += deletePrefix.length + prefixSeparator.length;
+    }
+    cursor += projectName.length;
+    segments.push({
+        start: cursor,
+        end: cursor + including.length,
+        replacement: '（包含 '
+    });
+    cursor += including.length;
+    segments.push({
+        start: cursor,
+        end: cursor + countPhrase.length,
+        replacement: useTw ? `${count} 個活躍會話）` : `${count} 个活跃会话）`
+    });
+    cursor += countPhrase.length;
+    if (punctuation) {
+        segments.push({
+            start: cursor,
+            end: cursor + punctuation.length,
+            replacement: '。'
+        });
+    }
+
+    const offsets = [];
+    let offset = 0;
+    for (const part of parts) {
+        offsets.push(offset);
+        offset += part.length;
+    }
+
+    const replacements = [...parts];
+    for (const segment of segments) {
+        const overlapping = [];
+        for (let i = 0; i < parts.length; i++) {
+            const partStart = offsets[i];
+            const partEnd = partStart + parts[i].length;
+            if (segment.start < partEnd && segment.end > partStart) overlapping.push(i);
+        }
+        if (!overlapping.length) return null;
+
+        const first = overlapping[0];
+        const last = overlapping[overlapping.length - 1];
+        const before = parts[first].slice(0, Math.max(0, segment.start - offsets[first]));
+        const after = parts[last].slice(Math.max(0, segment.end - offsets[last]));
+        replacements[first] = before + segment.replacement + after;
+        for (let i = first + 1; i <= last; i++) replacements[i] = '';
+    }
+    return replacements;
 }
 
 function loadDictionary() {
@@ -246,6 +310,49 @@ function generateJs() {
     const translateDynamicText = ${dynamicTranslatorSource};
     const translateDynamicTextParts = ${dynamicPartsTranslatorSource};
 
+    function translateDynamicContainer(node) {
+        try {
+            if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+            const elementText = node.textContent || '';
+            if (elementText.length > 300 || !/including\\s+\\d+\\s+active conversations?/i.test(elementText)) return false;
+
+            const dynamicTextNodes = [];
+            const collectTextNodes = current => {
+                for (const child of current.childNodes) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        dynamicTextNodes.push(child);
+                    } else if (child.nodeType === Node.ELEMENT_NODE) {
+                        const childTag = child.tagName.toUpperCase();
+                        if (SKIP_TAGS.includes(childTag) || child.isContentEditable || (child.classList && child.classList.contains('monaco-editor'))) continue;
+                        collectTextNodes(child);
+                    }
+                }
+            };
+            collectTextNodes(node);
+            const replacements = translateDynamicTextParts(
+                dynamicTextNodes.map(child => child.nodeValue || ''),
+                USE_TW
+            );
+            if (!replacements) return false;
+
+            for (let i = 0; i < dynamicTextNodes.length; i++) {
+                dynamicTextNodes[i].nodeValue = replacements[i];
+            }
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function translateDynamicAncestors(node) {
+        let ancestor = node && node.parentElement;
+        while (ancestor) {
+            if (translateDynamicContainer(ancestor)) return true;
+            ancestor = ancestor.parentElement;
+        }
+        return false;
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
@@ -256,22 +363,7 @@ function generateJs() {
                 if (node.isContentEditable) return;
                 if (node.classList && node.classList.contains('monaco-editor')) return;
 
-                const directTextNodes = Array.from(node.childNodes).filter(child => child.nodeType === Node.TEXT_NODE);
-                for (let start = 0; start < directTextNodes.length - 1; start++) {
-                    for (let end = start + 1; end < directTextNodes.length; end++) {
-                        const replacements = translateDynamicTextParts(
-                            directTextNodes.slice(start, end + 1).map(child => child.nodeValue || ''),
-                            USE_TW
-                        );
-                        if (replacements) {
-                            directTextNodes[start].nodeValue = replacements[0];
-                            for (let i = start + 1; i <= end; i++) {
-                                directTextNodes[i].nodeValue = replacements[i - start];
-                            }
-                            break;
-                        }
-                    }
-                }
+                translateDynamicContainer(node);
 
                 // 翻译属性：placeholder, title, aria-label
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
@@ -302,6 +394,7 @@ function generateJs() {
 
             } else if (node.nodeType === Node.TEXT_NODE) {
                 if (isCodeOrEditor(node)) return;
+                translateDynamicAncestors(node);
 
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
@@ -513,8 +606,10 @@ function generateJs() {
     const observer = new MutationObserver(mutations => {
         for (const m of mutations) {
             if (m.type === 'childList') {
+                translateNode(m.target);
                 for (const n of m.addedNodes) translateNode(n);
             } else if (m.type === 'characterData') {
+                if (m.target.parentElement) translateNode(m.target.parentElement);
                 translateNode(m.target);
             }
         }
