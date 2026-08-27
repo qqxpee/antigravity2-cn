@@ -128,14 +128,17 @@ function normalizeText(text) {
 }
 
 function translateDynamicText(valNorm, useTw) {
-    const projectConversations = valNorm.match(/^(.+?)\s+including\s+(\d+)\s+active conversations?([.。])?$/i);
+    const projectConversations = valNorm.match(/^(?:(Permanently delete)\s+)?(.+?)\s+including\s+(\d+)\s+active conversations?([.。])?$/i);
     if (projectConversations) {
-        const projectName = projectConversations[1];
-        const count = projectConversations[2];
-        const punctuation = projectConversations[3] ? "。" : "";
+        const deletePrefix = projectConversations[1]
+            ? (useTw ? "永久刪除 " : "永久删除 ")
+            : "";
+        const projectName = projectConversations[2];
+        const count = projectConversations[3];
+        const punctuation = projectConversations[4] ? "。" : "";
         return useTw
-            ? `${projectName}（包含 ${count} 個活躍會話）${punctuation}`
-            : `${projectName}（包含 ${count} 个活跃会话）${punctuation}`;
+            ? `${deletePrefix}${projectName}（包含 ${count} 個活躍會話）${punctuation}`
+            : `${deletePrefix}${projectName}（包含 ${count} 个活跃会话）${punctuation}`;
     }
     return null;
 }
