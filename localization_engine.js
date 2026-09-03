@@ -127,6 +127,112 @@ function normalizeText(text) {
                .replace(/…/g, '...');
 }
 
+function translateDynamicText(valNorm, useTw) {
+    const projectConversations = valNorm.match(/^(?:(Permanently delete)\s+)?(.+?)\s+including\s+(\d+)\s+active conversations?([.。])?$/i);
+    if (projectConversations) {
+        const deletePrefix = projectConversations[1]
+            ? (useTw ? "永久刪除 " : "永久删除 ")
+            : "";
+        const projectName = projectConversations[2];
+        const count = projectConversations[3];
+        const punctuation = projectConversations[4] ? "。" : "";
+        return useTw
+            ? `${deletePrefix}${projectName}（包含 ${count} 個活躍會話）${punctuation}`
+            : `${deletePrefix}${projectName}（包含 ${count} 个活跃会话）${punctuation}`;
+    }
+    return null;
+}
+
+function translateDynamicTextParts(parts, useTw) {
+    if (!Array.isArray(parts) || parts.length < 2) return null;
+    const joined = parts.join('');
+    const exactPattern = /^(\s*)(?:(Permanently delete)(\s+))?(.+?)(\s+including\s+)(\d+\s+active conversations?)([.。])?(\s*)$/i;
+    let match = joined.match(exactPattern);
+    let matchOffset = 0;
+
+    // The delete-project dialog can put the translated description and the
+    // dynamic project summary in the same text container. Translate only the
+    // summary fragment so unrelated surrounding text is preserved.
+    if (!match) {
+        const contextualMatch = joined.match(/(?:^|[.!?。！？]\s*)(?:(Permanently delete)(\s+))?(.+?)(\s+including\s+)(\d+\s+active conversations?)([.。])?/i);
+        if (!contextualMatch) return null;
+        const boundary = contextualMatch[0].match(/^[.!?。！？]\s*/)?.[0] || '';
+        matchOffset = contextualMatch.index + boundary.length;
+        match = contextualMatch[0].slice(boundary.length).match(exactPattern);
+        if (!match) return null;
+    }
+
+    const leading = match[1] || '';
+    const deletePrefix = match[2] || '';
+    const prefixSeparator = match[3] || '';
+    const projectName = match[4];
+    const including = match[5];
+    const countPhrase = match[6];
+    const punctuation = match[7] || '';
+    const countMatch = countPhrase.match(/^(\d+)\s+active conversations?$/i);
+    if (!countMatch) return null;
+
+    const count = countMatch[1];
+    const segments = [];
+    let cursor = matchOffset + leading.length;
+    if (deletePrefix) {
+        segments.push({
+            start: cursor,
+            end: cursor + deletePrefix.length,
+            replacement: useTw ? '永久刪除' : '永久删除'
+        });
+        cursor += deletePrefix.length + prefixSeparator.length;
+    }
+    cursor += projectName.length;
+    segments.push({
+        start: cursor,
+        end: cursor + including.length,
+        replacement: '（包含 '
+    });
+    cursor += including.length;
+    segments.push({
+        start: cursor,
+        end: cursor + countPhrase.length,
+        replacement: useTw ? `${count} 個活躍會話）` : `${count} 个活跃会话）`
+    });
+    cursor += countPhrase.length;
+    if (punctuation) {
+        segments.push({
+            start: cursor,
+            end: cursor + punctuation.length,
+            replacement: '。'
+        });
+    }
+
+    const offsets = [];
+    let offset = 0;
+    for (const part of parts) {
+        offsets.push(offset);
+        offset += part.length;
+    }
+
+    const replacements = parts.map((part, partIndex) => {
+        const partStart = offsets[partIndex];
+        const partEnd = partStart + part.length;
+        const overlapping = segments.filter(segment => segment.start < partEnd && segment.end > partStart);
+        if (!overlapping.length) return part;
+
+        let cursor = 0;
+        let result = '';
+        for (const segment of overlapping) {
+            const localStart = Math.max(0, segment.start - partStart);
+            const localEnd = Math.min(part.length, segment.end - partStart);
+            result += part.slice(cursor, localStart);
+            if (segment.start >= partStart && segment.start < partEnd) {
+                result += segment.replacement;
+            }
+            cursor = Math.max(cursor, localEnd);
+        }
+        return result + part.slice(cursor);
+    });
+    return replacements;
+}
+
 function loadDictionary() {
     const totalMap = {};
     const dictsDir = path.join(__dirname, DICTS_FOLDER);
@@ -162,6 +268,8 @@ function generateJs() {
     
     const dictJson = JSON.stringify(fullDict, null, 4);
     const entriesJson = JSON.stringify(longEntries);
+    const dynamicTranslatorSource = translateDynamicText.toString();
+    const dynamicPartsTranslatorSource = translateDynamicTextParts.toString();
 
     const jsSource = `${SIGNATURE_START}
 (() => {
@@ -173,7 +281,17 @@ function generateJs() {
     for (const [k, v] of map.entries()) lowerMap.set(k.toLowerCase(), v);
     
     const longEntries = REPLACEMENT_ENTRIES_PLACEHOLDER;
+    const longEntryBuckets = new Map();
+    for (let i = 0; i < longEntries.length; i++) {
+        const prefix = longEntries[i][0].slice(0, 3).toLowerCase();
+        if (prefix.length < 3) continue;
+        if (!longEntryBuckets.has(prefix)) longEntryBuckets.set(prefix, []);
+        longEntryBuckets.get(prefix).push(i);
+    }
     const translatedValues = new WeakMap();
+    const dynamicContainerTexts = new WeakMap();
+    const DYNAMIC_SUMMARY_RE = /including\\s+\\d+\\s+active conversations?/i;
+    const DYNAMIC_FRAGMENT_RE = /(?:Permanently delete|including|active conversations?)/i;
 
     // 轻量级安全隔离：跳过脚本、样式、代码块(pre/code)以及编辑器区域
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
@@ -214,7 +332,86 @@ function generateJs() {
         return null;
     }
 
-    function translateNode(node) {
+    const translateDynamicText = ${dynamicTranslatorSource};
+    const translateDynamicTextParts = ${dynamicPartsTranslatorSource};
+
+    function findLongEntry(valNorm, valLower) {
+        if (valNorm.length <= 15) return null;
+
+        const candidateIndexes = new Set();
+        for (let i = 0; i <= valLower.length - 3; i++) {
+            const bucket = longEntryBuckets.get(valLower.slice(i, i + 3));
+            if (!bucket) continue;
+            for (const index of bucket) candidateIndexes.add(index);
+        }
+        if (!candidateIndexes.size) return null;
+
+        const orderedIndexes = Array.from(candidateIndexes).sort((a, b) => a - b);
+        for (const index of orderedIndexes) {
+            const [key, translated] = longEntries[index];
+            if (key.length > 15 && valNorm.includes(key)) {
+                return { key, translated, contains: true };
+            }
+            if (key.length >= 18 && valNorm.length >= 18 && valLower.slice(0, 18) === key.slice(0, 18).toLowerCase()) {
+                return { translated, contains: false };
+            }
+        }
+        return null;
+    }
+
+    function translateDynamicContainer(node, knownText) {
+        try {
+            if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+            const elementText = knownText === undefined ? (node.textContent || '') : knownText;
+            if (elementText.length > 300 || !DYNAMIC_SUMMARY_RE.test(elementText)) return false;
+            if (dynamicContainerTexts.get(node) === elementText) return false;
+            dynamicContainerTexts.set(node, elementText);
+
+            const dynamicTextNodes = [];
+            const collectTextNodes = current => {
+                for (const child of current.childNodes) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        dynamicTextNodes.push(child);
+                    } else if (child.nodeType === Node.ELEMENT_NODE) {
+                        const childTag = child.tagName.toUpperCase();
+                        if (SKIP_TAGS.includes(childTag) || child.isContentEditable || (child.classList && child.classList.contains('monaco-editor'))) continue;
+                        collectTextNodes(child);
+                    }
+                }
+            };
+            collectTextNodes(node);
+            const replacements = translateDynamicTextParts(
+                dynamicTextNodes.map(child => child.nodeValue || ''),
+                USE_TW
+            );
+            if (!replacements) return false;
+
+            for (let i = 0; i < dynamicTextNodes.length; i++) {
+                dynamicTextNodes[i].nodeValue = replacements[i];
+            }
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function translateDynamicCandidate(node) {
+        let candidate = node && node.nodeType === Node.ELEMENT_NODE ? node : node && node.parentElement;
+        if (!candidate) return false;
+        let candidateText = candidate.textContent || '';
+        if (!DYNAMIC_FRAGMENT_RE.test(candidateText)) return false;
+        while (candidate) {
+            if (candidateText.length > 300) break;
+            if (DYNAMIC_SUMMARY_RE.test(candidateText) && translateDynamicContainer(candidate, candidateText)) {
+                return true;
+            }
+            candidate = candidate.parentElement;
+            candidateText = candidate ? (candidate.textContent || '') : '';
+        }
+        return false;
+    }
+
+    function translateNode(node, scanDynamic = false) {
         try {
             if (!node) return;
             
@@ -223,6 +420,8 @@ function generateJs() {
                 if (SKIP_TAGS.includes(tag)) return;
                 if (node.isContentEditable) return;
                 if (node.classList && node.classList.contains('monaco-editor')) return;
+
+                if (scanDynamic) translateDynamicContainer(node);
 
                 // 翻译属性：placeholder, title, aria-label
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
@@ -248,8 +447,8 @@ function generateJs() {
                     }
                 }
 
-                if (node.shadowRoot) translateNode(node.shadowRoot);
-                for (const child of node.childNodes) translateNode(child);
+                if (node.shadowRoot) translateNode(node.shadowRoot, scanDynamic);
+                for (const child of node.childNodes) translateNode(child, scanDynamic);
 
             } else if (node.nodeType === Node.TEXT_NODE) {
                 if (isCodeOrEditor(node)) return;
@@ -287,6 +486,8 @@ function generateJs() {
                     newVal = map.get(valNorm);
                 } else if (lowerMap.has(valLower)) {
                     newVal = lowerMap.get(valLower);
+                } else if (translateDynamicText(valNorm, USE_TW)) {
+                    newVal = translateDynamicText(valNorm, USE_TW);
                 } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
                     newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
                 } else if (/^The Cloud SQL remote/i.test(valNorm)) {
@@ -412,14 +613,11 @@ function generateJs() {
                     });
                 } else {
                     // 2. 长句子串滑动替换与前缀截断智能匹配 (缩短至前 18 字符即可高精度命中)
-                    for (const [key, translated] of longEntries) {
-                        if (key.length > 15 && valNorm.includes(key)) {
-                            newVal = newVal.split(key).join(translated);
-                            break;
-                        } else if (key.length >= 18 && valNorm.length >= 18 && valLower.slice(0, 18) === key.slice(0, 18).toLowerCase()) {
-                            newVal = translated;
-                            break;
-                        }
+                    const longMatch = findLongEntry(valNorm, valLower);
+                    if (longMatch) {
+                        newVal = longMatch.contains
+                            ? newVal.split(longMatch.key).join(longMatch.translated)
+                            : longMatch.translated;
                     }
                 }
 
@@ -431,24 +629,86 @@ function generateJs() {
         } catch (e) {}
     }
 
+    const pendingTranslationRoots = new Set();
+    const pendingDynamicCandidates = new Set();
+    let translationFlushScheduled = false;
+    const MAX_ROOTS_PER_FLUSH = 40;
+
+    function scheduleTranslationFlush() {
+        if (translationFlushScheduled) return;
+        translationFlushScheduled = true;
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(flushTranslationQueue, { timeout: 100 });
+        } else {
+            setTimeout(flushTranslationQueue, 0);
+        }
+    }
+
+    function flushTranslationQueue() {
+        translationFlushScheduled = false;
+        let processed = 0;
+        while (pendingTranslationRoots.size && processed < MAX_ROOTS_PER_FLUSH) {
+            const root = pendingTranslationRoots.values().next().value;
+            pendingTranslationRoots.delete(root);
+            // A modal can arrive as one large subtree. Scan dynamic containers
+            // inside that new subtree, but never rescan the existing document.
+            translateNode(root, root.nodeType === Node.ELEMENT_NODE);
+            processed += 1;
+        }
+
+        if (!pendingTranslationRoots.size) {
+            const candidates = Array.from(pendingDynamicCandidates);
+            pendingDynamicCandidates.clear();
+            for (const candidate of candidates.slice(0, MAX_ROOTS_PER_FLUSH)) {
+                translateDynamicCandidate(candidate);
+            }
+            for (const candidate of candidates.slice(MAX_ROOTS_PER_FLUSH)) {
+                pendingDynamicCandidates.add(candidate);
+            }
+        }
+
+        if (pendingTranslationRoots.size || pendingDynamicCandidates.size) {
+            scheduleTranslationFlush();
+        }
+    }
+
     const observer = new MutationObserver(mutations => {
         for (const m of mutations) {
             if (m.type === 'childList') {
-                for (const n of m.addedNodes) translateNode(n);
+                for (const n of m.addedNodes) {
+                    pendingTranslationRoots.add(n);
+                    if (n.nodeType === Node.ELEMENT_NODE) pendingDynamicCandidates.add(n);
+                    else if (n.parentElement) pendingDynamicCandidates.add(n.parentElement);
+                }
             } else if (m.type === 'characterData') {
-                translateNode(m.target);
+                pendingTranslationRoots.add(m.target);
+                if (DYNAMIC_SUMMARY_RE.test(m.target.nodeValue || '')) {
+                    pendingDynamicCandidates.add(m.target.parentElement);
+                }
             }
+        }
+        if (pendingTranslationRoots.size || pendingDynamicCandidates.size) {
+            scheduleTranslationFlush();
         }
     });
 
     const obsOpts = { childList: true, subtree: true, characterData: true };
 
+    let observedTarget = null;
+    let initialScanTarget = null;
     const startEngine = () => {
         const target = document.body || document.documentElement;
         if (target) {
             try {
-                observer.observe(target, obsOpts);
-                translateNode(target);
+                if (observedTarget !== target) {
+                    observer.observe(target, obsOpts);
+                    observedTarget = target;
+                }
+                // 只对每个根节点做一次全量扫描；后续更新仅处理新增子树。
+                if (initialScanTarget !== target) {
+                    translateNode(target, true);
+                    initialScanTarget = target;
+                }
             } catch (e) {}
         }
     };
@@ -1225,4 +1485,8 @@ function main() {
     }
 }
 
-main();
+if (require.main === module) {
+    main();
+}
+
+module.exports = { generateJs, normalizeText, translateDynamicText, translateDynamicTextParts };
