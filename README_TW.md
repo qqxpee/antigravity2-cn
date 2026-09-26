@@ -4,7 +4,7 @@
 
 > **支援系統**：Windows & macOS (均已內建一鍵指令碼)  
 > **匹配版本**：Antigravity v2.12.2  
-> **核心引擎**：Node.js (無需安裝 Python，零依賴，極速極穩)  
+> **核心引擎**：Node.js 與 npm（ASAR 工具使用固定版本，一鍵指令碼首次執行時自動安裝）
 > **中文化範圍**：包括軟體介面、頂部系統功能表、工作列右鍵選單、載入動畫、設定面板、新手引導及登入頁。  
 > **注入原理**：透過 ASAR 還原與打包，安全注入 `preload.js` 動態翻譯機制，絕不修改核心二進位檔案，一鍵安裝與完美還原。
 
@@ -71,9 +71,11 @@
 
 ### 品牌顯示命令列參數
 
-如果您透過命令列執行 `localization_engine.js`，可使用 `--brand-title` 控制左上角品牌名：
+如果您透過命令列執行 `localization_engine.js`，請先在專案目錄安裝鎖定的 ASAR 工具，再使用 `--brand-title` 控制左上角品牌名：
 
 ```bash
+npm install --ignore-scripts --no-audit --no-fund
+
 # 預設推薦：左上角顯示 Antigravity
 node localization_engine.js --tw --brand-title english
 
@@ -185,8 +187,8 @@ node localization_engine.js --tw --brand-title translated
 ## 常見問題解答 (FAQ)
 
 ### 1）提示「解包失敗」或缺少 npm 環境
-* **原因**：中文化引擎依賴 Node.js 進行 ASAR 包的解析。
-* **解決**：由於 Antigravity 本身就是一個基於 Node.js/Electron 的程式，您的電腦一般都已自帶環境。如果極少數情況下報錯，只需在電腦安裝 [Node.js](https://nodejs.org/)（LTS 版本即可）並重啟指令碼。
+* **原因**：中文化引擎使用 Node.js 與 npm 安裝固定版本的 ASAR 工具；首次執行需要可連線至 npm registry。
+* **解決**：安裝 [Node.js](https://nodejs.org/) LTS（包含 npm）後重啟指令碼。若自動安裝失敗，可在專案目錄執行 `npm install --ignore-scripts --no-audit --no-fund`。
 
 ### 2）提示「權限不足」或 macOS 提示「無法開啟」
 * **解決**：

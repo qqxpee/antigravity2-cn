@@ -1,6 +1,11 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
+if ! node -e 'try { process.exit(require("./node_modules/@electron/asar/package.json").version === require("./package.json").dependencies["@electron/asar"] ? 0 : 1) } catch (e) { process.exit(1) }' >/dev/null 2>&1; then
+    echo "正在安裝鎖定版本的 ASAR 工具..."
+    npm install --ignore-scripts --no-audit --no-fund || exit 1
+fi
+
 # 檢查管理員權限，若不是 root 則自動透過 sudo 提權
 if [ "$EUID" -ne 0 ]; then
     echo "======================================================"
