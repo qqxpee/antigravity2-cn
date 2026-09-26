@@ -1,0 +1,8 @@
+{
+  "name": "antigravity-localizer",
+  "private": true,
+  "description": "Pinned ASAR CLI dependency for Antigravity localization",
+  "dependencies": {
+    "@electron/asar": "3.4.1"
+  }
+}

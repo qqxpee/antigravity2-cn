@@ -46,7 +46,13 @@ if (USE_TW) {
         "[备份] 正在创建官方原始包备份: app.asar.bak ...": "[備份] 正在建立官方原始包備份: app.asar.bak ...",
         "[备份] 备份成功！": "[備份] 備份成功！",
         "[备份] 已创建旧版 HTML 备份: ": "[備份] 已建立舊版 HTML 備份: ",
-        "[解包] 正在使用 npx 提取 app.asar...": "[解包] 正在使用 npx 提取 app.asar...",
+        "[依赖] 正在安装锁定版本的 ASAR 工具...": "[依賴] 正在安裝鎖定版本的 ASAR 工具...",
+        "[依赖] 无法安装固定版本的 ASAR 工具，请确认 Node.js、npm 与网络连接。": "[依賴] 無法安裝固定版本的 ASAR 工具，請確認 Node.js、npm 與網路連線。",
+        "[依赖] 安装后仍找不到符合 package.json 的本机 ASAR CLI：": "[依賴] 安裝後仍找不到符合 package.json 的本機 ASAR CLI：",
+        "[解包] 正在使用本地 ASAR CLI 提取 app.asar...": "[解包] 正在使用本機 ASAR CLI 提取 app.asar...",
+        "[提示] 当前 app.asar 已有本地化标记，保留当前版本，不使用旧备份覆盖。": "[提示] 目前 app.asar 已有本機化標記，保留目前版本，不使用舊備份覆蓋。",
+        "检测到 app.asar 在本地化处理期间已更新，已取消替换以保留新版。": "偵測到 app.asar 在本機化期間已更新，已取消置換以保留新版。",
+        "[签名] macOS 应用重签名或验证失败:": "[簽名] macOS 應用程式重新簽署或驗證失敗:",
         "[修改] 正在向 preload.js 注入汉化代码...": "[修改] 正在向 preload.js 注入漢化程式碼...",
         "[修改] 注入成功！": "[修改] 注入成功！",
         "[修改] 正在向 menu.js 注入菜单汉化代码...": "[修改] 正在向 menu.js 注入選單漢化程式碼...",
@@ -691,6 +697,51 @@ function runCommandSync(cmd) {
     }
 }
 
+function findAsarCli() {
+    const cli = path.join(__dirname, 'node_modules', '@electron', 'asar', 'bin', 'asar.js');
+    const installedPackage = path.join(__dirname, 'node_modules', '@electron', 'asar', 'package.json');
+    const projectPackage = path.join(__dirname, 'package.json');
+    const hasPinnedCli = () => {
+        try {
+            const expected = JSON.parse(fs.readFileSync(projectPackage, 'utf8')).dependencies['@electron/asar'];
+            const installed = JSON.parse(fs.readFileSync(installedPackage, 'utf8')).version;
+            return expected === installed && fs.existsSync(cli);
+        } catch (e) {
+            return false;
+        }
+    };
+
+    if (!hasPinnedCli()) {
+        console.log('[依赖] 正在安装锁定版本的 ASAR 工具...');
+        try {
+            child_process.execSync('npm install --ignore-scripts --no-audit --no-fund', {
+                cwd: __dirname, encoding: 'utf8', stdio: 'pipe', timeout: 300000
+            });
+        } catch (e) {
+            const details = [e.stderr, e.stdout, e.message]
+                .filter(Boolean)
+                .map(value => Buffer.isBuffer(value) ? value.toString('utf8') : String(value))
+                .join('\n');
+            throw new Error(`[依赖] 无法安装固定版本的 ASAR 工具，请确认 Node.js、npm 与网络连接。\n${details}`);
+        }
+    }
+    if (!hasPinnedCli()) {
+        throw new Error(`[依赖] 安装后仍找不到符合 package.json 的本机 ASAR CLI：${cli}`);
+    }
+    return cli;
+}
+
+function runAsar(action, source, destination) {
+    try {
+        const stdout = child_process.execFileSync(process.execPath, [findAsarCli(), action, source, destination], {
+            encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024
+        });
+        return { success: true, stdout, stderr: '' };
+    } catch (e) {
+        return { success: false, stdout: e.stdout || '', stderr: e.stderr || e.message };
+    }
+}
+
 function cleanElectronCache() {
     let appSupportDir = "";
     if (process.platform === 'darwin') {
@@ -737,14 +788,23 @@ function resignAppOnMac(anyPath) {
     
     if (targetApp && fs.existsSync(targetApp)) {
         try {
-            runCommandSync(`xattr -d -r com.apple.quarantine "${targetApp}"`);
+            child_process.execFileSync('/usr/bin/xattr', ['-d', '-r', 'com.apple.quarantine', targetApp], { stdio: 'pipe' });
         } catch (e) {}
         console.log(`[签名] 检测到 macOS 平台，正在对应用包进行本地 ad-hoc 深度重签名: ${targetApp} ...`);
-        const signRes = runCommandSync(`codesign --force --deep --sign - "${targetApp}"`);
-        if (signRes.success) {
+        try {
+            child_process.execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', targetApp], {
+                encoding: 'utf8', stdio: 'pipe', timeout: 120000
+            });
+            child_process.execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', targetApp], {
+                encoding: 'utf8', stdio: 'pipe', timeout: 30000
+            });
             console.log(`[签名] 重新签名成功！`);
-        } else {
-            console.warn(`[警告] 重新签名失败。可能会导致应用无法打开。详情:\n${signRes.stderr}\n${signRes.stdout}`);
+        } catch (e) {
+            const details = [e.stderr, e.stdout, e.message]
+                .filter(Boolean)
+                .map(value => Buffer.isBuffer(value) ? value.toString('utf8') : String(value))
+                .join('\n');
+            throw new Error(`[签名] macOS 应用重签名或验证失败:\n${details}`);
         }
     } else {
         console.warn(`[警告] 未能从路径 ${anyPath} 识别到有效的 .app 路径，跳过重新签名。`);
@@ -786,12 +846,26 @@ function install20(resourcesDir) {
         return false;
     }
 
+    try {
+        findAsarCli();
+    } catch (e) {
+        console.error(e.message);
+        return false;
+    }
+
     // 1. 备份与官方更新检测
     let isAlreadyLocalized = false;
+    let originalAsarHash = '';
+    let asarBuffer;
     try {
-        const asarBuffer = fs.readFileSync(asarPath);
-        isAlreadyLocalized = asarBuffer.indexOf(Buffer.from(SIGNATURE_START, "utf8")) !== -1;
-    } catch (e) {}
+        asarBuffer = fs.readFileSync(asarPath);
+    } catch (e) {
+        console.error(`[错误] 无法读取 app.asar: ${e.message}`);
+        return false;
+    }
+    isAlreadyLocalized = asarBuffer.indexOf(Buffer.from(SIGNATURE_START, "utf8")) !== -1;
+    originalAsarHash = crypto.createHash('sha256').update(asarBuffer).digest('hex');
+    asarBuffer = null;
 
     if (!isAlreadyLocalized) {
         console.log(`[备份] 检测到全新官方英文版本，正在同步创建/更新官方备份包: ${bakPath} ...`);
@@ -805,33 +879,22 @@ function install20(resourcesDir) {
             }
             return false;
         }
-    } else if (fs.existsSync(bakPath)) {
-        // 尝试用官方备份覆盖当前 app.asar，以确保每次汉化都基于最干净的官方英文包
-        try {
-            fs.copyFileSync(bakPath, asarPath);
-            console.log(`[还原] 已重置当前 app.asar 为官方原始备份包，以进行全新注入...`);
-        } catch (e) {
-            console.log(`[提示] 当前 app.asar 被锁定（可能是客户端正在运行），将使用当前包进行增量注入。`);
-        }
     } else {
-        console.log(`[备份] 正在创建官方原始包备份: app.asar.bak ...`);
-        try {
-            fs.copyFileSync(asarPath, bakPath);
-            console.log(`[备份] 备份成功！`);
-        } catch (e) {
-            console.error(`[错误] 创建备份失败: ${e.message}`);
-            return false;
-        }
+        console.log(`[提示] 当前 app.asar 已有本地化标记，保留当前版本，不使用旧备份覆盖。`);
     }
 
     // 2. 临时提取目录
-    const tempDir = path.join(__dirname, "_temp_asar");
-    if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-asar-'));
+    try {
+        return install20FromTemp(resourcesDir, asarPath, tempDir, originalAsarHash);
+    } finally {
+        try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {}
     }
+}
 
-    console.log(`[解包] 正在使用 npx 提取 app.asar...`);
-    const extractRes = runCommandSync(`npx -y @electron/asar extract "${asarPath}" "${tempDir}"`);
+function install20FromTemp(resourcesDir, asarPath, tempDir, originalAsarHash) {
+    console.log(`[解包] 正在使用本地 ASAR CLI 提取 app.asar...`);
+    const extractRes = runAsar('extract', asarPath, tempDir);
     if (!extractRes.success || !fs.existsSync(tempDir)) {
         console.error(`[错误] 解包失败，可能是由于系统未安装 Node.js/npm 或者网络限制。`);
         console.error(`详情: ${extractRes.stderr}\n${extractRes.stdout}`);
@@ -842,7 +905,6 @@ function install20(resourcesDir) {
     const preloadPath = path.join(tempDir, "dist", "preload.js");
     if (!fs.existsSync(preloadPath)) {
         console.error(`[错误] 解压后未能在指定路径找到 preload.js: ${preloadPath}`);
-        fs.rmSync(tempDir, { recursive: true, force: true });
         return false;
     }
 
@@ -1071,10 +1133,29 @@ function install20(resourcesDir) {
 
     // 4. 重新打包
     console.log(`[打包] 正在将修改后的内容打包回 app.asar...`);
-    const packRes = runCommandSync(`npx -y @electron/asar pack "${tempDir}" "${asarPath}"`);
-    
-    // 5. 清理临时文件夹
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    const outputDir = fs.mkdtempSync(path.join(resourcesDir, '.antigravity-build-'));
+    let packRes;
+    try {
+        const candidate = path.join(outputDir, 'app.asar');
+        packRes = runAsar('pack', tempDir, candidate);
+        if (packRes.success) {
+            const currentHash = crypto.createHash('sha256').update(fs.readFileSync(asarPath)).digest('hex');
+            if (currentHash !== originalAsarHash) {
+                packRes = { success: false, stdout: '', stderr: '检测到 app.asar 在本地化处理期间已更新，已取消替换以保留新版。' };
+            } else {
+                const sourceStat = fs.statSync(asarPath);
+                fs.chmodSync(candidate, sourceStat.mode & 0o777);
+                if (process.platform !== 'win32' && process.getuid && process.getuid() === 0) {
+                    fs.chownSync(candidate, sourceStat.uid, sourceStat.gid);
+                }
+                fs.renameSync(candidate, asarPath);
+            }
+        }
+    } catch (e) {
+        packRes = { success: false, stdout: e.stdout || '', stderr: e.stderr || e.message };
+    } finally {
+        try { fs.rmSync(outputDir, { recursive: true, force: true }); } catch (e) {}
+    }
 
     if (!packRes.success) {
         console.error(`[错误] 打包失败。`);
@@ -1409,4 +1490,11 @@ function main() {
     }
 }
 
-main();
+if (require.main === module) {
+    try {
+        main();
+    } catch (e) {
+        console.error(e && e.message ? e.message : e);
+        process.exitCode = 1;
+    }
+}
