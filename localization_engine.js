@@ -193,7 +193,14 @@ function generateJs() {
     const USE_TW = ${USE_TW ? "true" : "false"};
     const map = new Map(Object.entries(DICT_PLACEHOLDER));
     const lowerMap = new Map();
-    for (const [k, v] of map.entries()) lowerMap.set(k.toLowerCase(), v);
+    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan']);
+    for (const [k, v] of map.entries()) {
+        const lowerK = k.toLowerCase();
+        if (LOWER_WORDS_EXCLUDE.has(lowerK) && k !== lowerK) {
+            continue;
+        }
+        lowerMap.set(lowerK, v);
+    }
     
     const longEntries = REPLACEMENT_ENTRIES_PLACEHOLDER;
     const translatedValues = new WeakMap();
@@ -202,7 +209,8 @@ function generateJs() {
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码及编辑器隔离选择器：排除代码块、编辑器、文件预览器、代码差异区、终端及语法高亮 Token
-    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"]';
+    // 以及 AI 响应正文、思维链内容、Markdown 渲染容器、用户输入文本
+    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
 
     function isCodeOrEditor(node) {
         try {
@@ -342,6 +350,15 @@ function generateJs() {
                 )) {
                     if (valNorm === 'Type') newVal = USE_TW ? "輸入" : "输入";
                     else if (valNorm === 'and select') newVal = USE_TW ? "並選取" : "并选择";
+                } else if (valNorm === 'and' && node.parentElement && (
+                    node.parentElement.textContent && (
+                        node.parentElement.textContent.includes('Privacy Policy') ||
+                        node.parentElement.textContent.includes('Terms of Service') ||
+                        node.parentElement.textContent.includes('隐私政策') ||
+                        node.parentElement.textContent.includes('隱私權政策')
+                    )
+                )) {
+                    newVal = USE_TW ? "以及" : "以及";
                 } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
                     newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
                 } else if (/^The Cloud SQL remote/i.test(valNorm)) {
