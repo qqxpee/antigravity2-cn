@@ -193,7 +193,7 @@ function generateJs() {
     const USE_TW = ${USE_TW ? "true" : "false"};
     const map = new Map(Object.entries(DICT_PLACEHOLDER));
     const lowerMap = new Map();
-    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan']);
+    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search']);
     for (const [k, v] of map.entries()) {
         const lowerK = k.toLowerCase();
         if (LOWER_WORDS_EXCLUDE.has(lowerK) && k !== lowerK) {
@@ -205,11 +205,11 @@ function generateJs() {
     const longEntries = REPLACEMENT_ENTRIES_PLACEHOLDER;
     const translatedValues = new WeakMap();
 
-    // 轻量级安全隔离：跳过脚本、样式、代码块(pre/code)、表单输入、编辑器区域以及终端容器
-    const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION'];
+    // 轻量级安全隔离：跳过脚本、样式、代码块(pre/code)
+    const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'pre, code, input, textarea, select, option, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], [role="textbox"], [role="combobox"], [role="searchbox"], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
+    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
 
     function isCodeOrEditor(node) {
         try {
@@ -263,13 +263,10 @@ function generateJs() {
     function translateNode(node) {
         try {
             if (!node) return;
-            if (isCodeOrEditor(node)) return;
             
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
                 if (SKIP_TAGS.includes(tag)) return;
-                if (node.isContentEditable) return;
-                if (node.classList && (node.classList.contains('monaco-editor') || node.classList.contains('terminal') || node.classList.contains('xterm'))) return;
 
                 // 翻译属性：placeholder, title, aria-label
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
@@ -309,6 +306,10 @@ function generateJs() {
                     }
                 }
 
+                if (isCodeOrEditor(node)) return;
+                if (node.isContentEditable) return;
+                if (node.classList && (node.classList.contains('monaco-editor') || node.classList.contains('terminal') || node.classList.contains('xterm'))) return;
+
                 if (node.shadowRoot) translateNode(node.shadowRoot);
                 for (const child of node.childNodes) translateNode(child);
 
@@ -317,6 +318,21 @@ function generateJs() {
 
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
+
+                // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本
+                if (node.parentElement && (
+                    (node.parentElement.getAttribute && node.parentElement.getAttribute('value')?.startsWith('fastpick-show-more:')) ||
+                    /^Show\s+\d+\s+more(?:\.\.\.|…)?$/i.test(node.parentElement.textContent.trim())
+                )) {
+                    if (originalVal === 'Show ' || norm(originalVal) === 'Show') {
+                        node.nodeValue = USE_TW ? '顯示另外 ' : '显示另外 ';
+                        return;
+                    }
+                    if (originalVal === ' more...' || originalVal === ' more…' || norm(originalVal) === 'more...') {
+                        node.nodeValue = USE_TW ? ' 個...' : ' 个...';
+                        return;
+                    }
+                }
 
                 // 核心：如果是 skeleton 骨架占位文本，强制打上不翻译标记，防止自动翻译（例如 Google Translate 网页翻译）将其翻译为“装。资料。包装。资料。”
                 if (originalVal.toLowerCase().includes('pack.info')) {
@@ -348,6 +364,10 @@ function generateJs() {
                     newVal = map.get(valNorm);
                 } else if (lowerMap.has(valLower)) {
                     newVal = lowerMap.get(valLower);
+                } else if (/^Send message\\s+(Enter|⏎|\\u23ce)$/i.test(valNorm)) {
+                    newVal = (USE_TW ? "發送消息 " : "发送消息 ") + valNorm.replace(/^Send message\\s+/i, '');
+                } else if (/^Queue message\\s+(Enter|⏎|\\u23ce)$/i.test(valNorm)) {
+                    newVal = (USE_TW ? "排隊發送消息 " : "排队发送消息 ") + valNorm.replace(/^Queue message\\s+/i, '');
                 } else if (/^to have the agent generate a plan\\.?$/i.test(valNorm)) {
                     newVal = USE_TW ? "讓代理生成計劃。" : "让智能体生成计划。";
                 } else if ((valNorm === 'Type' || valNorm === 'and select') && node.parentElement && (
@@ -458,6 +478,26 @@ function generateJs() {
                 } else if (/^(\\d+)\\s+tools$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^(\\d+)\\s+tools$/i, (match, num) => {
                         return num + (USE_TW ? " 個工具" : " 个工具");
+                    });
+                } else if (/^(\\d+)\\s+tools?\\s+excluded$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\\d+)\\s+tools?\\s+excluded$/i, (match, num) => {
+                        return num + (USE_TW ? " 個工具已排除" : " 个工具已排除");
+                    });
+                } else if (/^Exceeded the rules token budget\\.\\s+Full rule content\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+was replaced with a lightweight file-path pointer in context\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Exceeded the rules token budget\\.\\s+Full rule content\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+was replaced with a lightweight file-path pointer in context\\.$/i, (match, num) => {
+                        return USE_TW ? ("已超出規則 Token 預算。完整規則內容 (" + num + " 個 Token) 已在上下文中替換為輕量級檔案路徑指標。") : ("已超出规则 Token 预算。完整规则内容 (" + num + " 个 Token) 已在上下文中替换为轻量级文件路径指针。");
+                    });
+                } else if (/^All tools in this MCP server\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+exceeded the customization budget and were excluded from context\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^All tools in this MCP server\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+exceeded the customization budget and were excluded from context\\.$/i, (match, num) => {
+                        return USE_TW ? ("此 MCP 伺服器中的所有工具 (" + num + " 個 Token) 均已超出自訂項預算，並已從上下文中排除。") : ("此 MCP 服务器中的所有工具 (" + num + " 个 Token) 均已超出自定义项预算，并已从上下文中排除。");
+                    });
+                } else if (/^(\\d+)\\s+tools?\\s+in this MCP server\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+exceeded the customization budget and were excluded from context\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\\d+)\\s+tools?\\s+in this MCP server\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+exceeded the customization budget and were excluded from context\\.$/i, (match, tCount, num) => {
+                        return USE_TW ? ("此 MCP 伺服器中有 " + tCount + " 個工具 (" + num + " 個 Token) 超出自訂項預算，並已從上下文中排除。") : ("此 MCP 服务器中有 " + tCount + " 个工具 (" + num + " 个 Token) 超出自定义项预算，并已从上下文中排除。");
+                    });
+                } else if (/^Exceeded the customization token budget\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+and was excluded from context\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Exceeded the customization token budget\\s+\\(([\\d,]+)\\s+tokens?\\)\\s+and was excluded from context\\.$/i, (match, num) => {
+                        return USE_TW ? ("超出自訂項 Token 預算 (" + num + " 個 Token)，已從上下文中排除。") : ("超出自定义项 Token 预算 (" + num + " 个 Token)，已从上下文中排除。");
                     });
                 } else if (/^See all\\s*\\((\\d+)\\)$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^See all\\s*\\((\\d+)\\)$/i, (match, num) => {
@@ -835,20 +875,8 @@ function cleanMenuJsContent(content) {
 }
 
 function cleanTrayJsContent(content) {
-    const startMark = "/* --- TRAY TRANSLATION START --- */";
-    const endMark = "/* --- TRAY TRANSLATION END --- */";
-    const startIdx = content.indexOf(startMark);
-    const endIdx = content.indexOf(endMark);
-    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
-        content = content.substring(0, startIdx) + content.substring(endIdx + endMark.length);
-    }
-    const dblStartMark = "/* --- TRAY DOUBLE CLICK START --- */";
-    const dblEndMark = "/* --- TRAY DOUBLE CLICK END --- */";
-    const dblStartIdx = content.indexOf(dblStartMark);
-    const dblEndIdx = content.indexOf(dblEndMark);
-    if (dblStartIdx !== -1 && dblEndIdx !== -1 && dblStartIdx < dblEndIdx) {
-        content = content.substring(0, dblStartIdx) + content.substring(dblEndIdx + dblEndMark.length);
-    }
+    content = content.replace(/\n\s*\/\* --- TRAY TRANSLATION START --- \*\/[\s\S]*?\/\* --- TRAY TRANSLATION END --- \*\//g, '');
+    content = content.replace(/\n\s*\/\* --- TRAY DOUBLE CLICK START --- \*\/[\s\S]*?\/\* --- TRAY DOUBLE CLICK END --- \*\//g, '');
     return content;
 }
 
@@ -1292,9 +1320,9 @@ function install20(resourcesDir) {
         // 先清理已有的汉化块
         let trayCleaned = cleanTrayJsContent(trayContent);
         
-        // 1. 注入 createTray 里的翻译块 (带标记)
-        const targetCreate = "function createTray(actions) {";
-        const replacementCreate = `function createTray(actions) {
+        // 1. 注入 createTray 里的翻译块 (带标记，使用正则兼容不同参数签名如 createTray(actions, onClick))
+        const targetCreate = /function\s+createTray\s*\(([^)]*)\)\s*\{/;
+        const replacementCreate = (match, args) => `function createTray(${args}) {
     /* --- TRAY TRANSLATION START --- */
     const translations = ${USE_TW ? `{
         'No agents running': '無執行中的代理',
@@ -1302,17 +1330,25 @@ function install20(resourcesDir) {
         'Quit': '結束'
     }` : `{
         'No agents running': '无运行中的智能体',
-        'Open Antigravity': '打开反重力智能编程',
+        'Open Antigravity': '打开 Antigravity',
         'Quit': '退出'
     }`};
     for (const item of actions) {
+        if (!item || !item.label) continue;
         if (translations[item.label]) {
             item.label = translations[item.label];
+        } else if (item.label.startsWith('Open ')) {
+            item.label = (USE_TW ? '開啟 ' : '打开 ') + item.label.slice(5);
+        } else if (item.label === 'Quit') {
+            item.label = USE_TW ? '結束' : '退出';
         }
     }
     /* --- TRAY TRANSLATION END --- */`;
         
         let trayPatched = trayCleaned.replace(targetCreate, replacementCreate);
+        if (trayPatched === trayCleaned) {
+            console.warn(`[警告] 未能在 tray.js 中找到 createTray 函数插入点。`);
+        }
         
         // 2. 注入系統匣圖示點兩下彈出/聚焦 Antigravity 介面事件
         const dblClickTarget = /tray\.setContextMenu\(contextMenu\);/;
