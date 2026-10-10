@@ -310,6 +310,30 @@ function generateJs() {
                 if (node.isContentEditable) return;
                 if (node.classList && (node.classList.contains('monaco-editor') || node.classList.contains('terminal') || node.classList.contains('xterm'))) return;
 
+                // 处理 FastPick / 列表底部的 "Show <N> more..." 复合节点
+                const elText = node.textContent ? node.textContent.trim() : '';
+                if (/^Show\s+\d+\s+more(?:\.\.\.|…)?$/i.test(elText)) {
+                    const textChildren = Array.from(node.childNodes).filter(c => c.nodeType === Node.TEXT_NODE);
+                    if (textChildren.length >= 2) {
+                        for (const tc of textChildren) {
+                            const v = tc.nodeValue;
+                            if (v === 'Show ' || norm(v) === 'Show') {
+                                tc.nodeValue = USE_TW ? '顯示另外 ' : '显示另外 ';
+                                translatedValues.set(tc, tc.nodeValue);
+                            } else if (v === ' more...' || v === ' more…' || norm(v) === 'more...') {
+                                tc.nodeValue = USE_TW ? ' 個...' : ' 个...';
+                                translatedValues.set(tc, tc.nodeValue);
+                            }
+                        }
+                    } else if (textChildren.length === 1) {
+                        const m = elText.match(/^Show\s+(\d+)\s+more(?:\.\.\.|…)?$/i);
+                        if (m) {
+                            textChildren[0].nodeValue = USE_TW ? ('顯示另外 ' + m[1] + ' 個...') : ('显示另外 ' + m[1] + ' 个...');
+                            translatedValues.set(textChildren[0], textChildren[0].nodeValue);
+                        }
+                    }
+                }
+
                 if (node.shadowRoot) translateNode(node.shadowRoot);
                 for (const child of node.childNodes) translateNode(child);
 
@@ -320,16 +344,19 @@ function generateJs() {
                 if (!originalVal || originalVal.trim().length < 1) return;
 
                 // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本
-                if (node.parentElement && (
-                    (node.parentElement.getAttribute && node.parentElement.getAttribute('value')?.startsWith('fastpick-show-more:')) ||
-                    /^Show\s+\d+\s+more(?:\.\.\.|…)?$/i.test(node.parentElement.textContent.trim())
+                const parentText = node.parentElement && node.parentElement.textContent ? node.parentElement.textContent.trim() : '';
+                if (parentText && (
+                    /^(?:Show|显示另外|顯示另外)\s+\d+\s+(?:more|个|個)(?:\.\.\.|…)?$/i.test(parentText) ||
+                    (node.parentElement.getAttribute && node.parentElement.getAttribute('value')?.startsWith('fastpick-show-more:'))
                 )) {
                     if (originalVal === 'Show ' || norm(originalVal) === 'Show') {
                         node.nodeValue = USE_TW ? '顯示另外 ' : '显示另外 ';
+                        translatedValues.set(node, node.nodeValue);
                         return;
                     }
                     if (originalVal === ' more...' || originalVal === ' more…' || norm(originalVal) === 'more...') {
                         node.nodeValue = USE_TW ? ' 個...' : ' 个...';
+                        translatedValues.set(node, node.nodeValue);
                         return;
                     }
                 }
