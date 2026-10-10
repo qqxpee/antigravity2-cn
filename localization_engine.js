@@ -312,7 +312,7 @@ function generateJs() {
 
                 // 处理 FastPick / 列表底部的 "Show <N> more..." 复合节点
                 const elText = node.textContent ? node.textContent.trim() : '';
-                if (/^Show\s+\d+\s+more(?:\.\.\.|…)?$/i.test(elText)) {
+                if (/^Show\\s+\\d+\\s+more(?:\\.\\.\\.|…)?$/i.test(elText)) {
                     const textChildren = Array.from(node.childNodes).filter(c => c.nodeType === Node.TEXT_NODE);
                     if (textChildren.length >= 2) {
                         for (const tc of textChildren) {
@@ -326,7 +326,7 @@ function generateJs() {
                             }
                         }
                     } else if (textChildren.length === 1) {
-                        const m = elText.match(/^Show\s+(\d+)\s+more(?:\.\.\.|…)?$/i);
+                        const m = elText.match(/^Show\\s+(\\d+)\\s+more(?:\\.\\.\\.|…)?$/i);
                         if (m) {
                             textChildren[0].nodeValue = USE_TW ? ('顯示另外 ' + m[1] + ' 個...') : ('显示另外 ' + m[1] + ' 个...');
                             translatedValues.set(textChildren[0], textChildren[0].nodeValue);
@@ -346,7 +346,7 @@ function generateJs() {
                 // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本
                 const parentText = node.parentElement && node.parentElement.textContent ? node.parentElement.textContent.trim() : '';
                 if (parentText && (
-                    /^(?:Show|显示另外|顯示另外)\s+\d+\s+(?:more|个|個)(?:\.\.\.|…)?$/i.test(parentText) ||
+                    /^(?:Show|显示另外|顯示另外)\\s+\\d+\\s+(?:more|个|個)(?:\\.\\.\\.|…)?$/i.test(parentText) ||
                     (node.parentElement.getAttribute && node.parentElement.getAttribute('value')?.startsWith('fastpick-show-more:'))
                 )) {
                     if (originalVal === 'Show ' || norm(originalVal) === 'Show') {
