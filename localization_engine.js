@@ -260,6 +260,11 @@ function generateJs() {
         return null;
     }
 
+    function isFilePathOrUri(s) {
+        if (!s) return false;
+        return /^[a-zA-Z]:[\\\\/]/.test(s) || /^[\\\\/~].*[\\\\/]/.test(s) || /[\\\\/]SKILL\\.md/i.test(s) || /[\\\\/]\\.gemini[\\\\/]/i.test(s) || /^file:\\/\\//i.test(s);
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
@@ -273,6 +278,7 @@ function generateJs() {
                     const v = node.getAttribute(attr);
                     if (v) {
                         const t = norm(v);
+                        if (isFilePathOrUri(t)) continue;
                         const shortcutTrans = translateWithShortcut(t);
                         if (shortcutTrans) node.setAttribute(attr, shortcutTrans);
                         else if (map.has(t)) node.setAttribute(attr, map.get(t));
@@ -295,6 +301,16 @@ function generateJs() {
                             node.setAttribute(attr, trans);
                         } else if (/^Hide\\s+breakdown(s)?$/i.test(t)) {
                             node.setAttribute(attr, USE_TW ? "收起明細" : "收起细目");
+                        } else if (/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i.test(t)) {
+                            const trans = t.replace(/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (m, num) => {
+                                return USE_TW ? ("展開另外 " + num + " 項") : ("展开另外 " + num + " 项");
+                            });
+                            node.setAttribute(attr, trans);
+                        } else if (/^See\\s+more\\s+in\\s+(.+)$/i.test(t)) {
+                            const trans = t.replace(/^See\\s+more\\s+in\\s+(.+)$/i, (m, name) => {
+                                return USE_TW ? ("在 " + name + " 中展開更多") : ("在 " + name + " 中展开更多");
+                            });
+                            node.setAttribute(attr, trans);
                         } else if (/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i.test(t)) {
                             const trans = t.replace(/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, del, name, count, dot) => {
                                 const delPrefix = del ? (USE_TW ? "永久刪除 " : "永久删除 ") : "";
@@ -345,6 +361,7 @@ function generateJs() {
 
                 // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本
                 const parentText = node.parentElement && node.parentElement.textContent ? node.parentElement.textContent.trim() : '';
+                if (isFilePathOrUri(originalVal.trim()) || isFilePathOrUri(parentText)) return;
                 if (parentText && (
                     /^(?:Show|显示另外|顯示另外)\\s+\\d+\\s+(?:more|个|個)(?:\\.\\.\\.|…)?$/i.test(parentText) ||
                     (node.parentElement.getAttribute && node.parentElement.getAttribute('value')?.startsWith('fastpick-show-more:'))
@@ -412,6 +429,24 @@ function generateJs() {
                     )
                 )) {
                     newVal = USE_TW ? "以及" : "以及";
+                } else if ((valNorm === 'Search conversations with' || valNorm === 'in the top left.') && node.parentElement && (
+                    node.parentElement.textContent && node.parentElement.textContent.includes('in the top left')
+                )) {
+                    newVal = (valNorm === 'Search conversations with')
+                        ? (USE_TW ? "使用左上角的" : "可通过左上角的")
+                        : (USE_TW ? "搜尋對話。" : "搜索对话。");
+                } else if ((valNorm === 'View archived in the sidebar' || valNorm === 'menu)') && node.parentElement && (
+                    node.parentElement.textContent && node.parentElement.textContent.includes('View archived in the sidebar')
+                )) {
+                    newVal = (valNorm === 'View archived in the sidebar')
+                        ? (USE_TW ? "已歸檔對話可在側邊欄" : "已归档对话可在侧边栏")
+                        : (USE_TW ? "選單中查看。" : "菜单中查看。");
+                } else if ((valNorm === 'For help, visit' || valNorm === 'or join the' || valNorm === 'chat space') && node.parentElement && (
+                    node.parentElement.textContent && node.parentElement.textContent.includes('chat space')
+                )) {
+                    if (valNorm === 'For help, visit') newVal = USE_TW ? "如需協助，請造訪" : "如需帮助，请访问";
+                    else if (valNorm === 'or join the') newVal = USE_TW ? "或加入" : "或加入";
+                    else if (valNorm === 'chat space') newVal = USE_TW ? "聊天空間" : "聊天空间";
                 } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
                     newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
                 } else if (/^The Cloud SQL remote/i.test(valNorm)) {
@@ -465,6 +500,7 @@ function generateJs() {
                         let translatedPreset = p;
                         const pLow = p.toLowerCase();
                         if (pLow === 'default' || pLow.includes('默认') || pLow.includes('預設')) translatedPreset = USE_TW ? "預設 (Default)" : "默认 (Default)";
+                        else if (pLow === 'inherit global' || pLow.includes('继承全局') || pLow.includes('繼承全域')) translatedPreset = USE_TW ? "繼承全域 (Inherit Global)" : "继承全局 (Inherit Global)";
                         else if (pLow === 'full machine' || pLow.includes('全机') || pLow.includes('全機')) translatedPreset = USE_TW ? "全機存取 (Full Machine)" : "全机访问 (Full Machine)";
                         else if (pLow === 'turbo mode' || pLow.includes('极速') || pLow.includes('極速')) translatedPreset = USE_TW ? "極速模式 (Turbo Mode)" : "极速模式 (Turbo Mode)";
                         else if (pLow === 'custom' || pLow.includes('自定义') || pLow.includes('自訂')) translatedPreset = USE_TW ? "自訂 (Custom)" : "自定义 (Custom)";
@@ -530,6 +566,11 @@ function generateJs() {
                     newVal = valNorm.replace(/^See all\\s*\\((\\d+)\\)$/i, (match, num) => {
                         return USE_TW ? ("顯示全部 (" + num + ")") : ("显示全部 (" + num + ")");
                     });
+                } else if (/^(?:\\+\\s*)?See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(?:\\+\\s*)?See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (match, num) => {
+                        const hasPlus = /^\\+/.test(valNorm);
+                        return (hasPlus ? "+ " : "") + (USE_TW ? ("展開另外 " + num + " 項") : ("展开另外 " + num + " 项"));
+                    });
                 } else if (/^Available AI Credits: (\\d+)$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Available AI Credits: (\\d+)$/i, (match, num) => {
                         return USE_TW ? ("可用 AI 額度: " + num) : ("可用 AI 额度: " + num);
@@ -551,6 +592,21 @@ function generateJs() {
                         else if (unitLower === "yr") unitStr = USE_TW ? "年前" : "年前";
                         return num + unitStr;
                     });
+                } else if (/^just now$/i.test(valNorm)) {
+                    newVal = USE_TW ? "剛剛" : "刚刚";
+                } else if (/^(\\d+)(s|m|h|d|w|mo|yr)\\s+ago$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\\d+)(s|m|h|d|w|mo|yr)\\s+ago$/i, (match, num, unit) => {
+                        const unitLower = unit.toLowerCase();
+                        let unitStr = "";
+                        if (unitLower === "s") unitStr = USE_TW ? "秒前" : "秒前";
+                        else if (unitLower === "m") unitStr = USE_TW ? "分鐘前" : "分钟前";
+                        else if (unitLower === "h") unitStr = USE_TW ? "小時前" : "小时前";
+                        else if (unitLower === "d") unitStr = USE_TW ? "天前" : "天前";
+                        else if (unitLower === "w") unitStr = USE_TW ? "週前" : "周前";
+                        else if (unitLower === "mo") unitStr = USE_TW ? "個月前" : "个月前";
+                        else if (unitLower === "yr") unitStr = USE_TW ? "年前" : "年前";
+                        return num + unitStr;
+                    });
                 } else if (/^(.+?): context deadline exceeded$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^(.+?): context deadline exceeded$/i, (match, prefix) => {
                         return prefix + (USE_TW ? ": 要求逾時 (context deadline exceeded)" : ": 请求超时 (context deadline exceeded)");
@@ -558,6 +614,23 @@ function generateJs() {
                 } else if (/^(.+?): i\\/o timeout$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^(.+?): i\\/o timeout$/i, (match, prefix) => {
                         return prefix + (USE_TW ? ": I/O 逾時 (i/o timeout)" : ": I/O 超时 (i/o timeout)");
+                    });
+                } else if (/^Your plan's baseline quota will refresh on (.+?)\\.?\\s*To continue using this model now, enable AI Credit overages\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Your plan's baseline quota will refresh on (.+?)\\.?\\s*To continue using this model now, enable AI Credit overages\\.?$/i, (match, when) => {
+                        return USE_TW ? ("您方案的基準配額將於 " + when + " 刷新。如需立即繼續使用此模型，請啟用 AI 點數超額使用。") : ("您方案的基础配额将于 " + when + " 刷新。如需立即继续使用此模型，请启用 AI 额度超量使用。");
+                    });
+                } else if (/^You have hit your weekly limit, it refreshes in (.+?)\\. If on a supported paid plan, you can use AI credits in the interim or upgrade to a higher tier\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have hit your weekly limit, it refreshes in (.+?)\\. If on a supported paid plan, you can use AI credits in the interim or upgrade to a higher tier\\.$/i, (match, when) => {
+                        return USE_TW ? ("您已達到每週額度限制，將於 " + when + " 刷新。若您使用受支援的付費方案，可在此期間使用 AI 點數，或升級至更高層級。") : ("您已达到每周额度限制，将于 " + when + " 刷新。若您使用受支持的付费计划，可在此期间使用 AI 额度，或升级至更高层级。");
+                    });
+                } else if (/^You have hit your weekly limit, the (\\d+)-hour limit does not currently apply\\. Your weekly limit will fully refresh in (.+?)\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^You have hit your weekly limit, the (\\d+)-hour limit does not currently apply\\. Your weekly limit will fully refresh in (.+?)\\.$/i, (match, h, when) => {
+                        return USE_TW ? ("您已達到每週額度限制，" + h + " 小時限制目前不適用。您的每週額度限制將於 " + when + " 完全更新。") : ("您已达到每周额度限制，" + h + " 小时限制目前不适用。您的每周额度限制将于 " + when + " 完全刷新。");
+                    });
+                } else if (/^(Rules|Skills|Mcp Tools): ([\\d,]+) tokens$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(Rules|Skills|Mcp Tools): ([\\d,]+) tokens$/i, (match, kind, num) => {
+                        const kindMap = { "Rules": USE_TW ? "規則" : "规则", "Skills": "技能", "Mcp Tools": "MCP 工具" };
+                        return (kindMap[kind] || kind) + "：" + num + " Token";
                     });
                 } else if (/^Are you sure you want to delete (the |this )?project (.+?)\\??$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Are you sure you want to delete (the |this )?project (.+?)\\??$/i, (match, article, name) => {
@@ -628,9 +701,9 @@ function generateJs() {
                         return v + pm[2] + ' ' + n;
                     }).join('，');
                 } else {
-                    // 2. 长句子串滑动替换与末尾截断智能匹配 (仅当原句带有省略号截断时，才允许基于长前缀匹配)
+                    // 2. 长句子串滑动替换与末尾截断智能匹配 (仅当原句带有省略号截断时，才允许基于长前缀匹配；不含空格的标识符不进行子串替换)
                     for (const [key, translated] of longEntries) {
-                        if (key.length > 15 && valNorm.includes(key)) {
+                        if (key.length > 15 && key.includes(' ') && valNorm.includes(key)) {
                             newVal = newVal.split(key).join(translated);
                             break;
                         } else if ((valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35) {
