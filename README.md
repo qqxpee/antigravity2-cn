@@ -3,7 +3,7 @@
 👉 **[繁體中文版說明文件 (Traditional Chinese README)](README_TW.md)**
 
 > **支持系统**：Windows & macOS (均已内置一键脚本)  
-> **匹配版本**：Antigravity v2.23.0+  
+> **匹配版本**：Antigravity v2.26.0+  
 > **核心引擎**：Node.js (无需安装 Python，零依赖，极速极稳)  
 > **汉化范围**：包括软件界面、顶部系统菜单、任务栏右键菜单、加载动画、设置面板、新手引导及登录页。  
 > **注入原理**：通过 ASAR 还原与重包，安全注入 `preload.js` 动态翻译机制，绝不修改核心二进制，一键安装与完美还原。
@@ -225,3 +225,4 @@ Antigravity 2.x 的“**添加 MCP 服务器 (Add MCP Server)**”市场目录�
 ## 🤝 致谢
 - 感谢所有参与测试与反馈的贡献者！
 - 特别鸣谢 **[yuaotian/antigravity-proxy](https://github.com/yuaotian/antigravity-proxy)** 提供优秀的 Windows 免 TUN 强制代理注入方案。
+- 特别鸣谢 **[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)** 开放的词典成果（MIT 协议），为本次 v2.26.0+ 新增特性词条整合提供了重要基础。
