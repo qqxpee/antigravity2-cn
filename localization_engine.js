@@ -211,10 +211,7 @@ function loadDictionary() {
 
 function generateJs() {
     const fullDict = loadDictionary();
-    const longEntries = Object.entries(fullDict).sort((a, b) => b[0].length - a[0].length);
-    
     const dictJson = JSON.stringify(fullDict, null, 4);
-    const entriesJson = JSON.stringify(longEntries);
 
     const jsSource = `${SIGNATURE_START}
 (() => {
@@ -232,7 +229,9 @@ function generateJs() {
         lowerMap.set(lowerK, v);
     }
     
-    const longEntries = REPLACEMENT_ENTRIES_PLACEHOLDER;
+    const longEntries = Array.from(map.entries())
+        .filter(([k]) => k.length > 15 && k.includes(' '))
+        .sort((a, b) => b[0].length - a[0].length);
     const translatedValues = new WeakMap();
 
     // 轻量级安全隔离：跳过脚本、样式、代码块(pre/code)
@@ -482,7 +481,7 @@ function generateJs() {
                     newVal = USE_TW ? "Cloud SQL 遠端 MCP 伺服器可讓您存取並執行 Cloud SQL 工具，用於管理 Cloud SQL 執行個體、管理使用者、建立和復原資料備份及資料庫維運。" : "Cloud SQL 远程 MCP 服务器可让您访问并运行 Cloud SQL 工具，用于管理 Cloud SQL 实例、管理用户、创建和恢复数据备份及数据库运维。";
                 } else if (/^The Spanner remote/i.test(valNorm)) {
                     newVal = USE_TW ? "Spanner 遠端 MCP 伺服器可讓您從 AI 開發環境中存取並執行 Spanner 工具，以建立、管理和查詢分散式資料庫資源。" : "Spanner 远程 MCP 服务器可让您从 AI 开发环境中访问并运行 Spanner 工具，以创建、管理和查询分布式数据库资源。";
-                } else if (/^Ask questions\.\s*Get answers\./i.test(valNorm) || /PostHog data/i.test(valNorm)) {
+                } else if (/^Ask questions\\.\\s*Get answers\\.\\s*This MCP is a server/i.test(valNorm)) {
                     newVal = USE_TW ? "提問，即得答案。該 MCP 是供您的程式設計代理呼叫的伺服器。用英語提出問題，它會針對您的 PostHog 資料執行查詢，結果將直接呈現在您的編輯器中。" : "提问，即得答案。该 MCP 是供您的编程智能体调用的服务器。用英语提出问题，它会针对您的 PostHog 数据运行查询，结果将直接呈现在您的编辑器中。";
                 } else if (/^The GKE remote MCP server/i.test(valNorm)) {
                     newVal = USE_TW ? "GKE 遠端 MCP 伺服器提供對 GKE Kubernetes 資源的讀寫存取權限。允許 AI 代理檢查並監控您的執行環境。" : "GKE 远程 MCP 服务器提供对 GKE Kubernetes 资源的读写权限。允许 AI 智能体检查并监控您的运行环境。";
@@ -741,18 +740,17 @@ function generateJs() {
                         const n = nounMap[pm[3].toLowerCase()] || pm[3];
                         return v + pm[2] + ' ' + n;
                     }).join('，');
-                } else {
+                } else if (valNorm.length > 15 && valNorm.includes(' ')) {
                     // 2. 长句子串滑动替换与末尾截断智能匹配 (仅当原句带有省略号截断时，才允许基于长前缀匹配；不含空格的标识符不进行子串替换)
+                    const isTruncated = (valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35;
+                    const cleanVal = isTruncated ? valNorm.replace(/(\\.\\.\\.|…)$/, '').trim().toLowerCase() : '';
                     for (const [key, translated] of longEntries) {
-                        if (key.length > 15 && key.includes(' ') && valNorm.includes(key)) {
+                        if (key.length <= valNorm.length && valNorm.includes(key)) {
                             newVal = newVal.split(key).join(translated);
                             break;
-                        } else if ((valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35) {
-                            const cleanVal = valNorm.replace(/(\.\.\.|…)$/, '').trim().toLowerCase();
-                            if (cleanVal.length >= 30 && key.toLowerCase().startsWith(cleanVal)) {
-                                newVal = translated;
-                                break;
-                            }
+                        } else if (isTruncated && cleanVal.length >= 30 && key.toLowerCase().startsWith(cleanVal)) {
+                            newVal = translated;
+                            break;
                         }
                     }
                 }
@@ -915,7 +913,6 @@ function generateJs() {
                     const os = req('os');
                     if (fs && path) {
                         const filePaths = [
-                            'e:/OneDrive/Me/antigravity2-cn/scratch/mcp_catalog_dump.json',
                             os ? path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_catalog_dump.json') : null
                         ].filter(Boolean);
                         for (const fp of filePaths) {
@@ -998,7 +995,7 @@ function generateJs() {
 })();
 ${SIGNATURE_END}`;
 
-    return jsSource.replace("DICT_PLACEHOLDER", dictJson).replace("REPLACEMENT_ENTRIES_PLACEHOLDER", entriesJson);
+    return jsSource.replace("DICT_PLACEHOLDER", () => dictJson);
 }
 
 function cleanJsContent(content) {
@@ -1007,7 +1004,8 @@ function cleanJsContent(content) {
 }
 
 function cleanMenuJsContent(content) {
-    const startMark = "// ==========================================";
+    content = content.replace(/\n?\s*\/\* --- MENU TRANSLATION START --- \*\/[\s\S]*?\/\* --- MENU TRANSLATION END --- \*\//g, '');
+    const startMark = "// ==========================================\n    // Antigravity Native Menu Chinese Translation";
     const endMark = "translateMenu(menu.items);";
     const startIdx = content.indexOf(startMark);
     const endIdx = content.indexOf(endMark);
@@ -1363,6 +1361,7 @@ function install20(resourcesDir) {
         const menuCleaned = cleanMenuJsContent(menuContent);
         
         const menuTranslationJs = `
+    /* --- MENU TRANSLATION START --- */
     // ==========================================
     // Antigravity Native Menu Chinese Translation
     // ==========================================
@@ -1516,7 +1515,7 @@ function install20(resourcesDir) {
         };
     }
     translateMenu(menu.items);
-    `;
+    /* --- MENU TRANSLATION END --- */`;
 
         const targetStr = "electron_1.Menu.setApplicationMenu(menu);";
         const idx = menuCleaned.indexOf(targetStr);
