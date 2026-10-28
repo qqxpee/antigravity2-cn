@@ -6,7 +6,33 @@ const child_process = require('child_process');
 
 // macOS 环境下自动补全 PATH，确保 npx、codesign 等工具能被顺利找到
 if (process.platform === 'darwin') {
-    const extraPaths = ['/usr/local/bin', '/opt/homebrew/bin', '/opt/homebrew/sbin'];
+    let realHome = os.homedir();
+    if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
+        const sudoHome = path.join('/Users', process.env.SUDO_USER);
+        if (fs.existsSync(sudoHome)) realHome = sudoHome;
+    }
+    const extraPaths = [
+        '/usr/local/bin',
+        '/opt/homebrew/bin',
+        '/opt/homebrew/sbin',
+        '/opt/local/bin',
+        path.join(realHome, '.volta', 'bin'),
+        path.join(realHome, '.asdf', 'shims'),
+        path.join(realHome, '.local', 'share', 'mise', 'shims'),
+        path.join(realHome, '.local', 'bin'),
+        path.join(realHome, '.fnm', 'current', 'bin'),
+        path.join(realHome, '.local', 'share', 'fnm', 'aliases', 'default', 'bin'),
+        path.join(realHome, 'Library', 'Application Support', 'fnm', 'aliases', 'default', 'bin')
+    ];
+    const nvmVersionsDir = path.join(realHome, '.nvm', 'versions', 'node');
+    if (fs.existsSync(nvmVersionsDir)) {
+        try {
+            const versions = fs.readdirSync(nvmVersionsDir).sort();
+            for (const v of versions) {
+                extraPaths.push(path.join(nvmVersionsDir, v, 'bin'));
+            }
+        } catch (e) {}
+    }
     const currentPaths = (process.env.PATH || '').split(':');
     for (const p of extraPaths) {
         if (!currentPaths.includes(p) && fs.existsSync(p)) {
@@ -59,7 +85,11 @@ if (USE_TW) {
         "====== 正在恢复 Antigravity 1.0 官方原版 ======": "====== 正在恢復 Antigravity 1.0 官方原版 ======",
         "[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...": "[1] 偵測到 Antigravity 用戶端正在執行，正在關閉以解除檔案鎖...",
         "[1] 正在关闭 Antigravity 运行进程以解除文件锁...": "[1] 正在關閉 Antigravity 執行進程以解除檔案鎖...",
+        "[备份] 检测到全新官方英文版本，正在同步创建/更新官方备份包: ": "[備份] 偵測到全新官方英文版本，正在同步建立/更新官方備份包: ",
         "[备份] 正在创建官方原始包备份: app.asar.bak ...": "[備份] 正在建立官方原始包備份: app.asar.bak ...",
+        "[缓存] 已自动清理 ": "[快取] 已自動清理 ",
+        " 个应用缓存目录，避免新旧版本字节码冲突。": " 個應用程式快取目錄，避免新舊版本位元組碼衝突。",
+        "[签名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校验值。": "[簽名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校驗值。",
         "[备份] 备份成功！": "[備份] 備份成功！",
         "[备份] 已创建旧版 HTML 备份: ": "[備份] 已建立舊版 HTML 備份: ",
         "[解包] 正在使用 npx 提取 app.asar...": "[解包] 正在使用 npx 提取 app.asar...",
@@ -242,7 +272,7 @@ function generateJs() {
 
     function translateWithShortcut(val) {
         if (!val) return null;
-        const match = val.match(/^(.+?)\\s*\\((Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\\+?([^)]*)\\)$/i);
+        const match = val.match(/^(.+?)\\s*\\(((?:Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\\+?[^)]*|Enter|Escape|Esc|Space|Tab|Backspace|Delete|⏎|Aa|ab|\\.\\*|-|0|[a-zA-Z0-9])\\)$/i);
         if (match) {
             const prefix = match[1].trim();
             const normPref = norm(prefix);
@@ -254,7 +284,7 @@ function generateJs() {
                 transPref = lowerMap.get(lowerPref);
             }
             if (transPref) {
-                return transPref + " (" + match[2] + (match[3] ? "+" + match[3] : "") + ")";
+                return transPref + " (" + match[2] + ")";
             }
         }
         return null;
@@ -279,12 +309,13 @@ function generateJs() {
                     if (v) {
                         const t = norm(v);
                         if (isFilePathOrUri(t)) continue;
+                        let newAttr = null;
                         const shortcutTrans = translateWithShortcut(t);
-                        if (shortcutTrans) node.setAttribute(attr, shortcutTrans);
-                        else if (map.has(t)) node.setAttribute(attr, map.get(t));
-                        else if (lowerMap.has(t.toLowerCase())) node.setAttribute(attr, lowerMap.get(t.toLowerCase()));
+                        if (shortcutTrans) newAttr = shortcutTrans;
+                        else if (map.has(t)) newAttr = map.get(t);
+                        else if (lowerMap.has(t.toLowerCase())) newAttr = lowerMap.get(t.toLowerCase());
                         else if (/^Show\\s+(\\d+)\\s+more/i.test(t)) {
-                            const trans = t.replace(/^Show\\s+(\\d+)\\s+more(\\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i, (m, num, p2, type) => {
+                            newAttr = t.replace(/^Show\\s+(\\d+)\\s+more(\\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i, (m, num, p2, type) => {
                                 if (type) {
                                     if (/result/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個結果...") : ("显示另外 " + num + " 个结果...");
                                     if (/command/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個命令...") : ("显示另外 " + num + " 个命令...");
@@ -293,31 +324,29 @@ function generateJs() {
                                 }
                                 return USE_TW ? ("顯示另外 " + num + " 個...") : ("显示另外 " + num + " 个...");
                             });
-                            node.setAttribute(attr, trans);
                         } else if (/^Show\\s+(\\d+)\\s+breakdown(s)?$/i.test(t)) {
-                            const trans = t.replace(/^Show\\s+(\\d+)\\s+breakdown(s)?$/i, (m, num) => {
+                            newAttr = t.replace(/^Show\\s+(\\d+)\\s+breakdown(s)?$/i, (m, num) => {
                                 return USE_TW ? ("顯示 " + num + " 項明細") : ("显示 " + num + " 项细目");
                             });
-                            node.setAttribute(attr, trans);
                         } else if (/^Hide\\s+breakdown(s)?$/i.test(t)) {
-                            node.setAttribute(attr, USE_TW ? "收起明細" : "收起细目");
+                            newAttr = USE_TW ? "收起明細" : "收起细目";
                         } else if (/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i.test(t)) {
-                            const trans = t.replace(/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (m, num) => {
+                            newAttr = t.replace(/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (m, num) => {
                                 return USE_TW ? ("展開另外 " + num + " 項") : ("展开另外 " + num + " 项");
                             });
-                            node.setAttribute(attr, trans);
                         } else if (/^See\\s+more\\s+in\\s+(.+)$/i.test(t)) {
-                            const trans = t.replace(/^See\\s+more\\s+in\\s+(.+)$/i, (m, name) => {
+                            newAttr = t.replace(/^See\\s+more\\s+in\\s+(.+)$/i, (m, name) => {
                                 return USE_TW ? ("在 " + name + " 中展開更多") : ("在 " + name + " 中展开更多");
                             });
-                            node.setAttribute(attr, trans);
                         } else if (/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i.test(t)) {
-                            const trans = t.replace(/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, del, name, count, dot) => {
+                            newAttr = t.replace(/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, del, name, count, dot) => {
                                 const delPrefix = del ? (USE_TW ? "永久刪除 " : "永久删除 ") : "";
                                 const suffix = dot ? "。" : "";
                                 return delPrefix + name + (USE_TW ? ("（包含 " + count + " 個活躍對話）") : ("（包含 " + count + " 个活跃会话）")) + suffix;
                             });
-                            node.setAttribute(attr, trans);
+                        }
+                        if (newAttr && newAttr !== v) {
+                            node.setAttribute(attr, newAttr);
                         }
                     }
                 }
@@ -686,6 +715,18 @@ function generateJs() {
                     newVal = valNorm.replace(/^No more older messages,\\s*showing\\s+(\\d+)\\s+of\\s+(\\d+)$/i, (match, a, b) => {
                         return USE_TW ? ("沒有更多歷史訊息，目前顯示 " + a + " / " + b + " 則") : ("没有更多历史消息，当前显示 " + a + " / " + b + " 条");
                     });
+                } else if (/^Low contrast ratio \\(([^)]+)\\)\\.\\s*Text may be hard to read\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Low contrast ratio \\(([^)]+)\\)\\.\\s*Text may be hard to read\\.?$/i, (match, ratio) => {
+                        return USE_TW ? ("對比度過低 (" + ratio + ")，文字可能難以閱讀。") : ("对比度过低 (" + ratio + ")，文字可能难以阅读。");
+                    });
+                } else if (/^Marked\\s+(\\d+)\\s+conversations?\\s+as\\s+read$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Marked\\s+(\\d+)\\s+conversations?\\s+as\\s+read$/i, (match, count) => {
+                        return USE_TW ? ("已將 " + count + " 個對話標記為已讀") : ("已将 " + count + " 个会话标记为已读");
+                    });
+                } else if (/^Preview unavailable\\s*[—–-]\\s*(.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Preview unavailable\\s*[—–-]\\s*(.+)$/i, (match, reason) => {
+                        return (USE_TW ? "預覽不可用 — " : "预览不可用 — ") + reason;
+                    });
                 } else if (/^(?:(Exploring|Explored|Editing|Edited|Running|Ran)\\s+)?(\\d+)\\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?)(?:,\\s*(?:(Exploring|Explored|Editing|Edited|Running|Ran)\\s+)?(\\d+)\\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?))*$/i.test(valNorm)) {
                     const verbMap = USE_TW
                         ? { exploring: '正在探索', explored: '已探索', editing: '正在編輯', edited: '已編輯', running: '正在執行', ran: '已執行' }
@@ -913,12 +954,14 @@ function generateJs() {
                 }
             } else if (m.type === 'characterData') {
                 translateNode(m.target);
+            } else if (m.type === 'attributes') {
+                translateNode(m.target);
             }
         }
         if (hasMcpModal) scheduleMcpSniffer();
     });
 
-    const obsOpts = { childList: true, subtree: true, characterData: true };
+    const obsOpts = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] };
 
     const startEngine = () => {
         const target = document.body || document.documentElement;
@@ -1106,7 +1149,12 @@ function detectInstallationDir(manualDir) {
 
 function runCommandSync(cmd) {
     try {
-        const out = child_process.execSync(cmd, { encoding: 'utf-8', stdio: 'pipe' });
+        const execEnv = { ...process.env };
+        if (process.platform === 'darwin' && process.getuid && process.getuid() === 0) {
+            execEnv.npm_config_cache = path.join(os.tmpdir(), 'antigravity_npm_cache');
+            execEnv.npm_config_yes = 'true';
+        }
+        const out = child_process.execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', env: execEnv });
         return { success: true, stdout: out, stderr: '' };
     } catch (e) {
         return { success: false, stdout: e.stdout || '', stderr: e.stderr || e.message };
@@ -1165,6 +1213,26 @@ function resignAppOnMac(anyPath) {
     }
     
     if (targetApp && fs.existsSync(targetApp)) {
+        try {
+            const plistPath = path.join(targetApp, 'Contents', 'Info.plist');
+            const macAsarPath = path.join(targetApp, 'Contents', 'Resources', 'app.asar');
+            if (fs.existsSync(plistPath) && fs.existsSync(macAsarPath)) {
+                const plistContent = fs.readFileSync(plistPath, 'utf-8');
+                if (plistContent.includes('ElectronAsarIntegrity')) {
+                    const asarBuf = fs.readFileSync(macAsarPath);
+                    const headerStrSize = asarBuf.readUInt32LE(12);
+                    const headerHash = crypto.createHash('sha256').update(asarBuf.subarray(16, 16 + headerStrSize)).digest('hex');
+                    const integrityRegex = /(<key>ElectronAsarIntegrity<\/key>[\s\S]*?<key>Resources\/app\.asar<\/key>[\s\S]*?<key>hash<\/key>\s*<string>)[a-fA-F0-9]{64}(<\/string>)/;
+                    if (integrityRegex.test(plistContent)) {
+                        const updatedPlist = plistContent.replace(integrityRegex, `$1${headerHash}$2`);
+                        if (updatedPlist !== plistContent) {
+                            fs.writeFileSync(plistPath, updatedPlist, 'utf-8');
+                            console.log('[签名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校验值。');
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
         try {
             runCommandSync(`xattr -cr "${targetApp}"`);
         } catch (e) {}
@@ -1335,6 +1403,21 @@ function install20(resourcesDir) {
         'Show in File Explorer': '在檔案總管中顯示',
         'Reveal in Finder': '在 Finder 中顯示',
         'Find in conversation': '在對話中尋找',
+        'Connect to WSL': '連線至 WSL',
+        'Reopen Locally': '在本機重新開啟',
+        'About Antigravity': '關於 Antigravity',
+        'Settings...': '設定...',
+        'Preferences...': '偏好設定...',
+        'Services': '服務',
+        'Hide Antigravity': '隱藏 Antigravity',
+        'Hide Others': '隱藏其他',
+        'Show All': '顯示全部',
+        'Quit Antigravity': '結束 Antigravity',
+        'Quit': '結束',
+        'Paste and Match Style': '貼上並符合樣式',
+        'Delete': '刪除',
+        'Bring All to Front': '將此程式所有視窗移至最前',
+        'Close Window': '關閉視窗',
         'Version': '版本'
     }` : `{
         'File': '文件',
@@ -1373,6 +1456,21 @@ function install20(resourcesDir) {
         'Show in File Explorer': '在文件资源管理器中显示',
         'Reveal in Finder': '在访达中显示',
         'Find in conversation': '在会话中查找',
+        'Connect to WSL': '连接到 WSL',
+        'Reopen Locally': '在本地重新打开',
+        'About Antigravity': '关于 Antigravity',
+        'Settings...': '设置...',
+        'Preferences...': '首选项...',
+        'Services': '服务',
+        'Hide Antigravity': '隐藏 Antigravity',
+        'Hide Others': '隐藏其他',
+        'Show All': '全部显示',
+        'Quit Antigravity': '退出 Antigravity',
+        'Quit': '退出',
+        'Paste and Match Style': '粘贴并匹配样式',
+        'Delete': '删除',
+        'Bring All to Front': '前置全部窗口',
+        'Close Window': '关闭窗口',
         'Version': '版本'
     }`};
     function translateMenu(items) {
@@ -1385,6 +1483,7 @@ function install20(resourcesDir) {
                 mnemonic = "(&" + m[1] + ")";
                 cleanLabel = label.replace('&', '');
             }
+            if (!item._origCleanLabel) item._origCleanLabel = cleanLabel;
             if (translations[cleanLabel]) {
                 item.label = translations[cleanLabel] + mnemonic;
             } else if (translations[label]) {
@@ -1396,6 +1495,25 @@ function install20(resourcesDir) {
                 translateMenu(item.submenu.items);
             }
         }
+    }
+    if (menu && Array.isArray(menu.items) && !menu.items._cnFindHooked) {
+        menu.items._cnFindHooked = true;
+        const origFind = menu.items.find.bind(menu.items);
+        menu.items.find = function(pred, thisArg) {
+            return origFind((it, idx, arr) => {
+                if (pred.call(thisArg, it, idx, arr)) return true;
+                if (it && it._origCleanLabel && pred.call(thisArg, { ...it, label: it._origCleanLabel }, idx, arr)) return true;
+                return false;
+            });
+        };
+    }
+    if (!electron_1.Menu._cnHooked) {
+        electron_1.Menu._cnHooked = true;
+        const origSetAppMenu = electron_1.Menu.setApplicationMenu.bind(electron_1.Menu);
+        electron_1.Menu.setApplicationMenu = function(m) {
+            if (m && m.items) translateMenu(m.items);
+            return origSetAppMenu(m);
+        };
     }
     translateMenu(menu.items);
     `;

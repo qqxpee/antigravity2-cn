@@ -2,7 +2,7 @@
   {
     "title": "Cloud Audit Manager (us-central1)",
     "id": "google-cloud-audit-manager-us-central1",
-    "link": "https://cloud.google.com/audit-manager",
+    "link": "https://cloud.google.com/products/audit-manager",
     "description": "The Cloud Audit Manager remote MCP server allows you to enroll projects, generate audit and scope reports, and check resource enrollment statuses in the us-central1 region.",
     "remote": {
       "template": {
@@ -16,7 +16,7 @@
   {
     "title": "Cloud Audit Manager (europe-west1)",
     "id": "google-cloud-audit-manager-europe-west1",
-    "link": "https://cloud.google.com/audit-manager",
+    "link": "https://cloud.google.com/products/audit-manager",
     "description": "The Cloud Audit Manager remote MCP server allows you to enroll projects, generate audit and scope reports, and check resource enrollment statuses in the europe-west1 region.",
     "remote": {
       "template": {
@@ -1434,6 +1434,20 @@
     "readme": "https://www.gstatic.com/onemcp/apikeys.md"
   },
   {
+    "title": "Google Cloud App Optimize",
+    "id": "google-cloud-app-optimize",
+    "link": "https://docs.cloud.google.com/app-optimize/overview",
+    "description": "The App Optimize (AppOptimize) remote MCP server allows you to create, manage, and analyze cloud cost, usage, and optimization reports for your Google Cloud resources.",
+    "remote": {
+      "template": {
+        "serverUrl": "https://appoptimize.googleapis.com/mcp",
+        "authProviderType": "google_credentials"
+      }
+    },
+    "trustLevel": "TRUSTED",
+    "readme": "https://www.gstatic.com/onemcp/appoptimize.md"
+  },
+  {
     "title": "Vertex AI Search",
     "id": "vertex-ai-search",
     "link": "https://cloud.google.com/generative-ai-app-builder/docs/reference/mcp",
@@ -2011,7 +2025,7 @@
   {
     "title": "Courtroom5",
     "id": "courtroom5",
-    "link": "https://courtroom5.com/claude/",
+    "link": "https://courtroom5.com/",
     "description": "Civil legal guidance for people navigating court without a lawyer. This MCP server provides educational guidance for self-represented litigants in U.S. civil legal matters across all 50 states, including case intake assessments, procedural deadline calculations, and prioritized next-step guidance directly from your AI tools.",
     "remote": {
       "template": {
@@ -2019,7 +2033,7 @@
       }
     },
     "trustLevel": "TRUSTED",
-    "readme": "https://courtroom5.com/claude/"
+    "readme": "https://courtroom5.com/"
   },
   {
     "title": "Opsera AI Agents",
@@ -2109,6 +2123,28 @@
     },
     "trustLevel": "TRUSTED",
     "readme": "https://raw.githubusercontent.com/endorlabs/mcp-server-docs/main/antigravity/README.md"
+  },
+  {
+    "title": "Canva",
+    "id": "canva",
+    "link": "https://www.canva.dev/docs/mcp/",
+    "description": "The Canva MCP server enables AI assistants to seamlessly interact with Canva's design capabilities. By exposing Canva's capabilities (including design creation and editing, asset and brand management, library search, export, and commenting) as MCP-compatible tools, you can give your users access to Canva's design capabilities through natural language, directly from the AI tools they already use.",
+    "local": {
+      "commands": {
+        "npx": {
+          "template": {
+            "command": "npx",
+            "args": [
+              "-y",
+              "mcp-remote",
+              "https://mcp.canva.com/mcp"
+            ]
+          }
+        }
+      }
+    },
+    "trustLevel": "TRUSTED",
+    "readme": "https://www.canva.dev/docs/mcp.md"
   },
   {
     "title": "Chrome DevTools for agents",

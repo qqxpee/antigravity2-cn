@@ -3,9 +3,9 @@
 👉 **[簡體中文版說明文件 (Simplified Chinese README)](README.md)**
 
 > **支援系統**：Windows & macOS (均已內建一鍵指令碼)  
-> **匹配版本**：Antigravity v2.23.0+  
+> **匹配版本**：Antigravity v2.27.0+  
 > **核心引擎**：Node.js (無需安裝 Python，零依賴，極速極穩)  
-> **中文化範圍**：包括軟體介面、頂部系統功能表、工作列右鍵選單、載入動畫、設定面板、新手引導及登入頁。  
+> **中文化範圍**：包括軟體介面、滑鼠懸浮提示 (Tooltip)、頂部系統功能表、工作列右鍵選單、載入動畫、設定面板、外掛與自訂項、新手引導及登入頁。  
 > **注入原理**：透過 ASAR 還原與打包，安全注入 `preload.js` 動態翻譯機制，絕不修改核心二進位檔案，一鍵安裝與完美還原。
 
 > [!WARNING]
@@ -37,7 +37,7 @@
 - **`双击卸载还原官方英文.bat`** / **`.command`**：Windows / macOS 一鍵完美恢復原版入口。
 - **`localization_engine.js`**：核心中文化邏輯，負責 app.asar 的解包、程式碼注入、重新打包以及 macOS 下的自動深度重新簽名。
 - **`dicts_tw/`**：中文化字典資料夾，內含按模組分類的 JSON 對照翻譯字典。
-- **`scripts/`**：工程與自動化工具集，包含簡繁詞典對齊校驗器 (`compare_dicts.js`)、逆向診斷與 MCP 基準清冊等。
+- **`scripts/`**：工程與自動化工具集，包含簡繁詞典對齊校驗器 (`compare_dicts.js`)、版本升級全量介面/懸浮詞條自動 Diff 掃描器 (`dev_tool.js scan-ui`) 及 MCP 基準清冊 (`dev_tool.js dump-mcp`)。
 
 ---
 
