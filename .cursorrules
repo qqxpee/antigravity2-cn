@@ -1,30 +1,162 @@
-# AI Rules for Antigravity2-cn
+# AI Agent Guidelines (AGENTS.md)
 
-When working on this project (translating / localizing Antigravity to Chinese), you MUST follow these guidelines:
+Welcome, AI Coding Agent! This file provides persistent context, standard operating procedures (SOPs), and strict guardrails for maintaining the Antigravity Chinese localization project.
 
-## 1. Dictionary Consistency Check (Mandatory)
-Whenever you modify, add, or delete any translation keys in `dicts/` or `dicts_tw/`:
-- You **MUST** run the verification script in the terminal:
-  ```bash
-  node scripts/compare_dicts.js
+---
+
+## 1. Network & Proxy Settings (Git Operations)
+For any remote Git operations (e.g., `git push`, `git fetch`, `git pull` from GitHub), you **MUST** use the local network proxy configured for this workspace:
+- **Proxy Server Address:** `127.0.0.1:18080`
+- **Command to configure proxy:**
+  ```powershell
+  git config http.proxy http://127.0.0.1:18080
+  git config https.proxy http://127.0.0.1:18080
   ```
-- If the script outputs any errors (missing keys in either Simplified or Traditional Chinese dictionaries), you **MUST** fix them to ensure both directories are perfectly aligned. Do not finish your task until the command runs successfully and prints `All dictionaries are perfectly aligned!`.
 
-## 2. Localization Standards & Mapping
-- `dicts/` contains Simplified Chinese (SC) localization.
-- `dicts_tw/` contains Traditional Chinese (TC) localization.
-- Ensure proper terminology mappings between Simplified and Traditional Chinese. Refer to `README_TW.md` for terms.
-  * 智能体 -> 代理
-  * 设置 -> 設定
-  * 文件 -> 檔案
-  * 浏览器 -> 瀏覽器
-  * 账户 -> 帳戶
-  * 窗口 -> 視窗
-  * 插件 -> 外掛程式
-  * 快捷键 -> 快速鍵
-  * 主题 -> 佈景主題
-  * 终端 -> 終端機
+---
 
-## 3. Do NOT Run Installer Scripts / localization_engine.js
-- You **MUST NOT** run `node localization_engine.js` or any other commands that apply/inject/install the translation to the client application.
-- After finishing the dictionary changes and validating them with `compare_dicts.js`, inform the user that changes are completed. The user will manually run `双击安装中文汉化.bat` or `双击安装繁体中文.bat` to install them.
+## 2. Core Rules & Workflow
+
+### Rule A: Dictionary Alignment & Traditional Chinese Purity (Mandatory)
+Whenever you modify, add, or delete any translation keys in `dicts/` (Simplified Chinese) or `dicts_tw/` (Traditional Chinese):
+1. You **MUST** run the verification script in the terminal:
+   ```powershell
+   node scripts/compare_dicts.js
+   ```
+2. `compare_dicts.js` enforces **two mandatory checks**:
+   - **100% Key Alignment:** Every file and every key in `dicts/` must exist identically in `dicts_tw/`.
+   - **Zero Simplified Character Leaks in `dicts_tw/`:** `dicts_tw/*.json` values are scanned against a strict Simplified-only character regex. If any Simplified character (e.g. `们这来个时后会里为么...`) leaks into `dicts_tw/`, the script will fail and report the exact key.
+3. Do not complete your task until `node scripts/compare_dicts.js` exits with code `0` and prints:
+   `All dictionaries are perfectly aligned!`
+
+### Rule B: Do NOT Run Installer Scripts
+- You **MUST NOT** run `node localization_engine.js` or any other command that applies, injects, or installs the translation into the client application.
+- After finishing dictionary/engine changes and validating them, inform the user. The user will manually run `双击安装中文汉化.bat` or `双击安装繁体中文.bat` to install them.
+
+### Rule C: Cross-Platform Script Encodings & Line Endings
+1. **Windows Batch Files (`.bat`):**
+   - **Line Endings:** MUST strictly use **CRLF (`\r\n`)**. Unix LF (`\n`) causes syntax errors and character shifting in `cmd.exe`.
+   - **Encodings:** `双击安装中文汉化.bat` and `双击卸载还原官方英文.bat` MUST be **GBK (CP936)**; `双击安装繁体中文.bat` MUST be **Big5 (CP950)**. Never add `chcp` commands.
+2. **macOS Command Scripts (`.command`):**
+   - **Line Endings & Encoding:** MUST strictly use **LF (`\n`)** and **UTF-8 without BOM**. Never save `.command` files with CRLF (`\r\n`), or macOS `/bin/bash` will fail with `bad interpreter: ^M`.
+   - **Git Executable Bit:** Must preserve Git mode `100755`.
+   - **Syntax Verification:** After modifying any `.command` file on Windows, verify syntax using Git Bash:
+     ```powershell
+     $gitDir = Split-Path (Split-Path (Get-Command git).Source); $bash = Join-Path $gitDir "bin\bash.exe"; & $bash -n "双击安装中文汉化.command"; & $bash -n "双击安装繁体中文.command"; & $bash -n "双击卸载还原官方英文.command"
+     ```
+3. **Editing `localization_engine.js` (CRLF Pitfall):**
+   - `localization_engine.js` uses CRLF (`\r\n`). If multi-line `edit_file` fails due to CRLF normalization, write a small Node script in `scratch/` that normalizes `\r\n` to `\n`, performs exact replacements, restores `\r\n`, and **immediately deletes the temporary script in `scratch/`**.
+
+---
+
+## 3. Scoped Terminology (SC vs. TC) & Forbidden Mainland Terms in `dicts_tw/`
+Always respect proper terminology mappings between Simplified and Traditional Chinese. **NEVER** use naive character-by-character conversion (like raw OpenCC `s2t`) for `dicts_tw/`.
+
+| English / Concept | Simplified Chinese (`dicts/`) | Traditional Chinese (`dicts_tw/`) | ❌ FORBIDDEN in `dicts_tw/` |
+| :--- | :--- | :--- | :--- |
+| Agent (主AI实体) | 智能体 | 代理 | ❌ 智能體 |
+| Subagent / browser subagent | 子代理 / 浏览器子代理 | 子代理 / 瀏覽器子代理 | ❌ 子智能體 |
+| Settings / Preferences | 设置 / 首选项 | 設定 / 偏好設定 | ❌ 設置 |
+| File / Document | 文件 / 文档 | 檔案 / 文件 | ❌ 文檔 |
+| Browser | 浏览器 | 瀏覽器 | - |
+| Account | 账户 | 帳戶 | ❌ 賬號 / 賬戶 |
+| Window | 窗口 | 視窗 | ❌ 窗口 |
+| Plugins / Extensions | 插件 / 扩展 | 外掛程式 / 擴充功能 | ❌ 插件 |
+| Shortcut Keys | 快捷键 | 快速鍵 | ❌ 快捷鍵 |
+| Theme | 主题 | 佈景主題 | - |
+| Terminal / Console | 终端 / 控制台 | 終端機 / 主控台 | ❌ 終端 / 控制台 |
+| Split (Window / Panes) | 拆分 | 分割 | ❌ 拆分 |
+| File Explorer | 文件资源管理器 | 檔案總管 | ❌ 檔案資源管理器 |
+| Finder | 访达 | Finder | ❌ 訪達 |
+| Code / Source Code / Block | 代码 / 源代码 / 代码块 | 程式碼 / 原始碼 / 程式碼區塊 | ❌ 代碼 / 源代碼 / 代碼塊 |
+| Custom / Default / Global | 自定义 / 默认 / 全局 | 自訂 / 預設 / 全域 | ❌ 自定義 / 默認 / 全局 |
+| Script / Log / Clipboard | 脚本 / 日志 / 剪贴板 | 指令碼 / 記錄檔 / 剪貼簿 | ❌ 腳本 / 日誌 / 剪貼板 |
+| Open / Add / Refresh | 打开 / 添加 / 刷新 | 開啟 / 新增 / 重新整理 | ❌ 打開 / 開啓 / 添加 / 刷新 |
+| Local / Remote | 本地 / 远程 | 本機 / 遠端 | ❌ 本地 / 遠程 |
+| Conversation / Tab | 会话 / 标签页 | 對話 / 分頁 | ❌ 會話 / 標籤頁 |
+| Variant Characters | 启用 / 启动 / 为 | 啟用 / 啟動 / 為 | ❌ 啓用 / 啓動 / 爲 (港式异体字) |
+
+---
+
+## 4. Mandatory Syntax Verification & Dynamic JS Generation Pitfalls (Lessons Learned)
+
+To prevent low-level errors (e.g., syntax errors, broken regexes, or a blank white screen on app launch), every AI Agent **MUST** strictly adhere to the following rules:
+
+### Rule D: Mandatory Static Syntax Check (`node -c`)
+Whenever you modify `localization_engine.js` or any `scripts/*.js` file:
+```powershell
+node -c localization_engine.js
+node -c scripts/dev_tool.js
+node -c scripts/compare_dicts.js
+```
+
+### Rule E: Dynamic JS Injection Safety (`generateJs()` Pitfalls & White Screen Prevention)
+`localization_engine.js` uses `generateJs()` to dynamically construct the JavaScript code (`preload.js`) injected into `app.asar`.
+1. **DOUBLE-ESCAPE Regex Backslashes inside `jsSource` (CRITICAL!):**
+   Inside `generateJs()`, `const jsSource = \`...\`` is a template literal evaluated by Node.js!
+   - If you write single backslashes like `/\s+\./` inside `jsSource`, Node.js swallows the single backslash and emits `/s+./` (matching the letter `s` and any char!) into `preload.js`.
+   - You **MUST ALWAYS double-escape backslashes** in regexes and strings inside `jsSource`: write `\\s`, `\\.`, `\\d`, `\\b`, `\\(`, `\\)`.
+2. **NO Raw Template Interpolation or Hardcoded Local Paths inside `jsSource`:**
+   - **DO NOT** write `${name}` inside `jsSource`; always use string concatenation `+ name +`.
+   - **NEVER** hardcode personal local workspace paths (e.g., `e:/OneDrive/...`) inside `generateJs()`.
+   - Always use functional replacement `jsSource.replace("DICT_PLACEHOLDER", () => dictJson)` so `$` characters in dictionaries are never interpreted as regex replacement patterns.
+3. **Mandatory Generated Code Verification in Project Root (Both SC and TC):**
+   - **WARNING:** Never write the temporary test script inside `scratch/` when testing `generateJs()`, because `loadDictionary()` resolves `path.join(__dirname, DICTS_FOLDER)`. Writing it in the project root (`./_temp_root_test.js`) ensures the real 3,900+ dictionary entries are loaded and tested!
+   ```powershell
+   node -e 'const fs=require("fs"); const code=fs.readFileSync("localization_engine.js","utf8").replace(/main\(\);/,"module.exports={generateJs};"); fs.writeFileSync("_temp_root_test.js",code); const {generateJs}=require("./_temp_root_test.js"); fs.unlinkSync("_temp_root_test.js"); const out=generateJs(); new Function(out); console.log("Generated JS syntax check OK! Size:", (out.length/1024).toFixed(1)+"KB");'
+   node -e 'process.argv.push("--tw"); const fs=require("fs"); const code=fs.readFileSync("localization_engine.js","utf8").replace(/main\(\);/,"module.exports={generateJs};"); fs.writeFileSync("_temp_root_test_tw.js",code); const {generateJs}=require("./_temp_root_test_tw.js"); fs.unlinkSync("_temp_root_test_tw.js"); const out=generateJs(); new Function(out); console.log("Generated TW JS syntax check OK! Size:", (out.length/1024).toFixed(1)+"KB");'
+   ```
+   Verify that `Size` is **~290KB+** (confirming dictionaries loaded properly) and `new Function(out)` throws zero errors.
+
+### Rule G: DOM Fragmentation, Short Words & Community PR Audit (Anti-Pollution Rule)
+1. **DO NOT add generic single words or broken fragments into global dictionaries:**
+   - Never add generic single words (`<= 15` chars without spaces, e.g. `"Type"`, `"Use"`, `"Variables"`, `"Selection"`) or broken sentence fragments starting/ending with punctuation/prepositions (e.g. `", then reopen this dialog."`, `"to upload"`, `"tokens ("`) into `dicts/` or `dicts_tw/`.
+   - Handle fragmented DOM sentences inside `generateJs()` by inspecting `node.parentElement` context first.
+2. **Strict Audit SOP for External / Community PRs:**
+   Never blindly merge external dictionary PRs. Before merging any PR, you **MUST**:
+   - Deduplicate against all existing `dicts/*.json` keys so existing standardized translations are never overwritten.
+   - Verify candidate keys against the live client bundle (`main.js`) and strip out VS Code 1.0 dead strings or Monaco internal schema descriptions (e.g. `background color`, `foreground color`, `activity bar`, `minimap`, `overview ruler`).
+   - Sanitize all `dicts_tw/` values against the Forbidden Mainland Terms table in Section 3 and run `node scripts/compare_dicts.js`.
+
+---
+
+## 5. Client Architecture & Zero-Screenshot Version Upgrade SOP (v2.27.0+)
+Antigravity 2.x utilizes a two-tier architecture:
+- **Main Process:** Electron process loaded from `resources/app.asar` (`dist/main.js`, `dist/preload.js`, `dist/menu.js`, `dist/tray.js`).
+- **Frontend SPA:** Managed by `resources/bin/language_server.exe` which serves the live SPA on `https://127.0.0.1:<PORT>/main.js`.
+
+### Standard Operating Procedure (SOP) When User Reports an Antigravity Upgrade:
+The user does **NOT** need to take screenshots when Antigravity upgrades. Follow these exact steps:
+1. **Step 1 — Scan UI & Hover Tooltips Diff:**
+   ```powershell
+   node scripts/dev_tool.js scan-ui
+   ```
+   This automatically connects to the running `language_server`, extracts all UI strings & mouse hover tooltips (`title`, `aria-label`, `placeholder`, `tooltip`, `<Rz>`, JSX children), diffs them against `scripts/ui_strings_baseline.json`, checks coverage against `dicts/*.json`, and outputs untranslated strings to `scratch/untranslated_ui_diff.json`.
+2. **Step 2 — Scan Official MCP Catalog Diff:**
+   ```powershell
+   node scripts/dev_tool.js dump-mcp
+   ```
+   Checks live RPC `GetAvailableCascadePlugins` against `scripts/mcp_catalog_baseline.json` and outputs any new/changed MCP servers to `scratch/mcp_catalog_diff.json`.
+3. **Step 3 — Translate & Update Baselines:**
+   - Read `scratch/untranslated_ui_diff.json` and `scratch/mcp_catalog_diff.json`.
+   - Filter out code tokens/single generic words (Rule G), and add genuine new UI/tooltip/MCP entries to both `dicts/` and `dicts_tw/`.
+   - Update baselines and clean up `scratch/`:
+     ```powershell
+     node scripts/dev_tool.js scan-ui --update-baseline
+     node scripts/dev_tool.js dump-mcp --update-baseline
+     Remove-Item -Path scratch\* -Recurse -Force -ErrorAction SilentlyContinue
+     ```
+4. **Other `dev_tool.js` Diagnostic Commands:**
+   - `node scripts/dev_tool.js port` (detects running `language_server` PID, ports, and CSRF token on Windows & macOS)
+   - `node scripts/dev_tool.js search <keyword>` (searches live `main.js` context)
+   - `node scripts/dev_tool.js slice <pos> [len]` (inspects exact bundle slices)
+
+---
+
+## 6. Pre-Delivery Checklist
+Before reporting task completion to the user, you **MUST** verify all five items:
+- [x] `node -c localization_engine.js` and `node -c scripts/dev_tool.js` pass with 0 errors.
+- [x] Root `new Function(generateJs())` syntax check passes on both SC and TC output (Size ~290KB+).
+- [x] `node scripts/compare_dicts.js` prints `All dictionaries are perfectly aligned!` (0 missing keys, 0 SC leaks in TC).
+- [x] `scratch/` directory is clean of temporary scripts/dumps.
+- [x] Windows `.bat` files preserve CRLF + GBK/Big5; macOS `.command` files preserve LF + UTF-8 (no BOM) + `100755`.
