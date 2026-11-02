@@ -289,6 +289,91 @@ function generateJs() {
         return null;
     }
 
+    // ==========================================
+    // 原生系统右键菜单 (Native Context Menu) 汉化拦截
+    // ==========================================
+    function translateContextMenuLabel(label) {
+        if (!label || typeof label !== 'string') return label;
+        let trimmed = norm(label);
+        if (!trimmed) return label;
+
+        let isDefault = false;
+        if (/\\s*\\((?:Default|預設|默认)\\)$/i.test(trimmed)) {
+            trimmed = trimmed.replace(/\\s*\\((?:Default|預設|默认)\\)$/i, '').trim();
+            isDefault = true;
+        }
+
+        let translated = null;
+        const shortcutTrans = translateWithShortcut(trimmed);
+        if (shortcutTrans) {
+            translated = shortcutTrans;
+        } else if (map.has(trimmed)) {
+            translated = map.get(trimmed);
+        } else if (lowerMap.has(trimmed.toLowerCase())) {
+            translated = lowerMap.get(trimmed.toLowerCase());
+        }
+
+        if (translated) {
+            return isDefault ? (translated + (USE_TW ? " (預設)" : " (默认)")) : translated;
+        } else if (isDefault) {
+            return trimmed + (USE_TW ? " (預設)" : " (默认)");
+        }
+        return label;
+    }
+
+    function translateContextMenuItems(items) {
+        if (!Array.isArray(items)) return items;
+        return items.map(item => {
+            if (!item || typeof item !== 'object') return item;
+            const newItem = Object.assign({}, item);
+            if (newItem.label) {
+                newItem.label = translateContextMenuLabel(newItem.label);
+            }
+            if (Array.isArray(newItem.submenu)) {
+                newItem.submenu = translateContextMenuItems(newItem.submenu);
+            }
+            if (Array.isArray(newItem.items)) {
+                newItem.items = translateContextMenuItems(newItem.items);
+            }
+            return newItem;
+        });
+    }
+
+    function hookNativeContextMenu() {
+        try {
+            const electronModule = typeof electron_1 !== 'undefined' ? electron_1 : (typeof require === 'function' ? require('electron') : null);
+            if (electronModule && electronModule.ipcRenderer && !electronModule.ipcRenderer._cnContextMenuHooked) {
+                electronModule.ipcRenderer._cnContextMenuHooked = true;
+                const origInvoke = electronModule.ipcRenderer.invoke.bind(electronModule.ipcRenderer);
+                electronModule.ipcRenderer.invoke = function(channel, ...args) {
+                    if (channel === 'window:show-context-menu' && Array.isArray(args[0])) {
+                        try {
+                            args[0] = translateContextMenuItems(args[0]);
+                        } catch (e) {}
+                    }
+                    return origInvoke(channel, ...args);
+                };
+            }
+        } catch (e) {}
+
+        try {
+            if (typeof window !== 'undefined' && window.electronNative && !window.electronNative._cnContextMenuHooked) {
+                const origShow = window.electronNative.showContextMenu;
+                if (typeof origShow === 'function') {
+                    window.electronNative._cnContextMenuHooked = true;
+                    window.electronNative.showContextMenu = function(items) {
+                        try {
+                            items = translateContextMenuItems(items);
+                        } catch (e) {}
+                        return origShow.call(this, items);
+                    };
+                }
+            }
+        } catch (e) {}
+    }
+
+    hookNativeContextMenu();
+
     function isFilePathOrUri(s) {
         if (!s) return false;
         return /^[a-zA-Z]:[\\\\/]/.test(s) || /^[\\\\/~].*[\\\\/]/.test(s) || /[\\\\/]SKILL\\.md/i.test(s) || /[\\\\/]\\.gemini[\\\\/]/i.test(s) || /^file:\\/\\//i.test(s);
