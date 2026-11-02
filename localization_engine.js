@@ -560,6 +560,27 @@ function generateJs() {
                     if (valNorm === 'For help, visit') newVal = USE_TW ? "如需協助，請造訪" : "如需帮助，请访问";
                     else if (valNorm === 'or join the') newVal = USE_TW ? "或加入" : "或加入";
                     else if (valNorm === 'chat space') newVal = USE_TW ? "聊天空間" : "聊天空间";
+                } else if ((valNorm === 'when working' || valNorm === 'in this project' || valNorm === 'in these conversations') && node.parentElement && (
+                    node.parentElement.textContent && (
+                        node.parentElement.textContent.includes('when working') ||
+                        node.parentElement.textContent.includes('Global Permissions') ||
+                        node.parentElement.textContent.includes('全局权限') ||
+                        node.parentElement.textContent.includes('全域權限') ||
+                        node.parentElement.textContent.includes('Global Settings') ||
+                        node.parentElement.textContent.includes('全局设置') ||
+                        node.parentElement.textContent.includes('全域設定')
+                    )
+                )) {
+                    if (valNorm === 'when working') {
+                        const isProj = node.parentElement.textContent.includes('in this project');
+                        if (isProj) {
+                            newVal = USE_TW ? "（在此專案中工作時）" : "（在此项目中工作时）";
+                        } else {
+                            newVal = USE_TW ? "（在這些對話中工作時）" : "（在这些会话中工作时）";
+                        }
+                    } else {
+                        newVal = "";
+                    }
                 } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
                     newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
                 } else if (/^The Cloud SQL remote/i.test(valNorm)) {

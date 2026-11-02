@@ -84,5 +84,9 @@
   "Worktree Branch": "工作树分支",
   "Worktree Branches": "工作树分支",
   "You should not enter any sensitive information on this site (for example, passwords or credit cards), because it could be stolen by attackers.": "您不应在此网站输入任何敏感信息（例如密码或信用卡号），否则可能会被攻击者窃取。",
-  "Your information (for example, passwords or credit card numbers) is private when it is sent to this site.": "发送到此网站的信息（例如密码或信用卡号）是私密的。"
+  "Your information (for example, passwords or credit card numbers) is private when it is sent to this site.": "发送到此网站的信息（例如密码或信用卡号）是私密的。",
+  "Inherits your Global Permissions when working in these conversations.": "在此类会话中工作时继承您的全局权限。",
+  "Also includes Global Permissions when working in these conversations.": "在此类会话中工作时还包括“全局权限”。",
+  "Inherits your General settings when working in these conversations.": "在此类会话中工作时继承您的通用设置。",
+  "Also includes Global Settings when working in these conversations.": "在此类会话中工作时还包括“全局设置”。"
 }
