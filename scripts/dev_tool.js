@@ -329,11 +329,17 @@ function extractUiStringsFromBundle(js) {
         addCandidate(val, `prop:${prop}`);
     }
 
-    const condPropRegex = /(?:(?:"(aria-label|data-tooltip-content)")|\b(label|sublabel|title|placeholder|description|tooltip|tooltipText|tooltipContent|content|message))\s*:\s*[^,?{}]+?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    const condPropRegex = /(?:(?:"(aria-label|data-tooltip-content)")|\b(label|sublabel|title|placeholder|description|shortDescription|tooltip|tooltipText|tooltipContent|ariaLabel|heading|subheading|subtitle|header|content|message|detail))\s*:\s*[^,?{}]+?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
     while ((m = condPropRegex.exec(js)) !== null) {
         const prop = m[1] || m[2];
         addCandidate(m[3] ?? m[4], `condProp:${prop}`);
         addCandidate(m[5] ?? m[6], `condProp:${prop}`);
+    }
+
+    const ternaryRegex = /(?:return|\b[a-zA-Z0-9_$]+\s*=)\s*[^;{}()]+?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    while ((m = ternaryRegex.exec(js)) !== null) {
+        addCandidate(m[1] ?? m[2], 'ternary');
+        addCandidate(m[3] ?? m[4], 'ternary');
     }
 
     const ceRegex = /createElement\(\s*(?:[A-Za-z0-9_$.]+|"[a-z0-9-]+")\s*,\s*(?:null|void 0|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|[A-Za-z0-9_$.]+)\s*,([\s\S]{1,400}?)\)/g;
