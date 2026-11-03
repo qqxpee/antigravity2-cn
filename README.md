@@ -115,10 +115,10 @@ node localization_engine.js --brand-title translated
 3. 将 `version.dll`、`dbghelp.dll` 以及按您本地代理端口（如 `127.0.0.1:7890` / `18080`）配置好的 `config.json` 放入 `proxy_config/` 目录。
 4. 正常双击运行 **`双击安装中文汉化.bat`**：
    - 汉化引擎将**自动检测** `proxy_config/` 目录。
-   - 一步自动完成 **“界面中文汉化 + 代理模块注入”**，无需再在软件更新后每次手动拷贝 DLL 文件！
+   - 自动安装中文汉化并复制缺失的代理文件；安装目录中已有的同名文件会保留，不会被覆盖。如需更新代理，请单独备份并管理其文件。
 5. **完全可选 & 零侵入**：
    - 如果您不需要代理或未创建 `proxy_config/` 目录，安装流程保持 100% 官方纯净汉化，对普通用户零干扰。
-   - 运行 **`双击卸载还原官方英文.bat`** 时，同样会自动识别并清理安装目录下的代理文件，完美恢复官方纯净状态。
+   - 运行 **`双击卸载还原官方英文.bat`** 时仅还原汉化，保留 `version.dll`、`dbghelp.dll`、`config.json` 等代理文件；移除代理需单独处理。
 
 ---
 
@@ -220,6 +220,21 @@ Antigravity 2.x 的“**添加 MCP 服务器 (Add MCP Server)**”市场目录�
 
 ### 3）软件官方更新后，汉化失效了怎么办？
 * 软件升级时，官方会覆盖 `app.asar` 文件。您无需担心，直接完全退出软件，重新双击运行 **`双击安装中文汉化.bat`**（macOS 用户运行 **`双击安装中文汉化.command`**）重新注入一次即可完美恢复中文。
+
+---
+
+## 回归测试
+
+测试依赖固定为 jsdom `30.1.3`，需 Node.js `^22.22.2 || ^24.15.0 || >=26.0.0`；建议使用 Node.js 24.15.0 或更新的 24.x 版本。在项目目录运行：
+
+```sh
+npm ci
+npm test
+node --check localization_engine.js
+node scripts/compare_dicts.js
+```
+
+测试从当前源码生成翻译脚本，在 jsdom 和临时文件夹中验证内容隔离、表单值、Shadow DOM、MCP 目录捕获及安装还原行为，不启动或修改本机 Antigravity。GitHub Actions 会在 Windows 和 Linux 上执行这些检查。
 
 ---
 

@@ -238,12 +238,15 @@ function generateJs() {
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
+    const CODE_ISOLATION_SELECTOR = 'input, textarea, option:not([value]), pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
 
     function isCodeOrEditor(node) {
         try {
             if (!node) return false;
             let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+            if (!el && typeof node.getRootNode === 'function') {
+                el = node.getRootNode().host || null;
+            }
             if (!el) return false;
             if (el.isContentEditable) return true;
             const active = document.activeElement;
@@ -379,13 +382,83 @@ function generateJs() {
         return /^[a-zA-Z]:[\\\\/]/.test(s) || /^[\\\\/~].*[\\\\/]/.test(s) || /[\\\\/]SKILL\\.md/i.test(s) || /[\\\\/]\\.gemini[\\\\/]/i.test(s) || /^file:\\/\\//i.test(s);
     }
 
+    function formatUsageDuration(value) {
+        const text = value.trim();
+        const tokens = /([0-9]+(?:\\.[0-9]+)?)\\s*(years?|yr|months?|mo|weeks?|w|days?|d|hours?|h|minutes?|min|m|seconds?|sec|s)(?![a-z])/gi;
+        const parts = [];
+        let end = 0;
+        for (const match of text.matchAll(tokens)) {
+            const gap = text.slice(end, match.index);
+            if (!/^[\\s,]*$/.test(gap) && !(end === 0 && gap.trim() === '<')) return null;
+            const unit = match[2].toLowerCase();
+            const name = /^(year|yr)/.test(unit) ? '年'
+                : /^(month|mo)/.test(unit) ? (USE_TW ? '個月' : '个月')
+                : /^(week|w)/.test(unit) ? (USE_TW ? '週' : '周')
+                : /^(day|d)/.test(unit) ? '天'
+                : /^(hour|h)/.test(unit) ? (USE_TW ? '小時' : '小时')
+                : /^(minute|min|m)$/.test(unit) || /^minutes$/.test(unit) ? (USE_TW ? '分鐘' : '分钟') : '秒';
+            parts.push((end === 0 && gap.trim() === '<' ? '<' : '') + match[1] + ' ' + name);
+            end = match.index + match[0].length;
+        }
+        return parts.length && !text.slice(end).trim() ? parts.join(' ') : null;
+    }
+
+    function translateUsageText(value) {
+        const limit = value.match(/^([0-9]+)(?:h|[- ]hours?)\\s+limit$/i);
+        if (limit) return limit[1] + (USE_TW ? ' 小時上限' : ' 小时限额');
+        const remaining = value.match(/^([0-9]+(?:\\.[0-9]+)?\\s*%|%)\\s+left$/i);
+        if (remaining) return remaining[1] + (USE_TW ? ' 剩餘' : ' 剩余');
+        const reset = value.match(/^(?:Resets|Refreshes)\\s+in\\s+(.+)$/i);
+        if (reset) {
+            const duration = formatUsageDuration(reset[1]);
+            if (duration) return duration + (USE_TW ? ' 後重設' : ' 后重置');
+        }
+        return null;
+    }
+
+    function isModelMenuText(node) {
+        const menu = node.parentElement && node.parentElement.closest('[role="menu"]');
+        if (!menu) return false;
+        let label = menu.getAttribute('aria-label');
+        if (!label) {
+            const root = menu.getRootNode();
+            label = (menu.getAttribute('aria-labelledby') || '').trim().split(/\\s+/).map(id => {
+                const target = (root.getElementById && root.getElementById(id)) || document.getElementById(id);
+                return target ? (target.getAttribute('aria-label') || target.textContent || '') : '';
+            }).join(' ');
+        }
+        return /^(Select model|选择模型|選擇模型)/i.test(norm(label || ''));
+    }
+
+    function refreshMenusLabelledBy(target) {
+        if (!target.id) return;
+        const roots = new Set([document, target.getRootNode()]);
+        for (const root of roots) {
+            if (!root.querySelectorAll) continue;
+            for (const menu of root.querySelectorAll('[role="menu"][aria-labelledby]')) {
+                if ((menu.getAttribute('aria-labelledby') || '').split(/\\s+/).includes(target.id)) {
+                    translateNode(menu);
+                }
+            }
+        }
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
+
+            if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+                if (node.host && isCodeOrEditor(node.host)) return;
+                for (const child of node.childNodes) translateNode(child);
+                return;
+            }
             
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
                 if (SKIP_TAGS.includes(tag)) return;
+                // Check before translating attributes used as isolation markers.
+                // Form values and user content must not depend on focus state.
+                if (isCodeOrEditor(node)) return;
 
                 // 翻译属性：placeholder, title, aria-label
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
@@ -395,7 +468,9 @@ function generateJs() {
                         if (isFilePathOrUri(t)) continue;
                         let newAttr = null;
                         const shortcutTrans = translateWithShortcut(t);
-                        if (shortcutTrans) newAttr = shortcutTrans;
+                        const usageTrans = translateUsageText(t);
+                        if (usageTrans) newAttr = usageTrans;
+                        else if (shortcutTrans) newAttr = shortcutTrans;
                         else if (map.has(t)) newAttr = map.get(t);
                         else if (lowerMap.has(t.toLowerCase())) newAttr = lowerMap.get(t.toLowerCase());
                         else if (/^Show\\s+(\\d+)\\s+more/i.test(t)) {
@@ -435,7 +510,6 @@ function generateJs() {
                     }
                 }
 
-                if (isCodeOrEditor(node)) return;
                 if (node.isContentEditable) return;
                 if (node.classList && (node.classList.contains('monaco-editor') || node.classList.contains('terminal') || node.classList.contains('xterm'))) return;
 
@@ -463,7 +537,10 @@ function generateJs() {
                     }
                 }
 
-                if (node.shadowRoot) translateNode(node.shadowRoot);
+                if (node.shadowRoot) {
+                    observeRoot(node.shadowRoot);
+                    translateNode(node.shadowRoot);
+                }
                 for (const child of node.childNodes) translateNode(child);
 
             } else if (node.nodeType === Node.TEXT_NODE) {
@@ -507,15 +584,28 @@ function generateJs() {
                     return;
                 }
 
-                if (translatedValues.get(node) === originalVal) return;
+                const valNorm = norm(originalVal);
+                const cachedValue = translatedValues.get(node);
+                // Base UI can attach its accessible name after the badge was translated.
+                // Correct our own generic New translation before the value-cache shortcut.
+                if ((valNorm === 'New' || (cachedValue === originalVal && valNorm === map.get('New'))) && isModelMenuText(node)) {
+                    if (originalVal !== '新') {
+                        translatedValues.set(node, '新');
+                        node.nodeValue = '新';
+                    }
+                    return;
+                }
+                if (cachedValue === originalVal) return;
 
                 let newVal = originalVal;
-                const valNorm = norm(originalVal);
                 const valLower = valNorm.toLowerCase();
                 
                 // 1. 精确匹配（含大小写自动纠正与快捷键检测）
                 const shortcutTrans = translateWithShortcut(valNorm);
-                if (shortcutTrans) {
+                const usageTrans = translateUsageText(valNorm);
+                if (usageTrans) {
+                    newVal = usageTrans;
+                } else if (shortcutTrans) {
                     newVal = shortcutTrans;
                 } else if (map.has(valNorm)) {
                     newVal = map.get(valNorm);
@@ -717,13 +807,16 @@ function generateJs() {
                     newVal = valNorm.replace(/^(\\d+)(s|m|h|d|w|mo|yr)$/i, (match, num, unit) => {
                         const unitLower = unit.toLowerCase();
                         let unitStr = "";
-                        if (unitLower === "s") unitStr = USE_TW ? "秒前" : "秒前";
-                        else if (unitLower === "m") unitStr = USE_TW ? "分鐘前" : "分钟前";
-                        else if (unitLower === "h") unitStr = USE_TW ? "小時前" : "小时前";
-                        else if (unitLower === "d") unitStr = USE_TW ? "天前" : "天前";
-                        else if (unitLower === "w") unitStr = USE_TW ? "週前" : "周前";
-                        else if (unitLower === "mo") unitStr = USE_TW ? "個月前" : "个月前";
-                        else if (unitLower === "yr") unitStr = USE_TW ? "年前" : "年前";
+                        // Bare durations can be countdown fragments, not elapsed timestamps.
+                        const elapsed = node.parentElement && node.parentElement.closest('[data-testid="conversation-row-sidebar"]');
+                        if (unitLower === "s") unitStr = "秒";
+                        else if (unitLower === "m") unitStr = USE_TW ? "分鐘" : "分钟";
+                        else if (unitLower === "h") unitStr = USE_TW ? "小時" : "小时";
+                        else if (unitLower === "d") unitStr = "天";
+                        else if (unitLower === "w") unitStr = USE_TW ? "週" : "周";
+                        else if (unitLower === "mo") unitStr = USE_TW ? "個月" : "个月";
+                        else if (unitLower === "yr") unitStr = "年";
+                        if (elapsed) unitStr += "前";
                         return num + unitStr;
                     });
                 } else if (/^just now$/i.test(valNorm)) {
@@ -870,7 +963,7 @@ function generateJs() {
     }
 
     let mcpSnifferTimer = null;
-    let lastCapturedCount = 0;
+    let lastCapturedDump = null;
     function scheduleMcpSniffer() {
         if (mcpSnifferTimer) clearTimeout(mcpSnifferTimer);
         mcpSnifferTimer = setTimeout(runMcpSniffer, 600);
@@ -993,13 +1086,12 @@ function generateJs() {
                 trustLevel: item.trustLevel || ''
             }));
 
-            if (catalog.length === lastCapturedCount) {
+            const dumpStr = JSON.stringify(catalog, null, 2);
+            if (dumpStr === lastCapturedDump) {
                 renderBadge(screen, catalog);
                 return;
             }
-            lastCapturedCount = catalog.length;
-
-            const dumpStr = JSON.stringify(catalog, null, 2);
+            lastCapturedDump = dumpStr;
 
             try {
                 localStorage.setItem('__antigravity_mcp_dump__', dumpStr);
@@ -1059,18 +1151,28 @@ function generateJs() {
                 translateNode(m.target);
             } else if (m.type === 'attributes') {
                 translateNode(m.target);
+                if (m.attributeName === 'aria-label' || m.attributeName === 'aria-labelledby') {
+                    refreshMenusLabelledBy(m.target);
+                }
             }
         }
         if (hasMcpModal) scheduleMcpSniffer();
     });
 
-    const obsOpts = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] };
+    const obsOpts = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'aria-labelledby', 'role'] };
+    const observedRoots = new WeakSet();
+
+    function observeRoot(root) {
+        if (!root || observedRoots.has(root)) return;
+        observer.observe(root, obsOpts);
+        observedRoots.add(root);
+    }
 
     const startEngine = () => {
         const target = document.body || document.documentElement;
         if (target) {
             try {
-                observer.observe(target, obsOpts);
+                observeRoot(target);
                 translateNode(target);
                 if (document.querySelector('[data-testid="add-mcp-screen"]')) {
                     scheduleMcpSniffer();
@@ -1082,7 +1184,7 @@ function generateJs() {
     const origAttachShadow = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function() {
         const sr = origAttachShadow.apply(this, arguments);
-        try { observer.observe(sr, obsOpts); } catch(e) {}
+        try { observeRoot(sr); } catch(e) {}
         return sr;
     };
 
@@ -1378,6 +1480,102 @@ function ensureWritePermission(targetDir) {
 // ==========================================
 // Antigravity 2.0 汉化引擎 (ASAR打包注入模式)
 // ==========================================
+function readAsarLayout(archivePath) {
+    const data = fs.readFileSync(archivePath);
+    if (data.length < 16 || data.readUInt32LE(0) !== 4) throw new Error('Invalid ASAR header');
+    const headerSize = data.readUInt32LE(4);
+    const jsonSize = data.readUInt32LE(12);
+    if (headerSize < 8 || jsonSize > headerSize - 8 || 8 + headerSize > data.length) {
+        throw new Error('Truncated ASAR header');
+    }
+    const header = JSON.parse(data.subarray(16, 16 + jsonSize).toString('utf8'));
+    const files = new Map();
+    function visit(node, prefix, inheritedUnpacked) {
+        if (!node.files || typeof node.files !== 'object') throw new Error('Invalid ASAR directory');
+        let leafCount = 0;
+        let unpackedCount = 0;
+        const unpackDirs = [];
+        const unpackFiles = [];
+        for (const [name, entry] of Object.entries(node.files)) {
+            if (!name || name === '.' || name === '..' || /[\\/]/.test(name)) throw new Error('Unsafe ASAR path');
+            const relative = prefix ? `${prefix}/${name}` : name;
+            const unpacked = Boolean(inheritedUnpacked || entry.unpacked);
+            if (entry.files) {
+                const child = visit(entry, relative, unpacked);
+                leafCount += child.leafCount;
+                unpackedCount += child.unpackedCount;
+                unpackDirs.push(...child.unpackDirs);
+                unpackFiles.push(...child.unpackFiles);
+            } else {
+                if (entry.link !== undefined) {
+                    files.set(relative, { link: entry.link, unpacked });
+                } else {
+                    if (!Number.isSafeInteger(entry.size) || entry.size < 0) throw new Error('Invalid ASAR file size');
+                    let body;
+                    if (!unpacked) {
+                        const offset = Number(entry.offset);
+                        if (!/^\d+$/.test(String(entry.offset)) || !Number.isSafeInteger(offset) || offset + entry.size > data.length - 8 - headerSize) {
+                            throw new Error(`Invalid ASAR file offset: ${relative}`);
+                        }
+                        body = data.subarray(8 + headerSize + offset, 8 + headerSize + offset + entry.size);
+                    }
+                    files.set(relative, { size: entry.size, unpacked, body });
+                }
+                leafCount++;
+                if (unpacked) {
+                    unpackedCount++;
+                    unpackFiles.push(relative);
+                }
+            }
+        }
+        // Some official archives mark hundreds of individual files, but no
+        // directories. Collapse an entirely unpacked subtree before constructing
+        // CLI arguments; otherwise absolute file paths exceed Windows limits.
+        if (prefix && leafCount > 0 && unpackedCount === leafCount) {
+            return { leafCount, unpackedCount, unpackDirs: [prefix], unpackFiles: [] };
+        }
+        return { leafCount, unpackedCount, unpackDirs, unpackFiles };
+    }
+    const { unpackDirs, unpackFiles } = visit(header, '', false);
+    return { files, unpackDirs, unpackFiles };
+}
+
+function asarUnpackArguments(layout, extractedDir) {
+    // Refuse ambiguous glob names rather than silently changing the archive layout.
+    const pattern = values => {
+        if (values.some(value => /[\r\n"'`$*?\[\]{}!,]/.test(value))) throw new Error('Unsupported ASAR unpack path');
+        return values.length === 1 ? values[0] : `{${values.join(',')}}`;
+    };
+    let args = '';
+    if (layout.unpackDirs.length) args += ` --unpack-dir "${pattern(layout.unpackDirs)}"`;
+    if (layout.unpackFiles.length) {
+        const files = layout.unpackFiles.map(file => path.resolve(extractedDir, ...file.split('/')).replace(/\\/g, '/'));
+        args += ` --unpack "${pattern(files)}"`;
+    }
+    return args;
+}
+
+function validateAsarCandidate(sourcePath, candidatePath) {
+    const before = readAsarLayout(sourcePath);
+    const after = readAsarLayout(candidatePath);
+    const allowed = new Set(['dist/preload.js', 'dist/menu.js', 'dist/tray.js', 'dist/loadingOverlay.js', 'dist/updater.js']);
+    if (before.files.size !== after.files.size) throw new Error('ASAR file list changed');
+    for (const [name, original] of before.files) {
+        const candidate = after.files.get(name);
+        if (!candidate || original.unpacked !== candidate.unpacked || original.link !== candidate.link) {
+            throw new Error(`ASAR layout changed: ${name}`);
+        }
+        if (original.link !== undefined) continue;
+        const originalBody = original.unpacked ? fs.readFileSync(path.join(sourcePath + '.unpacked', ...name.split('/'))) : original.body;
+        const candidateBody = candidate.unpacked ? fs.readFileSync(path.join(candidatePath + '.unpacked', ...name.split('/'))) : candidate.body;
+        if (candidateBody.length !== candidate.size || originalBody.length !== original.size) throw new Error(`ASAR file truncated: ${name}`);
+        // Unpacked files remain in their existing location and must never be changed by this patch.
+        if ((original.unpacked || !allowed.has(name)) && !originalBody.equals(candidateBody)) throw new Error(`Unexpected file change: ${name}`);
+    }
+    const preload = after.files.get('dist/preload.js');
+    if (!preload || !preload.body || !preload.body.includes(Buffer.from(SIGNATURE_START))) throw new Error('Missing localization payload');
+}
+
 function install20(resourcesDir) {
     const asarPath = path.join(resourcesDir, "app.asar");
     const bakPath = path.join(resourcesDir, "app.asar.bak");
@@ -1387,52 +1585,34 @@ function install20(resourcesDir) {
         return false;
     }
 
-    // 1. 备份与官方更新检测
+    // Build against a private snapshot. Never restore a backup over the live app before packing.
+    let buildDir;
+    let retainRecoveryFiles = false;
+    try {
+    const originalLive = fs.readFileSync(asarPath);
     let isAlreadyLocalized = false;
     try {
         const asarBuffer = fs.readFileSync(asarPath);
         isAlreadyLocalized = asarBuffer.indexOf(Buffer.from(SIGNATURE_START, "utf8")) !== -1;
     } catch (e) {}
 
-    if (!isAlreadyLocalized) {
-        console.log(`[备份] 检测到全新官方英文版本，正在同步创建/更新官方备份包: ${bakPath} ...`);
-        try {
-            fs.copyFileSync(asarPath, bakPath);
-            console.log(`[备份] 备份成功！`);
-        } catch (e) {
-            console.error(`[错误] 创建备份失败: ${e.message}`);
-            if (process.platform === 'darwin' && e.code === 'EPERM') {
-                console.error(`[提示] macOS 写入受限，请使用管理员权限运行脚本。`);
-            }
-            return false;
-        }
-    } else if (fs.existsSync(bakPath)) {
-        // 尝试用官方备份覆盖当前 app.asar，以确保每次汉化都基于最干净的官方英文包
-        try {
-            fs.copyFileSync(bakPath, asarPath);
-            console.log(`[还原] 已重置当前 app.asar 为官方原始备份包，以进行全新注入...`);
-        } catch (e) {
-            console.log(`[提示] 当前 app.asar 被锁定（可能是客户端正在运行），将使用当前包进行增量注入。`);
-        }
-    } else {
-        console.log(`[备份] 正在创建官方原始包备份: app.asar.bak ...`);
-        try {
-            fs.copyFileSync(asarPath, bakPath);
-            console.log(`[备份] 备份成功！`);
-        } catch (e) {
-            console.error(`[错误] 创建备份失败: ${e.message}`);
-            return false;
-        }
+    const refreshBackup = !isAlreadyLocalized || !fs.existsSync(bakPath);
+    const sourcePath = isAlreadyLocalized && fs.existsSync(bakPath) ? bakPath : asarPath;
+    buildDir = fs.mkdtempSync(path.join(resourcesDir, '.antigravity-localize-'));
+    const sourceArchive = path.join(buildDir, 'source', 'app.asar');
+    fs.mkdirSync(path.dirname(sourceArchive));
+    fs.copyFileSync(sourcePath, sourceArchive);
+    if (fs.existsSync(asarPath + '.unpacked')) {
+        fs.cpSync(asarPath + '.unpacked', sourceArchive + '.unpacked', { recursive: true });
     }
-
-    // 2. 临时提取目录
-    const tempDir = path.join(__dirname, "_temp_asar");
-    if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+    const layout = readAsarLayout(sourceArchive);
+    const rollbackArchive = path.join(buildDir, 'previous.asar');
+    fs.writeFileSync(rollbackArchive, originalLive);
+    const tempDir = path.join(buildDir, 'extracted');
+    const candidatePath = path.join(buildDir, 'candidate.asar');
 
     console.log(`[解包] 正在使用 npx 提取 app.asar...`);
-    const extractRes = runCommandSync(`npx -y @electron/asar extract "${asarPath}" "${tempDir}"`);
+    const extractRes = runCommandSync(`npx -y @electron/asar extract "${sourceArchive}" "${tempDir}"`);
     if (!extractRes.success || !fs.existsSync(tempDir)) {
         console.error(`[错误] 解包失败，可能是由于系统未安装 Node.js/npm 或者网络限制。`);
         console.error(`详情: ${extractRes.stderr}\n${extractRes.stdout}`);
@@ -1443,7 +1623,6 @@ function install20(resourcesDir) {
     const preloadPath = path.join(tempDir, "dist", "preload.js");
     if (!fs.existsSync(preloadPath)) {
         console.error(`[错误] 解压后未能在指定路径找到 preload.js: ${preloadPath}`);
-        fs.rmSync(tempDir, { recursive: true, force: true });
         return false;
     }
 
@@ -1744,11 +1923,8 @@ function install20(resourcesDir) {
     }
 
     // 4. 重新打包
-    console.log(`[打包] 正在将修改后的内容打包回 app.asar...`);
-    const packRes = runCommandSync(`npx -y @electron/asar pack "${tempDir}" "${asarPath}"`);
-    
-    // 5. 清理临时文件夹
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    console.log(`[打包] 正在生成并校验汉化候选包...`);
+    const packRes = runCommandSync(`npx -y @electron/asar pack "${tempDir}" "${candidatePath}"${asarUnpackArguments(layout, tempDir)}`);
 
     if (!packRes.success) {
         console.error(`[错误] 打包失败。`);
@@ -1756,10 +1932,43 @@ function install20(resourcesDir) {
         return false;
     }
 
+    validateAsarCandidate(sourceArchive, candidatePath);
+    for (const name of ['preload.js', 'menu.js', 'tray.js', 'loadingOverlay.js', 'updater.js']) {
+        const file = path.join(tempDir, 'dist', name);
+        if (fs.existsSync(file)) child_process.execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
+    }
+    if (!fs.readFileSync(asarPath).equals(originalLive)) throw new Error('App changed during localization; please retry after the update completes');
+
+    // Both rename operations stay on the same volume. If backup promotion fails,
+    // put the original app back; the prior backup has not been changed.
+    fs.renameSync(candidatePath, asarPath);
+    try {
+        if (refreshBackup) fs.renameSync(sourceArchive, bakPath);
+    } catch (error) {
+        try {
+            fs.renameSync(rollbackArchive, asarPath);
+        } catch (rollbackError) {
+            retainRecoveryFiles = true;
+            throw new Error(`Backup promotion and rollback failed; original app retained at ${rollbackArchive}: ${rollbackError.message}`);
+        }
+        throw error;
+    }
+
     cleanElectronCache();
     resignAppOnMac(resourcesDir);
     console.log(`[√] Antigravity 2.0 汉化部署完成！`);
     return true;
+    } catch (error) {
+        console.error(`[错误] 汉化未完成，未提交的候选包不会替换客户端: ${error.message}`);
+        return false;
+    } finally {
+        // Only remove the unique directory created by this invocation.
+        if (buildDir && !retainRecoveryFiles) {
+            try { fs.rmSync(buildDir, { recursive: true, force: true }); } catch (error) {
+                console.warn(`[提示] 临时目录已保留: ${buildDir}`);
+            }
+        }
+    }
 }
 
 function restore20(resourcesDir) {
@@ -1773,8 +1982,15 @@ function restore20(resourcesDir) {
 
     console.log("[还原] 正在用官方备份文件恢复...");
     try {
-        fs.copyFileSync(bakPath, asarPath);
-        fs.unlinkSync(bakPath);
+        const restoreDir = fs.mkdtempSync(path.join(resourcesDir, '.antigravity-restore-'));
+        try {
+            const candidate = path.join(restoreDir, 'app.asar');
+            fs.copyFileSync(bakPath, candidate);
+            readAsarLayout(candidate);
+            fs.renameSync(candidate, asarPath);
+        } finally {
+            fs.rmSync(restoreDir, { recursive: true, force: true });
+        }
     } catch (e) {
         console.error(`[错误] 恢复备份失败: ${e.message}`);
         if (process.platform === 'darwin' && e.code === 'EPERM') {
@@ -1925,10 +2141,11 @@ function injectProxyIfNeeded(installDir) {
         const src = path.join(proxyConfigDir, file);
         const dest = path.join(installDir, file);
         try {
-            fs.copyFileSync(src, dest);
+            // A same-named file may belong to another proxy or the application.
+            fs.copyFileSync(src, dest, fs.constants.COPYFILE_EXCL);
             injectedFiles.push(file);
         } catch (e) {
-            console.warn(`[代理警告] 注入文件 ${file} 失败: ${e.message}`);
+            console.warn(`[代理警告] 未覆盖现有文件或注入失败 ${file}: ${e.message}`);
         }
     }
 
@@ -1952,21 +2169,16 @@ function restoreProxyIfNeeded(installDir) {
         }
     }
 
-    const removedFiles = [];
+    const retainedFiles = [];
     for (const file of proxyFiles) {
         const dest = path.join(installDir, file);
         if (fs.existsSync(dest)) {
-            try {
-                fs.unlinkSync(dest);
-                removedFiles.push(file);
-            } catch (e) {
-                console.warn(`[代理警告] 移除代理文件 ${file} 失败: ${e.message}`);
-            }
+            retainedFiles.push(file);
         }
     }
 
-    if (removedFiles.length > 0) {
-        console.log(`[代理] 已清理代理注入文件: ${removedFiles.join(', ')}`);
+    if (retainedFiles.length > 0) {
+        console.log(`[代理] 已保留代理文件（无法确认其归属，请按需手动处理）: ${retainedFiles.join(', ')}`);
     }
 }
 
