@@ -3,7 +3,7 @@
 👉 **[簡體中文版說明文件 (Simplified Chinese README)](README.md)**
 
 > **支援系統**：Windows & macOS (均已內建一鍵指令碼)  
-> **匹配版本**：Antigravity v2.28.2+  
+> **匹配版本**：Antigravity v2.29.0+  
 
 > **核心引擎**：Node.js (無需安裝 Python，零依賴，極速極穩)  
 > **中文化範圍**：包括軟體介面、滑鼠懸浮提示 (Tooltip)、頂部系統功能表、工作列與原生系統右鍵選單 (Context Menu)、內建瀏覽器設定、載入動畫、設定面板、外掛與自訂項、新手引導及登入頁。  

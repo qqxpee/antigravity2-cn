@@ -428,6 +428,10 @@ function generateJs() {
                                 const suffix = dot ? "。" : "";
                                 return delPrefix + name + (USE_TW ? ("（包含 " + count + " 個活躍對話）") : ("（包含 " + count + " 个活跃会话）")) + suffix;
                             });
+                        } else if (/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i.test(t)) {
+                            newAttr = t.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => {
+                                return USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？");
+                            });
                         }
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
@@ -525,6 +529,32 @@ function generateJs() {
                     newVal = (USE_TW ? "發送消息 " : "发送消息 ") + valNorm.replace(/^Send message\\s+/i, '');
                 } else if (/^Queue message\\s+(Enter|⏎|\\u23ce)$/i.test(valNorm)) {
                     newVal = (USE_TW ? "排隊發送消息 " : "排队发送消息 ") + valNorm.replace(/^Queue message\\s+/i, '');
+                } else if (/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => {
+                        return USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？");
+                    });
+                } else if (/^What can we get done today\\??$/i.test(valNorm)) {
+                    newVal = USE_TW ? "今天有什麼我們可以一起完成的？" : "今天有什么我们可以一起完成的？";
+                } else if (/^Select all in$/i.test(valNorm)) {
+                    newVal = USE_TW ? "全選 " : "全选 ";
+                } else if (/^Uses your local clone,$/i.test(valNorm)) {
+                    newVal = USE_TW ? "使用本機複製版本，" : "使用本地克隆版本，";
+                } else if ((valNorm === 'Card' || valNorm === 'of') && node.parentElement && (
+                    (typeof node.parentElement.closest === 'function' && node.parentElement.closest('[data-testid="card-deck-counter"]')) ||
+                    (node.parentElement.getAttribute && node.parentElement.getAttribute('data-testid') === 'card-deck-counter')
+                )) {
+                    if (valNorm === 'Card') newVal = USE_TW ? "卡片 " : "卡片 ";
+                    else if (valNorm === 'of') newVal = " / ";
+                } else if (node.parentElement && node.parentElement.textContent && node.parentElement.textContent.includes('For corp passwords (such as')) {
+                    if (valNorm === 'For corp passwords (such as') {
+                        newVal = USE_TW ? "如需使用公司密碼（例如 " : "如需使用公司密码（例如 ";
+                    } else if (valNorm === 'or') {
+                        newVal = USE_TW ? " 或 " : " 或 ";
+                    } else if (valNorm.startsWith('), use an external SSH session')) {
+                        newVal = valNorm.replace(/^\\), use an external SSH session/i, USE_TW ? "），請使用外部 SSH 工作階段" : "），请使用外部 SSH 会话");
+                    } else if (valNorm.startsWith('. For non-corp passwords')) {
+                        newVal = USE_TW ? "。對於非公司密碼或 SSH 密碼複雜密碼，請允許下一次提示並重新執行指令。" : "。对于非公司密码或 SSH 密码短语，请允许下一次提示并重新运行命令。";
+                    }
                 } else if (/^to have the agent generate a plan\\.?$/i.test(valNorm)) {
                     newVal = USE_TW ? "讓代理生成計劃。" : "让智能体生成计划。";
                 } else if ((valNorm === 'Type' || valNorm === 'and select') && node.parentElement && (
