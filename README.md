@@ -238,6 +238,12 @@ node scripts/compare_dicts.js
 
 ---
 
+## 📈 Star 增长趋势与社区生态 (Star History)
+
+[![Star History Chart](https://api.star-history.com/svg?repos=qqxpee/antigravity2-cn&type=Date)](https://star-history.com/#qqxpee/antigravity2-cn&Date)
+
+---
+
 ## 🤝 致谢
 - 感谢所有参与测试与反馈的贡献者！
 - 特别鸣谢 **[yuaotian/antigravity-proxy](https://github.com/yuaotian/antigravity-proxy)** 提供优秀的 Windows 免 TUN 强制代理注入方案。
