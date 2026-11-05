@@ -24,5 +24,8 @@
     "No subagents": "尚無子代理",
     "No active skills": "尚無啟用中的技能",
     "Agent Auto-Fix Lints": "代理自動修復 Lint 錯誤",
-    "When enabled, agent is given awareness of lint errors created by its edits and may fix them without explicit user prompting.": "啟用後，代理將能感知其編輯所產生的 Lint 錯誤，並可在未經使用者明確提示的情況下嘗試修復。"
+    "When enabled, agent is given awareness of lint errors created by its edits and may fix them without explicit user prompting.": "啟用後，代理將能感知其編輯所產生的 Lint 錯誤，並可在未經使用者明確提示的情況下嘗試修復。",
+    "Subagent that inherits the parent agent's full configuration including tools, system prompt, and model. Use this when you need to run a task in a separate conversation context but with the same capabilities as the current agent.": "繼承父級代理完整設定（含工具集、系統提示詞與模型）的通用子代理。適用於在獨立的對話上下文中推進任務，且保持與主代理一致的完整能力。",
+    "Research subagent with read-only tools for exploring the codebase, searching the web, and reading files. Delegate to this agent when you need to run a task in a separate conversation context, when a research task requires many search and file-reading steps that would clutter your context, or when you need a broad survey of the codebase or documentation. Prefer doing research yourself for quick, targeted lookups. This agent runs in a read-only sandbox with no network access.": "搭載唯讀工具鏈的調研型子代理，專注探索程式碼庫、搜尋網路與閱讀檔案。適用於包含大量讀取檔案與大範圍搜尋、避免污染主對話上下文的繁雜調研任務；在隔離的唯讀沙箱中安全執行。",
+    "Generates or edits images from a brief and replies with the saved file paths.": "根據提示詞與設計簡報產生或編輯影像，並將儲存至本機的檔案路徑傳回對話。"
 }

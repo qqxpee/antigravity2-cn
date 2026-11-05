@@ -339,5 +339,15 @@
     "Remove From Split": "退出拆分",
     "Show in File Explorer": "在文件资源管理器中显示",
     "Reveal in Finder": "在访达中显示",
-    "Show in File Manager": "在文件管理器中显示"
+    "Show in File Manager": "在文件管理器中显示",
+    "Design, Creative & Media": "设计、创意与多媒体",
+    "Design, creative, and media tools.": "设计、创意与多媒体创作工具。",
+    "Productivity & Project Management": "生产力与项目管理",
+    "Plan work, track issues, sign documents, and manage your notes and files.": "统筹规划工作、跟踪事务工单、在线签署合同并整理笔记与文件。",
+    "Cloud Hosting & Deployment": "云端托管与部署",
+    "Deploy and host your apps, sites, and their backends.": "部署并托管您的 Web 应用、站点及后端云服务。",
+    "Developer Tools": "开发者工具箱",
+    "APIs, services, and tools to build, test, secure, and run your apps.": "涵盖构建、测试、安全审计与运行应用所需的 API、云服务与效率工具。",
+    "Business": "商业与业务运营",
+    "Payments, CRM, accounting, data, identity, customer support, marketing, and workflow automation.": "涵盖跨境支付、CRM 客户管理、财务会计、数据治理、身份鉴权、客户支持、数字营销与业务流自动化。"
 }
