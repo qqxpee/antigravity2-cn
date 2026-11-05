@@ -511,6 +511,14 @@ function generateJs() {
                             newAttr = t.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => {
                                 return USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？");
                             });
+                        } else if (/^(.+?),\\s+voice\\s+(\\d+)\\s+of\\s+(\\d+)$/i.test(t)) {
+                            newAttr = t.replace(/^(.+?),\\s+voice\\s+(\\d+)\\s+of\\s+(\\d+)$/i, (m, name, curr, total) => {
+                                return USE_TW ? (name + "，聲音 " + curr + " / " + total) : (name + "，音色 " + curr + " / " + total);
+                            });
+                        } else if (/^Voice\\s+speed,\\s+([0-9.]+x)$/i.test(t)) {
+                            newAttr = t.replace(/^Voice\\s+speed,\\s+([0-9.]+x)$/i, (m, spd) => {
+                                return USE_TW ? ("語速，" + spd) : ("语速，" + spd);
+                            });
                         }
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
@@ -544,6 +552,18 @@ function generateJs() {
                         if (m) {
                             textChildren[0].nodeValue = USE_TW ? ('顯示另外 ' + m[1] + ' 個...') : ('显示另外 ' + m[1] + ' 个...');
                             translatedValues.set(textChildren[0], textChildren[0].nodeValue);
+                        }
+                    }
+                }
+
+                // 处理语音助手选择器底部 "Use <VoiceName>" 复合按钮
+                if (node.getAttribute && node.getAttribute('data-testid') === 'voice-picker-use') {
+                    const textChildren = Array.from(node.childNodes).filter(c => c.nodeType === Node.TEXT_NODE);
+                    for (const tc of textChildren) {
+                        const v = tc.nodeValue;
+                        if (v === 'Use ' || norm(v) === 'Use') {
+                            tc.nodeValue = USE_TW ? '使用 ' : '使用 ';
+                            translatedValues.set(tc, tc.nodeValue);
                         }
                     }
                 }
@@ -707,6 +727,34 @@ function generateJs() {
                         }
                     } else {
                         newVal = "";
+                    }
+                } else if ((valNorm === 'Use' || originalVal === 'Use ') && node.parentElement && (
+                    (typeof node.parentElement.closest === 'function' && node.parentElement.closest('[data-testid="voice-picker-use"]')) ||
+                    (node.parentElement.getAttribute && node.parentElement.getAttribute('data-testid') === 'voice-picker-use')
+                )) {
+                    newVal = USE_TW ? "使用 " : "使用 ";
+                } else if ((valNorm === 'Change' || valNorm === 'Change…' || valNorm === 'Change...') && node.parentElement && (
+                    (typeof node.parentElement.closest === 'function' && (
+                        node.parentElement.closest('[data-testid="voice-settings-change"]') ||
+                        node.parentElement.closest('[data-testid="builtin-browser-download-dir-change"]')
+                    )) ||
+                    (node.parentElement.getAttribute && (
+                        node.parentElement.getAttribute('data-testid') === 'voice-settings-change' ||
+                        node.parentElement.getAttribute('data-testid') === 'builtin-browser-download-dir-change')
+                    ))
+                ) {
+                    const hasEllipsis = valNorm.includes('…') || valNorm.includes('...');
+                    newVal = USE_TW ? (hasEllipsis ? "變更…" : "變更") : (hasEllipsis ? "更改…" : "更改");
+                } else if (node.parentElement && (
+                    (typeof node.parentElement.closest === 'function' && node.parentElement.closest('[data-testid="voice-picker"]')) ||
+                    (node.parentElement.querySelector && node.parentElement.querySelector('[data-testid="voice-picker-settings-link"]'))
+                )) {
+                    if (valNorm.startsWith('Powered by Gemini Live')) {
+                        newVal = USE_TW ? "由 Gemini Live 提供技術支援 · " : "由 Gemini Live 提供技术支持 · ";
+                    } else if (valNorm === 'You can change this in') {
+                        newVal = USE_TW ? "您稍後可在 " : "您稍后可在 ";
+                    } else if (valNorm === 'later.') {
+                        newVal = USE_TW ? " 中變更。" : " 中更改。";
                     }
                 } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
                     newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
