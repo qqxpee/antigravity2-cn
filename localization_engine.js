@@ -296,6 +296,22 @@ function generateJs() {
         return null;
     }
 
+    function translateAlwaysAllowChoice(value) {
+        if (typeof value !== 'string') return null;
+        const match = value.match(/^\\s*Yes,\\s+and always allow\\s+([\\s\\S]+?)(?:\\s+in this (project|conversation))?\\s*$/i);
+        if (!match || /^in this (?:project|conversation)$/i.test(norm(match[1]))) return null;
+
+        const scope = (match[2] || '').toLowerCase();
+        if (USE_TW) {
+            if (scope === 'conversation') return '是，且在此對話中一律允許執行 ' + match[1];
+            if (scope === 'project') return '是，且在此專案中一律允許執行 ' + match[1];
+            return '是，且一律允許執行 ' + match[1];
+        }
+        if (scope === 'conversation') return '是，且在此会话中始终允许运行 ' + match[1];
+        if (scope === 'project') return '是，且在此项目中始终允许运行 ' + match[1];
+        return '是，且始终允许运行 ' + match[1];
+    }
+
     // ==========================================
     // 原生系统右键菜单 (Native Context Menu) 汉化拦截
     // ==========================================
@@ -469,6 +485,11 @@ function generateJs() {
                     const v = node.getAttribute(attr);
                     if (v) {
                         const t = norm(v);
+                        const alwaysAllowAttr = translateAlwaysAllowChoice(v);
+                        if (alwaysAllowAttr) {
+                            if (alwaysAllowAttr !== v) node.setAttribute(attr, alwaysAllowAttr);
+                            continue;
+                        }
                         if (isFilePathOrUri(t)) continue;
                         let newAttr = null;
                         const shortcutTrans = translateWithShortcut(t);
@@ -579,6 +600,13 @@ function generateJs() {
 
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
+
+                const alwaysAllowTrans = translateAlwaysAllowChoice(originalVal);
+                if (alwaysAllowTrans) {
+                    node.nodeValue = alwaysAllowTrans;
+                    translatedValues.set(node, alwaysAllowTrans);
+                    return;
+                }
 
                 // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本
                 const parentText = node.parentElement && node.parentElement.textContent ? node.parentElement.textContent.trim() : '';
@@ -814,14 +842,6 @@ function generateJs() {
                         else if (pLow === 'turbo mode' || pLow.includes('极速') || pLow.includes('極速')) translatedPreset = USE_TW ? "極速模式 (Turbo Mode)" : "极速模式 (Turbo Mode)";
                         else if (pLow === 'custom' || pLow.includes('自定义') || pLow.includes('自訂')) translatedPreset = USE_TW ? "自訂 (Custom)" : "自定义 (Custom)";
                         return USE_TW ? ("瞭解更多關於 " + translatedPreset + " 的詳細資訊") : ("了解更多关于 " + translatedPreset + " 的信息");
-                    });
-                } else if (/^Yes, and always allow '(.+)' in this project$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Yes, and always allow '(.+)' in this project$/i, (match, cmd) => {
-                        return USE_TW ? ("是，且在此專案中一律允許執行 '" + cmd + "'") : ("是，且在此项目中始终允许运行 '" + cmd + "'");
-                    });
-                } else if (/^Yes, and always allow '(.+)'$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Yes, and always allow '(.+)'$/i, (match, cmd) => {
-                        return USE_TW ? ("是，且一律允許執行 '" + cmd + "'") : ("是，且始终允许运行 '" + cmd + "'");
                     });
                 } else if (/^(\\d+) tools? enabled$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^(\\d+) tools? enabled$/i, (match, num) => {

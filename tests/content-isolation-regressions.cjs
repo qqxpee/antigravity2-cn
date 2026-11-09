@@ -138,3 +138,90 @@ test('input and textarea placeholders and titles are translated while values rem
     assert.equal(draft.getAttribute('placeholder'), '搜索会话...');
     assert.equal(draft.value, 'Settings');
 });
+
+test('dynamic permission prompt titles from the reported screens are translated', async t => {
+    const titles = [
+        ['probe', 'Allow probe local environment?', '是否允许探测本地环境？'],
+        ['written', 'Allow verify written file?', '是否允许验证已写入的文件？'],
+        ['recycle', 'Allow verify recycle and network?', '是否允许验证回收站及网络？'],
+        ['reachability', 'Allow network reachability check?', '是否允许检查网络连通性？'],
+    ];
+    const w = await fixture(t, titles.map(([id]) => `<h2 id="${id}"></h2>`).join(''), window => {
+        for (const [id, source] of titles) window.document.getElementById(id).textContent = source;
+        const label = window.document.createElement('button');
+        label.id = 'aria-title';
+        label.setAttribute('aria-label', titles[3][1]);
+        window.document.body.appendChild(label);
+    });
+    for (const [id, , expected] of titles) {
+        assert.equal(w.document.getElementById(id).textContent, expected, id);
+    }
+    assert.equal(w.document.getElementById('aria-title').getAttribute('aria-label'), titles[3][2]);
+});
+
+test('dynamic always-allow choices translate around commands without changing command payloads', async t => {
+    const examples = [
+        {
+            id: 'conversation',
+            payload: `'$p="$HOME\\.gemini\\GEMINI.md"; $b=[IO.File]::ReadAllBytes($p); "bytes=$($b.Length)"'`,
+            scope: ' in this conversation',
+            expectedPrefix: '是，且在此会话中始终允许运行 ',
+        },
+        {
+            id: 'project',
+            payload: `"PS=\u0024(\u0024PSVersionTable.PSVersion); Get-Content \"\u0024HOME\\.gemini\\config.json\""`,
+            scope: ' in this project',
+            expectedPrefix: '是，且在此项目中始终允许运行 ',
+        },
+        {
+            id: 'unscoped',
+            payload: `'$d="$HOME\\.gemini\\antigravity\\scratch"; New-Item -ItemType Directory -Force $d; Remove-Item $f'`,
+            scope: '',
+            expectedPrefix: '是，且始终允许运行 ',
+        },
+        {
+            id: 'network',
+            payload: `foreach($u in 'https://api.github.com','https://www.google.com'){ try { $r=Invoke-WebRequest $u -TimeoutSec 10 } catch { $_.Exception.Message } }`,
+            scope: '',
+            expectedPrefix: '是，且始终允许运行 ',
+        },
+    ];
+    const w = await fixture(t, examples.map(({ id }) => `<button id="${id}"></button>`).join(''), window => {
+        for (const { id, payload, scope } of examples) {
+            window.document.getElementById(id).textContent = `Yes, and always allow ${payload}${scope}`;
+        }
+        const aria = window.document.createElement('button');
+        aria.id = 'aria-command';
+        aria.setAttribute('aria-label', `Yes, and always allow ${examples[0].payload}${examples[0].scope}`);
+        window.document.body.appendChild(aria);
+    });
+    for (const { id, payload, expectedPrefix } of examples) {
+        const translated = w.document.getElementById(id).textContent;
+        assert.equal(translated, expectedPrefix + payload, `${id} command payload and scope must remain intact`);
+    }
+    const ariaLabel = w.document.getElementById('aria-command').getAttribute('aria-label');
+    assert.equal(ariaLabel, examples[0].expectedPrefix + examples[0].payload);
+});
+
+test('static always-allow choices retain their dictionary translations', async t => {
+    const w = await fixture(t, '<button id="project">Yes, and always allow in this project</button><button id="conversation">Yes, and always allow in this conversation</button>');
+    assert.equal(w.document.getElementById('project').textContent, '是，且在此项目中始终允许');
+    assert.equal(w.document.getElementById('conversation').textContent, '是，且在此会话中始终允许');
+});
+
+test('dynamic permission prompts keep Traditional Chinese translations', async t => {
+    const dom = createDom('<h2 id="title">Allow verify written file?</h2><button id="choice"></button>');
+    t.after(() => dom.window.close());
+    dom.window.document.getElementById('choice').textContent = 'Yes, and always allow "$HOME\\.gemini\\GEMINI.md" in this conversation';
+    dom.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(dom.window.document.getElementById('title').textContent, '是否允許驗證已寫入的檔案？');
+    assert.equal(dom.window.document.getElementById('choice').textContent, '是，且在此對話中一律允許執行 "$HOME\\.gemini\\GEMINI.md"');
+});
+
+test('permission title and command translations do not alter protected editor content', async t => {
+    const w = await fixture(t, '<h2 id="title">Allow network reachability check?</h2><pre id="code">Yes, and always allow \'command\'</pre><div contenteditable="true" id="editor">Allow verify written file?</div>');
+    assert.equal(w.document.getElementById('title').textContent, '是否允许检查网络连通性？');
+    assert.equal(w.document.getElementById('code').textContent, "Yes, and always allow 'command'");
+    assert.equal(w.document.getElementById('editor').textContent, 'Allow verify written file?');
+});
