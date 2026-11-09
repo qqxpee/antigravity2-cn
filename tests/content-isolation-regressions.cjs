@@ -185,6 +185,12 @@ test('dynamic always-allow choices translate around commands without changing co
             scope: '',
             expectedPrefix: '是，且始终允许运行 ',
         },
+        {
+            id: 'command-ending',
+            payload: 'echo run  in this conversation',
+            scope: '',
+            expectedPrefix: '是，且始终允许运行 ',
+        },
     ];
     const w = await fixture(t, examples.map(({ id }) => `<button id="${id}"></button>`).join(''), window => {
         for (const { id, payload, scope } of examples) {
@@ -207,6 +213,17 @@ test('static always-allow choices retain their dictionary translations', async t
     const w = await fixture(t, '<button id="project">Yes, and always allow in this project</button><button id="conversation">Yes, and always allow in this conversation</button>');
     assert.equal(w.document.getElementById('project').textContent, '是，且在此项目中始终允许');
     assert.equal(w.document.getElementById('conversation').textContent, '是，且在此会话中始终允许');
+});
+
+test('the permission write-in translates both UI fragments and preserves the answer', async t => {
+    const w = await fixture(t, '<label><input type="radio" value="__write_in__"><div><span id="reject">No</span><textarea id="answer" data-testid="ask-question-writein" placeholder="(tell the agent what to do instead)">No</textarea></div></label><span id="other">No</span>');
+    const answer = w.document.getElementById('answer');
+    assert.equal(w.document.getElementById('reject').textContent, '否');
+    assert.equal(answer.getAttribute('placeholder'), '（告诉智能体改做什么）');
+    assert.equal(answer.value, 'No');
+    assert.equal(answer.defaultValue, 'No');
+    assert.equal(w.document.querySelector('input').value, '__write_in__');
+    assert.equal(w.document.getElementById('other').textContent, 'No');
 });
 
 test('dynamic permission prompts keep Traditional Chinese translations', async t => {

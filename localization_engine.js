@@ -298,18 +298,21 @@ function generateJs() {
 
     function translateAlwaysAllowChoice(value) {
         if (typeof value !== 'string') return null;
-        const match = value.match(/^\\s*Yes,\\s+and always allow\\s+([\\s\\S]+?)(?:\\s+in this (project|conversation))?\\s*$/i);
+        const match = value.match(/^\\s*Yes,\\s+and always allow\\s+([\\s\\S]+)$/i);
         if (!match || /^in this (?:project|conversation)$/i.test(norm(match[1]))) return null;
 
-        const scope = (match[2] || '').toLowerCase();
+        // The client adds a scope after the command's outer quotes.
+        const scoped = match[1].match(/^('[\\s\\S]*'|"[\\s\\S]*")\\s+in this (project|conversation)\\s*$/i);
+        const command = scoped ? scoped[1] : match[1];
+        const scope = scoped?.[2].toLowerCase();
         if (USE_TW) {
-            if (scope === 'conversation') return '是，且在此對話中一律允許執行 ' + match[1];
-            if (scope === 'project') return '是，且在此專案中一律允許執行 ' + match[1];
-            return '是，且一律允許執行 ' + match[1];
+            if (scope === 'conversation') return '是，且在此對話中一律允許執行 ' + command;
+            if (scope === 'project') return '是，且在此專案中一律允許執行 ' + command;
+            return '是，且一律允許執行 ' + command;
         }
-        if (scope === 'conversation') return '是，且在此会话中始终允许运行 ' + match[1];
-        if (scope === 'project') return '是，且在此项目中始终允许运行 ' + match[1];
-        return '是，且始终允许运行 ' + match[1];
+        if (scope === 'conversation') return '是，且在此会话中始终允许运行 ' + command;
+        if (scope === 'project') return '是，且在此项目中始终允许运行 ' + command;
+        return '是，且始终允许运行 ' + command;
     }
 
     // ==========================================
@@ -606,6 +609,18 @@ function generateJs() {
                     node.nodeValue = alwaysAllowTrans;
                     translatedValues.set(node, alwaysAllowTrans);
                     return;
+                }
+
+                if (norm(originalVal) === 'No' && node.parentElement?.tagName === 'SPAN') {
+                    const writeIn = node.parentElement.nextElementSibling;
+                    const hint = '(tell the agent what to do instead)';
+                    const placeholder = writeIn?.getAttribute('placeholder');
+                    if (writeIn?.matches('textarea[data-testid="ask-question-writein"]') &&
+                        (placeholder === hint || placeholder === map.get(hint))) {
+                        node.nodeValue = '否';
+                        translatedValues.set(node, node.nodeValue);
+                        return;
+                    }
                 }
 
                 // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本

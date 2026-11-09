@@ -131,6 +131,7 @@
     "Allow running this command?": "是否允许运行此命令？",
     "Yes, allow this time": "是，仅允许本次执行",
     "No (tell the agent what to do instead)": "否（告知智能体其他操作）",
+    "(tell the agent what to do instead)": "（告诉智能体改做什么）",
     "Allow read access to this path?": "是否允许读取此路径？",
     "Allow write access to this path?": "是否允许写入此路径？",
     "Allow read/write access to this path?": "是否允许读写此路径？",
