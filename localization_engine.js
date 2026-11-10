@@ -460,11 +460,7 @@ function generateJs() {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
                 if (SKIP_TAGS.includes(tag)) return;
-                // Check before translating attributes used as isolation markers.
-                // Form values and user content must not depend on focus state.
-                if (isCodeOrEditor(node)) return;
-
-                // 翻译属性：placeholder, title, aria-label
+                // 翻译属性：placeholder, title, aria-label (即使输入框获焦时也应正常汉化 placeholder 提示)
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
                     const v = node.getAttribute(attr);
                     if (v) {
@@ -522,12 +518,17 @@ function generateJs() {
                         }
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
+                            if (attr === 'placeholder' && 'placeholder' in node) {
+                                node.placeholder = newAttr;
+                            }
                         }
                     }
                 }
 
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return;
                 if (tag === 'OPTION' && !node.hasAttribute('value')) return;
+
+                if (isCodeOrEditor(node)) return;
 
                 if (node.isContentEditable) return;
                 if (node.classList && (node.classList.contains('monaco-editor') || node.classList.contains('terminal') || node.classList.contains('xterm'))) return;
@@ -646,6 +647,29 @@ function generateJs() {
                     newVal = (USE_TW ? "發送消息 " : "发送消息 ") + valNorm.replace(/^Send message\\s+/i, '');
                 } else if (/^Queue message\\s+(Enter|⏎|\\u23ce)$/i.test(valNorm)) {
                     newVal = (USE_TW ? "排隊發送消息 " : "排队发送消息 ") + valNorm.replace(/^Queue message\\s+/i, '');
+                } else if (/^Good to see you(?:,\\s*(.+?))?[\\.!]*$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Good to see you(?:,\\s*(.+?))?[\\.!]*$/i, (m, name) => {
+                        if (name && name.trim()) return USE_TW ? ("很高興見到您，" + name.trim() + "。") : ("很高兴见到您，" + name.trim() + "。");
+                        return USE_TW ? "很高興見到您。" : "很高兴见到您。";
+                    });
+                } else if (/^Welcome back(?:,\\s*(.+?))?[\\.!]*$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Welcome back(?:,\\s*(.+?))?[\\.!]*$/i, (m, name) => {
+                        if (name && name.trim()) return USE_TW ? ("歡迎回來，" + name.trim() + "。") : ("欢迎回来，" + name.trim() + "。");
+                        return USE_TW ? "歡迎回來。" : "欢迎回来。";
+                    });
+                } else if (/^Hello,\\s*(.+?)[\\.!]*$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Hello,\\s*(.+?)[\\.!]*$/i, (m, name) => {
+                        return USE_TW ? ("你好，" + name.trim() + "。") : ("你好，" + name.trim() + "。");
+                    });
+                } else if (/^Hello[\\.!]$/i.test(valNorm)) {
+                    newVal = USE_TW ? "你好。" : "你好。";
+                } else if (/^Hi there[\\.!]*$/i.test(valNorm)) {
+                    newVal = USE_TW ? "您好。" : "您好。";
+                } else if (/^Hi\\s+([^\\s\\.!]+)[\\.!]*$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Hi\\s+([^\\s\\.!]+)[\\.!]*$/i, (m, name) => {
+                        if (name.toLowerCase() === 'there') return USE_TW ? "您好。" : "您好。";
+                        return USE_TW ? ("嗨，" + name.trim() + "。") : ("嗨，" + name.trim() + "。");
+                    });
                 } else if (/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => {
                         return USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？");
@@ -689,6 +713,28 @@ function generateJs() {
                     )
                 )) {
                     newVal = USE_TW ? "以及" : "以及";
+                } else if (valNorm === 'Variables' && node.parentElement && (
+                    (typeof node.parentElement.closest === 'function' && (
+                        node.parentElement.closest('[data-testid="trigger-cel-tokens"]') ||
+                        node.parentElement.closest('[data-testid="trigger-cel-optional-section"]')
+                    )) ||
+                    (node.parentElement.textContent && (
+                        node.parentElement.textContent.includes('Target') ||
+                        node.parentElement.textContent.includes('Fields') ||
+                        node.parentElement.textContent.includes('Helpers') ||
+                        node.parentElement.textContent.includes('目标') ||
+                        node.parentElement.textContent.includes('目標') ||
+                        node.parentElement.textContent.includes('字段') ||
+                        node.parentElement.textContent.includes('欄位')
+                    ))
+                )) {
+                    newVal = USE_TW ? "變數" : "变量";
+                } else if (valNorm === 'restore_page' && node.parentElement && (
+                    (typeof node.parentElement.classList?.contains === 'function' && node.parentElement.classList.contains('google-symbols')) ||
+                    (typeof node.parentElement.className === 'string' && node.parentElement.className.includes('google-symbols'))
+                )) {
+                    node.parentElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0" style="display:inline-block;vertical-align:middle"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+                    return;
                 } else if ((valNorm === 'Search conversations with' || valNorm === 'in the top left.') && node.parentElement && (
                     node.parentElement.textContent && node.parentElement.textContent.includes('in the top left')
                 )) {
@@ -1010,6 +1056,18 @@ function generateJs() {
                     newVal = valNorm.replace(/^Preview unavailable\\s*[—–-]\\s*(.+)$/i, (match, reason) => {
                         return (USE_TW ? "預覽不可用 — " : "预览不可用 — ") + reason;
                     });
+                } else if (/^Proceed to\\s+(.+?)\\s+\\(unsafe\\)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Proceed to\\s+(.+?)\\s+\\(unsafe\\)$/i, (m, host) => {
+                        return USE_TW ? ("繼續前往 " + host + "（不安全）") : ("继续前往 " + host + "（不安全）");
+                    });
+                } else if (/^\\(?for example, passwords, messages, or credit cards\\)?\\.?$/i.test(valNorm)) {
+                    newVal = USE_TW ? "（例如：密碼、訊息或信用卡）。" : "（例如：密码、通讯内容或信用卡）。";
+                } else if (/^may sign you out of this site\\.?$/i.test(valNorm)) {
+                    newVal = USE_TW ? "可能會導致您退出此網站。" : "可能会导致您退出此网站。";
+                } else if (/^normally uses encryption to protect your information\\. When the browser tried to connect to$/i.test(valNorm)) {
+                    newVal = USE_TW ? "通常使用加密技術來保護您的資訊。當瀏覽器本次嘗試連線至 " : "通常使用加密技术来保护您的信息。当浏览器本次尝试连接到 ";
+                } else if (/^this time, the website sent back unusual and incorrect credentials\\.?$/i.test(valNorm)) {
+                    newVal = USE_TW ? " 時，該網站傳回了異常且不正確的憑證。" : " 时，该网站发回了异常且不正确的凭据。";
                 } else if (/^(?:(Exploring|Explored|Editing|Edited|Running|Ran)\\s+)?(\\d+)\\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?)(?:,\\s*(?:(Exploring|Explored|Editing|Edited|Running|Ran)\\s+)?(\\d+)\\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?))*$/i.test(valNorm)) {
                     const verbMap = USE_TW
                         ? { exploring: '正在探索', explored: '已探索', editing: '正在編輯', edited: '已編輯', running: '正在執行', ran: '已執行' }

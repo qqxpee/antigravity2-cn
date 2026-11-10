@@ -356,6 +356,19 @@ function extractUiStringsFromBundle(js) {
         }
     }
 
+    // 4. createElement 直接传递字符串子节点 (避免子节点包含括号如 "(invoked with /browser)" 时被 ceRegex 误截断)
+    const directCeRegex = /createElement\(\s*(?:[A-Za-z0-9_$.]+|"[a-z0-9-]+")\s*,\s*(?:null|void 0|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|[A-Za-z0-9_$.]+)\s*,\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    while ((m = directCeRegex.exec(js)) !== null) {
+        addCandidate(m[1] ?? m[2], 'jsx:child');
+    }
+
+    // 5. 条件属性单侧字符串匹配 (覆盖形如 description: cond ? "str" : createElement(...) 的非对称三元表达式)
+    const condPropSingleRegex = /(?:(?:"(aria-label|data-tooltip-content)")|\b(label|sublabel|title|placeholder|description|shortDescription|tooltip|tooltipText|tooltipContent|ariaLabel|heading|subheading|subtitle|header|content|message|detail))\s*:\s*[^,?{}]+?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    while ((m = condPropSingleRegex.exec(js)) !== null) {
+        const prop = m[1] || m[2];
+        addCandidate(m[3] ?? m[4], `condProp:${prop}`);
+    }
+
     return extracted;
 }
 
