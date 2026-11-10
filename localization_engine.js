@@ -81,17 +81,10 @@ if (USE_TW) {
     const logTranslations = {
         "====== 正在安装 Antigravity 中文汉化 ======": "====== 正在安裝 Antigravity 繁體中文漢化 ======",
         "====== 正在卸载中文汉化，恢复官方原版 ======": "====== 正在卸載中文漢化，恢復官方原版 ======",
-        "====== 检测到 Antigravity 1.0 架构，正在使用 HTML 注入引擎 ======": "====== 偵測到 Antigravity 1.0 架構，正在使用 HTML 注入引擎 ======",
-        "====== 正在恢复 Antigravity 1.0 官方原版 ======": "====== 正在恢復 Antigravity 1.0 官方原版 ======",
         "[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...": "[1] 偵測到 Antigravity 用戶端正在執行，正在關閉以解除檔案鎖...",
-        "[1] 正在关闭 Antigravity 运行进程以解除文件锁...": "[1] 正在關閉 Antigravity 執行進程以解除檔案鎖...",
-        "[备份] 检测到全新官方英文版本，正在同步创建/更新官方备份包: ": "[備份] 偵測到全新官方英文版本，正在同步建立/更新官方備份包: ",
-        "[备份] 正在创建官方原始包备份: app.asar.bak ...": "[備份] 正在建立官方原始包備份: app.asar.bak ...",
         "[缓存] 已自动清理 ": "[快取] 已自動清理 ",
         " 个应用缓存目录，避免新旧版本字节码冲突。": " 個應用程式快取目錄，避免新舊版本位元組碼衝突。",
         "[签名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校验值。": "[簽名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校驗值。",
-        "[备份] 备份成功！": "[備份] 備份成功！",
-        "[备份] 已创建旧版 HTML 备份: ": "[備份] 已建立舊版 HTML 備份: ",
         "[解包] 正在使用 npx 提取 app.asar...": "[解包] 正在使用 npx 提取 app.asar...",
         "[修改] 正在向 preload.js 注入汉化代码...": "[修改] 正在向 preload.js 注入漢化程式碼...",
         "[修改] 注入成功！": "[修改] 注入成功！",
@@ -103,22 +96,15 @@ if (USE_TW) {
         "[修改] 加载页汉化注入成功！": "[修改] 載入頁漢化注入成功！",
         "[修改] 正在向 updater.js 注入更新弹窗汉化...": "[修改] 正在向 updater.js 注入更新彈出視窗漢化...",
         "[修改] 更新弹窗汉化注入成功！": "[修改] 更新彈出視窗漢化注入成功！",
-        "[打包] 正在将修改后的内容打包回 app.asar...": "[打包] 正在將修改後的內容打包回 app.asar...",
+        "[打包] 正在生成并校验汉化候选包...": "[打包] 正在產生並校驗漢化候選包...",
         "[√] Antigravity 2.0 汉化部署完成！": "[√] Antigravity 2.0 繁體中文化套用完成！",
-        "[√] Antigravity 1.0 汉化部署完成！": "[√] Antigravity 1.0 繁體中文化套用完成！",
         "[!] 未找到备份文件 app.asar.bak，可能尚未安装过汉化或备份被删除。": "[!] 未找到備份檔案 app.asar.bak，可能尚未安裝過繁中化或備份已被刪除。",
         "[还原] 正在用官方备份文件恢复...": "[還原] 正在使用官方備份檔案還原...",
-        "[还原] 已重置当前 app.asar 为官方原始备份包，以进行全新注入...": "[還原] 已重設目前 app.asar 為官方原始備份包，以進行全新注入...",
         "[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...": "[權限] 偵測到目前使用者對 macOS 應用程式目錄缺少寫入權限，正在嘗試請求管理員權限 (sudo) 重新執行...",
-        "[提示] 当前 app.asar 被锁定（可能是客户端正在运行），将使用当前包进行增量注入。": "[提示] 目前 app.asar 被鎖定（可能是應用程式正在執行），將使用目前包進行增量注入。",
-        "[还原] 已恢复 HTML: ": "[還原] 已還原 HTML: ",
-        "[还原] 已删除汉化脚本": "[還原] 已刪除中文化腳本",
         "[√] 官方 app.asar 已成功恢复！": "[√] 官方 app.asar 已成功還原！",
-        "[√] 校验值已同步，1.0 软件恢复至原始状态。": "[√] 校驗值已同步，1.0 軟體已還原至原始狀態。",
         "[错误] 手动指定的路径不存在:": "[錯誤] 手動指定的路徑不存在:",
         "[错误] 未在资源目录中找到 app.asar:": "[錯誤] 未在資源目錄中找到 app.asar:",
         "[错误] 解压后未能在指定路径找到 preload.js:": "[錯誤] 解壓後未能在指定路徑找到 preload.js:",
-        "[错误] 无法定位有效的资源(resources)目录:": "[錯誤] 無法定位有效的資源(resources)目錄:",
         "[错误] 无法定位有效的资源(resources)目录: ": "[錯誤] 無法定位有效的資源(resources)目錄: ",
         "[错误] 解包失败，可能是由于系统未安装 Node.js/npm 或者网络限制。": "[錯誤] 解包失敗，可能是由於系統未安裝 Node.js/npm 或者網路限制。",
         "[错误] 打包失败。": "[錯誤] 打包失敗。",
@@ -130,9 +116,7 @@ if (USE_TW) {
         " 识别到有效的 .app 路径，跳过重新签名。": " 識別到有效的 .app 路徑，跳過重新簽名。",
         "[探测] 成功自动识别到 Antigravity 安装目录: ": "[偵測] 成功自動識別到 Antigravity 安裝目錄: ",
         "[错误] 未找到默认安装目录，请使用 --install-dir 手动指定您的安装路径！": "[錯誤] 未找到預設安裝目錄，請使用 --install-dir 手動指定您的安裝路徑！",
-        "[!] 未找到 1.0 备份文件。": "[!] 未找到 1.0 備份檔案。",
         "详情: ": "詳情: ",
-        "[√] 注入成功: ": "[√] 注入成功: ",
         "[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。": "[跳過] 偵測到 --no-kill 參數，跳過關閉 Antigravity 執行進程。",
         "[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...": "[啟動] 偵測到安裝前反重力用戶端處於開啟狀態，正在重新啟動用戶端...",
         "[启动] 客户端启动成功！": "[啟動] 用戶端啟動成功！",
@@ -140,9 +124,8 @@ if (USE_TW) {
         "[警告] 客户端启动失败: ": "[警告] 用戶端啟動失敗: ",
         "[代理] 检测到 proxy_config 配置目录，正在注入代理模块...": "[代理] 偵測到 proxy_config 設定目錄，正在注入代理模組...",
         "[代理] 代理模块注入成功: ": "[代理] 代理模組注入成功: ",
-        "[代理] 已清理代理注入文件: ": "[代理] 已清理代理注入檔案: ",
-        "[代理警告] 注入文件 ": "[代理警告] 注入檔案 ",
-        "[代理警告] 移除代理文件 ": "[代理警告] 移除代理檔案 "
+        "[代理] 已保留代理文件（无法确认其归属，请按需手动处理）: ": "[代理] 已保留代理檔案（無法確認其歸屬，請按需手動處理）: ",
+        "[代理警告] 注入文件 ": "[代理警告] 注入檔案 "
     };
     const translateMsg = (args) => {
         return args.map(arg => {
@@ -211,7 +194,7 @@ function loadDictionary() {
 
 function generateJs() {
     const fullDict = loadDictionary();
-    const dictJson = JSON.stringify(fullDict, null, 4);
+    const dictJson = JSON.stringify(fullDict);
 
     const jsSource = `${SIGNATURE_START}
 (() => {
@@ -447,6 +430,58 @@ function generateJs() {
         }
     }
 
+    function translateExactOrDynamic(t) {
+        const usageTrans = translateUsageText(t);
+        if (usageTrans) return usageTrans;
+        const shortcutTrans = translateWithShortcut(t);
+        if (shortcutTrans) return shortcutTrans;
+        if (map.has(t)) return map.get(t);
+        const lower = t.toLowerCase();
+        if (lowerMap.has(lower)) return lowerMap.get(lower);
+        if (/^Show\\s+(\\d+)\\s+more(\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i.test(t)) {
+            return t.replace(/^Show\\s+(\\d+)\\s+more(\\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i, (m, num, p2, type) => {
+                if (type) {
+                    if (/result/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個結果...") : ("显示另外 " + num + " 个结果...");
+                    if (/command/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個指令...") : ("显示另外 " + num + " 个命令...");
+                    if (/item/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個項目...") : ("显示另外 " + num + " 个项目...");
+                    if (/option/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個選項...") : ("显示另外 " + num + " 个选项...");
+                }
+                return USE_TW ? ("顯示另外 " + num + " 個...") : ("显示另外 " + num + " 个...");
+            });
+        }
+        if (/^Show\\s+(\\d+)\\s+breakdown(s)?$/i.test(t)) {
+            return t.replace(/^Show\\s+(\\d+)\\s+breakdown(s)?$/i, (m, num) => USE_TW ? ("顯示 " + num + " 項明細") : ("显示 " + num + " 项细目"));
+        }
+        if (/^Hide\\s+breakdown(s)?$/i.test(t)) return USE_TW ? "收起明細" : "收起细目";
+        if (/^Show\\s+breakdown(s)?$/i.test(t)) return USE_TW ? "顯示明細" : "显示细目";
+        if (/^(?:\\+\\s*)?See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i.test(t)) {
+            return t.replace(/^(?:\\+\\s*)?See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (m, num) => {
+                const hasPlus = /^\\+/.test(t);
+                return (hasPlus ? "+ " : "") + (USE_TW ? ("展開另外 " + num + " 項") : ("展开另外 " + num + " 项"));
+            });
+        }
+        if (/^See\\s+more\\s+in\\s+(.+)$/i.test(t)) {
+            return t.replace(/^See\\s+more\\s+in\\s+(.+)$/i, (m, name) => USE_TW ? ("在 " + name + " 中展開更多") : ("在 " + name + " 中展开更多"));
+        }
+        if (/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i.test(t)) {
+            return t.replace(/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, del, name, count, dot) => {
+                const delPrefix = del ? (USE_TW ? "永久刪除 " : "永久删除 ") : "";
+                const suffix = dot ? "。" : "";
+                return delPrefix + name + (USE_TW ? ("（包含 " + count + " 個活躍對話）") : ("（包含 " + count + " 个活跃会话）")) + suffix;
+            });
+        }
+        if (/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i.test(t)) {
+            return t.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？"));
+        }
+        if (/^(.+?),\\s+voice\\s+(\\d+)\\s+of\\s+(\\d+)$/i.test(t)) {
+            return t.replace(/^(.+?),\\s+voice\\s+(\\d+)\\s+of\\s+(\\d+)$/i, (m, name, curr, total) => USE_TW ? (name + "，聲音 " + curr + " / " + total) : (name + "，音色 " + curr + " / " + total));
+        }
+        if (/^Voice\\s+speed,\\s+([0-9.]+x)$/i.test(t)) {
+            return t.replace(/^Voice\\s+speed,\\s+([0-9.]+x)$/i, (m, spd) => USE_TW ? ("語速，" + spd) : ("语速，" + spd));
+        }
+        return null;
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
@@ -466,56 +501,7 @@ function generateJs() {
                     if (v) {
                         const t = norm(v);
                         if (isFilePathOrUri(t)) continue;
-                        let newAttr = null;
-                        const shortcutTrans = translateWithShortcut(t);
-                        const usageTrans = translateUsageText(t);
-                        if (usageTrans) newAttr = usageTrans;
-                        else if (shortcutTrans) newAttr = shortcutTrans;
-                        else if (map.has(t)) newAttr = map.get(t);
-                        else if (lowerMap.has(t.toLowerCase())) newAttr = lowerMap.get(t.toLowerCase());
-                        else if (/^Show\\s+(\\d+)\\s+more/i.test(t)) {
-                            newAttr = t.replace(/^Show\\s+(\\d+)\\s+more(\\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i, (m, num, p2, type) => {
-                                if (type) {
-                                    if (/result/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個結果...") : ("显示另外 " + num + " 个结果...");
-                                    if (/command/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個命令...") : ("显示另外 " + num + " 个命令...");
-                                    if (/item/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個項目...") : ("显示另外 " + num + " 个项目...");
-                                    if (/option/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個選項...") : ("显示另外 " + num + " 个选项...");
-                                }
-                                return USE_TW ? ("顯示另外 " + num + " 個...") : ("显示另外 " + num + " 个...");
-                            });
-                        } else if (/^Show\\s+(\\d+)\\s+breakdown(s)?$/i.test(t)) {
-                            newAttr = t.replace(/^Show\\s+(\\d+)\\s+breakdown(s)?$/i, (m, num) => {
-                                return USE_TW ? ("顯示 " + num + " 項明細") : ("显示 " + num + " 项细目");
-                            });
-                        } else if (/^Hide\\s+breakdown(s)?$/i.test(t)) {
-                            newAttr = USE_TW ? "收起明細" : "收起细目";
-                        } else if (/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i.test(t)) {
-                            newAttr = t.replace(/^See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (m, num) => {
-                                return USE_TW ? ("展開另外 " + num + " 項") : ("展开另外 " + num + " 项");
-                            });
-                        } else if (/^See\\s+more\\s+in\\s+(.+)$/i.test(t)) {
-                            newAttr = t.replace(/^See\\s+more\\s+in\\s+(.+)$/i, (m, name) => {
-                                return USE_TW ? ("在 " + name + " 中展開更多") : ("在 " + name + " 中展开更多");
-                            });
-                        } else if (/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i.test(t)) {
-                            newAttr = t.replace(/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, del, name, count, dot) => {
-                                const delPrefix = del ? (USE_TW ? "永久刪除 " : "永久删除 ") : "";
-                                const suffix = dot ? "。" : "";
-                                return delPrefix + name + (USE_TW ? ("（包含 " + count + " 個活躍對話）") : ("（包含 " + count + " 个活跃会话）")) + suffix;
-                            });
-                        } else if (/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i.test(t)) {
-                            newAttr = t.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => {
-                                return USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？");
-                            });
-                        } else if (/^(.+?),\\s+voice\\s+(\\d+)\\s+of\\s+(\\d+)$/i.test(t)) {
-                            newAttr = t.replace(/^(.+?),\\s+voice\\s+(\\d+)\\s+of\\s+(\\d+)$/i, (m, name, curr, total) => {
-                                return USE_TW ? (name + "，聲音 " + curr + " / " + total) : (name + "，音色 " + curr + " / " + total);
-                            });
-                        } else if (/^Voice\\s+speed,\\s+([0-9.]+x)$/i.test(t)) {
-                            newAttr = t.replace(/^Voice\\s+speed,\\s+([0-9.]+x)$/i, (m, spd) => {
-                                return USE_TW ? ("語速，" + spd) : ("语速，" + spd);
-                            });
-                        }
+                        const newAttr = translateExactOrDynamic(t);
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
                             if (attr === 'placeholder' && 'placeholder' in node) {
@@ -632,17 +618,10 @@ function generateJs() {
                 let newVal = originalVal;
                 const valLower = valNorm.toLowerCase();
                 
-                // 1. 精确匹配（含大小写自动纠正与快捷键检测）
-                const shortcutTrans = translateWithShortcut(valNorm);
-                const usageTrans = translateUsageText(valNorm);
-                if (usageTrans) {
-                    newVal = usageTrans;
-                } else if (shortcutTrans) {
-                    newVal = shortcutTrans;
-                } else if (map.has(valNorm)) {
-                    newVal = map.get(valNorm);
-                } else if (lowerMap.has(valLower)) {
-                    newVal = lowerMap.get(valLower);
+                // 1. 精确匹配与通用动态模式（含大小写自动纠正与快捷键检测）
+                const commonTrans = translateExactOrDynamic(valNorm);
+                if (commonTrans !== null) {
+                    newVal = commonTrans;
                 } else if (/^Send message\\s+(Enter|⏎|\\u23ce)$/i.test(valNorm)) {
                     newVal = (USE_TW ? "發送消息 " : "发送消息 ") + valNorm.replace(/^Send message\\s+/i, '');
                 } else if (/^Queue message\\s+(Enter|⏎|\\u23ce)$/i.test(valNorm)) {
@@ -670,10 +649,7 @@ function generateJs() {
                         if (name.toLowerCase() === 'there') return USE_TW ? "您好。" : "您好。";
                         return USE_TW ? ("嗨，" + name.trim() + "。") : ("嗨，" + name.trim() + "。");
                     });
-                } else if (/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Hi\\s+(.+?),\\s+what can we get done today\\??$/i, (m, name) => {
-                        return USE_TW ? ("嗨 " + name + "，今天有什麼我們可以一起完成的？") : ("嗨 " + name + "，今天有什么我们可以一起完成的？");
-                    });
+
                 } else if (/^What can we get done today\\??$/i.test(valNorm)) {
                     newVal = USE_TW ? "今天有什麼我們可以一起完成的？" : "今天有什么我们可以一起完成的？";
                 } else if (/^Select all in$/i.test(valNorm)) {
@@ -802,28 +778,7 @@ function generateJs() {
                     } else if (valNorm === 'later.') {
                         newVal = USE_TW ? " 中變更。" : " 中更改。";
                     }
-                } else if (/^The AlloyDB for PostgreSQL remote/i.test(valNorm)) {
-                    newVal = USE_TW ? "AlloyDB for PostgreSQL 遠端 MCP 伺服器可讓您存取並執行 AlloyDB 工具，用於管理 AlloyDB 叢集及執行個體、管理使用者，以及建立和復原資料備份。" : "AlloyDB for PostgreSQL 远程 MCP 服务器可让您访问并运行 AlloyDB 工具，用于管理 AlloyDB 集群及实例、管理用户，以及创建和恢复数据备份。";
-                } else if (/^The Cloud SQL remote/i.test(valNorm)) {
-                    newVal = USE_TW ? "Cloud SQL 遠端 MCP 伺服器可讓您存取並執行 Cloud SQL 工具，用於管理 Cloud SQL 執行個體、管理使用者、建立和復原資料備份及資料庫維運。" : "Cloud SQL 远程 MCP 服务器可让您访问并运行 Cloud SQL 工具，用于管理 Cloud SQL 实例、管理用户、创建和恢复数据备份及数据库运维。";
-                } else if (/^The Spanner remote/i.test(valNorm)) {
-                    newVal = USE_TW ? "Spanner 遠端 MCP 伺服器可讓您從 AI 開發環境中存取並執行 Spanner 工具，以建立、管理和查詢分散式資料庫資源。" : "Spanner 远程 MCP 服务器可让您从 AI 开发环境中访问并运行 Spanner 工具，以创建、管理和查询分布式数据库资源。";
-                } else if (/^Ask questions\\.\\s*Get answers\\.\\s*This MCP is a server/i.test(valNorm)) {
-                    newVal = USE_TW ? "提問，即得答案。該 MCP 是供您的程式設計代理呼叫的伺服器。用英語提出問題，它會針對您的 PostHog 資料執行查詢，結果將直接呈現在您的編輯器中。" : "提问，即得答案。该 MCP 是供您的编程智能体调用的服务器。用英语提出问题，它会针对您的 PostHog 数据运行查询，结果将直接呈现在您的编辑器中。";
-                } else if (/^The GKE remote MCP server/i.test(valNorm)) {
-                    newVal = USE_TW ? "GKE 遠端 MCP 伺服器提供對 GKE Kubernetes 資源的讀寫存取權限。允許 AI 代理檢查並監控您的執行環境。" : "GKE 远程 MCP 服务器提供对 GKE Kubernetes 资源的读写权限。允许 AI 智能体检查并监控您的运行环境。";
-                } else if (/^Cloud CLI MCP Server/i.test(valNorm)) {
-                    newVal = USE_TW ? "Cloud CLI MCP 伺服器提供在遠端沙箱環境中執行 gcloud 與 bq CLI 指令的工具集。" : "Cloud CLI MCP 服务器提供在远程沙箱环境中运行 gcloud 与 bq CLI 命令的工具集。";
-                } else if (/^The Apigee API hub remote MCP server/i.test(valNorm)) {
-                    newVal = USE_TW ? "Apigee API hub 遠端 MCP 伺服器可讓您管理註冊在 Apigee API hub 中的 API、版本、規格、操作、部署、屬性、外部 API 以及相依性。" : "Apigee API hub 远程 MCP 服务器可让您管理注册在 Apigee API hub 中的 API、版本、规范、操作、部署、属性、外部 API 以及依赖项。";
-                } else if (/^The Google Home Developer MCP server/i.test(valNorm)) {
-                    newVal = USE_TW ? "Google Home Developer MCP 伺服器支援檢索 Google Home 文件、OpenThread 與 Matter 規格文件。" : "Google Home Developer MCP 服务器支持检索 Google Home 文档、OpenThread 与 Matter 规范文档。";
-                } else if (/^The Cloud Quotas MCP server/i.test(valNorm)) {
-                    newVal = USE_TW ? "Cloud Quotas MCP 伺服器支援檢視配額分配、申請提升配額以及管理 Quota Adjuster 自動調整設定。" : "Cloud Quotas MCP 服务器支持查看配额分配、申请提升配额以及管理 Quota Adjuster 自动调整配置。";
-                } else if (/^Build, edit, deploy, and manage full-stack web apps with Lovable/i.test(valNorm)) {
-                    newVal = USE_TW ? "使用自然語言，藉助 AI 應用程式建構工具 Lovable 建構、編輯、部署和管理全端 Web 應用程式。該 MCP 伺服器將您的 AI 用戶端連接至 Lovable，允許您的 AI 代理直接在偏好的編輯器或助手內互動、建立和管理 Lovable 專案。" : "使用自然语言，借助 AI 应用构建工具 Lovable 构建、编辑、部署和管理全栈 Web 应用。该 MCP 服务器将您的 AI 客户端连接至 Lovable，允许您的 AI 智能体直接在偏好的编辑器或助手中交互、创建和管理 Lovable 项目。";
-                } else if (/^Build applications with the Gemini Interactions API and Live API/i.test(valNorm)) {
-                    newVal = USE_TW ? "使用 Gemini Interactions API 與 Live API 建構應用程式，涵蓋文字生成、多輪對話、串流、函式呼叫、託管代理及即時音訊與視訊互動。" : "使用 Gemini Interactions API 和 Live API 构建应用，涵盖文本生成、多轮对话、流式传输、函数调用、托管智能体以及实时音视频交互。";
+
                 } else if (/^(?:Refreshes|You have (?:used (?:some|all) of|reached) your (?:weekly|5-hour) limit, it will fully refresh) in (\\d+) days?, (\\d+) hours?\\.?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^(?:Refreshes|You have (?:used (?:some|all) of|reached) your (?:weekly|5-hour) limit, it will fully refresh) in (\\d+) days?, (\\d+) hours?\\.?$/i, (match, d, h) => {
                         return USE_TW ? (d + " 天 " + h + " 小時後更新") : (d + " 天 " + h + " 小时后刷新");
@@ -873,24 +828,7 @@ function generateJs() {
                     newVal = valNorm.replace(/^(\\d+) tools? enabled$/i, (match, num) => {
                         return USE_TW ? (num + " 個工具已啟用") : (num + " 个工具已启用");
                     });
-                } else if (/^Show\\s+(\\d+)\\s+more(\\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Show\\s+(\\d+)\\s+more(\\s+(results?|items?|commands?|options?))?(\\.\\.\\.|…)?$/i, (match, num, p2, type) => {
-                        if (type) {
-                            if (/result/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個結果...") : ("显示另外 " + num + " 个结果...");
-                            if (/command/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個指令...") : ("显示另外 " + num + " 个命令...");
-                            if (/item/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個項目...") : ("显示另外 " + num + " 个项目...");
-                            if (/option/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個選項...") : ("显示另外 " + num + " 个选项...");
-                        }
-                        return USE_TW ? ("顯示另外 " + num + " 個...") : ("显示另外 " + num + " 个...");
-                    });
-                } else if (/^Show\\s+(\\d+)\\s+breakdown(s)?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^Show\\s+(\\d+)\\s+breakdown(s)?$/i, (match, num) => {
-                        return USE_TW ? ("顯示 " + num + " 項明細") : ("显示 " + num + " 项细目");
-                    });
-                } else if (/^Hide\\s+breakdown(s)?$/i.test(valNorm)) {
-                    newVal = USE_TW ? "收起明細" : "收起细目";
-                } else if (/^Show\\s+breakdown(s)?$/i.test(valNorm)) {
-                    newVal = USE_TW ? "顯示明細" : "显示细目";
+
                 } else if (/^Hide\\s+tools$/i.test(valNorm)) {
                     newVal = USE_TW ? "收起工具" : "收起工具";
                 } else if (/^(\\d+)\\s+tools$/i.test(valNorm)) {
@@ -921,11 +859,7 @@ function generateJs() {
                     newVal = valNorm.replace(/^See all\\s*\\((\\d+)\\)$/i, (match, num) => {
                         return USE_TW ? ("顯示全部 (" + num + ")") : ("显示全部 (" + num + ")");
                     });
-                } else if (/^(?:\\+\\s*)?See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^(?:\\+\\s*)?See\\s+(\\d+)\\s+more(?:\\s+(.+))?$/i, (match, num) => {
-                        const hasPlus = /^\\+/.test(valNorm);
-                        return (hasPlus ? "+ " : "") + (USE_TW ? ("展開另外 " + num + " 項") : ("展开另外 " + num + " 项"));
-                    });
+
                 } else if (/^Available AI Credits: (\\d+)$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^Available AI Credits: (\\d+)$/i, (match, num) => {
                         return USE_TW ? ("可用 AI 額度: " + num) : ("可用 AI 额度: " + num);
@@ -994,12 +928,7 @@ function generateJs() {
                     newVal = valNorm.replace(/^Are you sure you want to delete (the |this )?project (.+?)\\??$/i, (match, article, name) => {
                         return USE_TW ? ("您確定要刪除專案 " + name + " 嗎？") : ("您确定要删除项目 " + name + " 吗？");
                     });
-                } else if (/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i.test(valNorm)) {
-                    newVal = valNorm.replace(/^(?:(Permanently delete)\\s+)?(.+?)\\s+including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, del, name, count, dot) => {
-                        const delPrefix = del ? (USE_TW ? "永久刪除 " : "永久删除 ") : "";
-                        const suffix = dot ? "。" : "";
-                        return delPrefix + name + (USE_TW ? ("（包含 " + count + " 個活躍對話）") : ("（包含 " + count + " 个活跃会话）")) + suffix;
-                    });
+
                 } else if (/^including\\s+(\\d+)\\s+active conversations?([.。])?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^including\\s+(\\d+)\\s+active conversations?([.。])?$/i, (match, count, dot) => {
                         const suffix = dot ? "。" : "";
@@ -1105,191 +1034,10 @@ function generateJs() {
         } catch (e) {}
     }
 
-    let mcpSnifferTimer = null;
-    let lastCapturedDump = null;
-    function scheduleMcpSniffer() {
-        if (mcpSnifferTimer) clearTimeout(mcpSnifferTimer);
-        mcpSnifferTimer = setTimeout(runMcpSniffer, 600);
-    }
-
-    function extractMcpCatalog(screen) {
-        if (!screen) return null;
-        let templates = null;
-        try {
-            const findFiber = (dom) => {
-                if (!dom) return null;
-                const k = Object.keys(dom).find(key => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$'));
-                return k ? dom[k] : null;
-            };
-
-            const candidates = [
-                screen,
-                screen.querySelector('.divide-y'),
-                screen.querySelector('.divide-y > div')
-            ].filter(Boolean);
-
-            for (const dom of candidates) {
-                let fiber = findFiber(dom);
-                let queue = [fiber];
-                let visited = new Set();
-                let depth = 0;
-                while (queue.length > 0 && depth < 300) {
-                    depth++;
-                    const cur = queue.shift();
-                    if (!cur || visited.has(cur)) continue;
-                    visited.add(cur);
-
-                    if (cur.memoizedProps && Array.isArray(cur.memoizedProps.mcpTemplates) && cur.memoizedProps.mcpTemplates.length > 0) {
-                        templates = cur.memoizedProps.mcpTemplates;
-                        break;
-                    }
-                    if (cur.child) queue.push(cur.child);
-                    if (cur.sibling) queue.push(cur.sibling);
-                    if (cur.return) queue.push(cur.return);
-                }
-                if (templates) break;
-            }
-        } catch (e) {}
-
-        if (!templates || templates.length === 0) {
-            try {
-                const rows = screen.querySelectorAll('.divide-y > div');
-                if (rows && rows.length > 0) {
-                    const domItems = [];
-                    for (const row of rows) {
-                        const titleEl = row.querySelector('a, span.font-medium, .text-sm.font-medium');
-                        const descEl = row.querySelector('.line-clamp-2, .text-xs.text-muted-foreground.mt-1');
-                        const title = titleEl ? (titleEl.childNodes[0]?.textContent || titleEl.textContent || '').trim() : '';
-                        const desc = descEl ? (descEl.textContent || '').trim() : '';
-                        if (title || desc) {
-                            domItems.push({
-                                id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                                title: title,
-                                description: desc
-                            });
-                        }
-                    }
-                    if (domItems.length > 0) {
-                        templates = domItems;
-                    }
-                }
-            } catch (e) {}
-        }
-
-        return templates;
-    }
-
-    function renderBadge(screen, catalog) {
-        try {
-            if (!screen) return;
-            let badge = document.getElementById('__antigravity_mcp_badge__');
-            const searchRow = screen.querySelector('.relative.flex.items-center');
-            if (!badge && searchRow && searchRow.parentNode) {
-                badge = document.createElement('div');
-                badge.id = '__antigravity_mcp_badge__';
-                badge.className = 'text-xs text-emerald-500 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded flex items-center justify-between cursor-pointer select-none transition-all';
-                badge.style.marginTop = '6px';
-                badge.style.marginBottom = '2px';
-                searchRow.parentNode.insertBefore(badge, searchRow.nextSibling);
-            }
-            if (badge) {
-                const scText = '✓ 已自动捕获 ' + catalog.length + ' 个 MCP 服务器（点击复制 JSON）';
-                const tcText = '✓ 已自動捕獲 ' + catalog.length + ' 個 MCP 伺服器（點擊複製 JSON）';
-                badge.innerHTML = '<span>' + (USE_TW ? tcText : scText) + '</span><span style="opacity:0.75; font-size:11px;">' + (USE_TW ? '點擊複製' : '点击复制') + '</span>';
-                badge.onclick = () => {
-                    try {
-                        navigator.clipboard.writeText(JSON.stringify(catalog, null, 2));
-                        badge.innerHTML = '<span>' + (USE_TW ? '✓ 已複製 JSON 到剪貼簿！' : '✓ 已复制 JSON 到剪贴板！') + '</span>';
-                        setTimeout(() => {
-                            if (badge) badge.innerHTML = '<span>' + (USE_TW ? tcText : scText) + '</span><span style="opacity:0.75; font-size:11px;">' + (USE_TW ? '點擊複製' : '点击复制') + '</span>';
-                        }, 2000);
-                    } catch (err) {}
-                };
-            }
-        } catch (e) {}
-    }
-
-    function runMcpSniffer(retryCount = 0) {
-        try {
-            const screen = document.querySelector('[data-testid="add-mcp-screen"]');
-            if (!screen) return;
-            const items = extractMcpCatalog(screen);
-            if (!items || items.length === 0) {
-                if (retryCount < 12) {
-                    setTimeout(() => runMcpSniffer(retryCount + 1), 500);
-                }
-                return;
-            }
-
-            const catalog = items.map(item => ({
-                id: item.id || '',
-                title: item.title || '',
-                description: item.description || '',
-                link: item.link || '',
-                trustLevel: item.trustLevel || ''
-            }));
-
-            const dumpStr = JSON.stringify(catalog, null, 2);
-            if (dumpStr === lastCapturedDump) {
-                renderBadge(screen, catalog);
-                return;
-            }
-            lastCapturedDump = dumpStr;
-
-            try {
-                localStorage.setItem('__antigravity_mcp_dump__', dumpStr);
-            } catch (e) {}
-
-            window.__antigravity_mcp_dump__ = catalog;
-            window.__exportMcpCatalog = function() {
-                console.log(dumpStr);
-                return catalog;
-            };
-
-            try {
-                const req = typeof require === 'function' ? require : null;
-                if (req) {
-                    const fs = req('fs');
-                    const path = req('path');
-                    const os = req('os');
-                    if (fs && path) {
-                        const filePaths = [
-                            os ? path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_catalog_dump.json') : null
-                        ].filter(Boolean);
-                        for (const fp of filePaths) {
-                            try {
-                                const dir = path.dirname(fp);
-                                if (fs.existsSync(dir)) {
-                                    fs.writeFileSync(fp, dumpStr, 'utf-8');
-                                    console.log('[Antigravity CN] MCP Catalog saved to: ' + fp);
-                                }
-                            } catch (err) {}
-                        }
-                    }
-                }
-            } catch (e) {}
-
-            console.log('%c[Antigravity CN] 已自动捕获 ' + catalog.length + ' 个 MCP 服务器！', 'color: #10b981; font-weight: bold;', catalog);
-            console.log('[Antigravity CN] 如需查看/导出 JSON，可在控制台执行: copy(window.__exportMcpCatalog())');
-
-            renderBadge(screen, catalog);
-        } catch (e) {}
-    }
-
     const observer = new MutationObserver(mutations => {
-        let hasMcpModal = false;
         for (const m of mutations) {
             if (m.type === 'childList') {
-                for (const n of m.addedNodes) {
-                    translateNode(n);
-                    if (!hasMcpModal && n.nodeType === 1) {
-                        if (n.getAttribute && n.getAttribute('data-testid') === 'add-mcp-screen') {
-                            hasMcpModal = true;
-                        } else if (n.querySelector && n.querySelector('[data-testid="add-mcp-screen"]')) {
-                            hasMcpModal = true;
-                        }
-                    }
-                }
+                for (const n of m.addedNodes) translateNode(n);
             } else if (m.type === 'characterData') {
                 translateNode(m.target);
             } else if (m.type === 'attributes') {
@@ -1299,7 +1047,6 @@ function generateJs() {
                 }
             }
         }
-        if (hasMcpModal) scheduleMcpSniffer();
     });
 
     const obsOpts = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'aria-labelledby', 'role'] };
@@ -1317,9 +1064,6 @@ function generateJs() {
             try {
                 observeRoot(target);
                 translateNode(target);
-                if (document.querySelector('[data-testid="add-mcp-screen"]')) {
-                    scheduleMcpSniffer();
-                }
             } catch (e) {}
         }
     };
@@ -1436,8 +1180,7 @@ function detectInstallationDir(manualDir) {
     const hasAntigravityResources = (candidate) => {
         return fs.existsSync(path.join(candidate, "resources", "app.asar")) ||
             fs.existsSync(path.join(candidate, "app.asar")) ||
-            fs.existsSync(path.join(candidate, "Contents", "Resources", "app.asar")) ||
-            fs.existsSync(path.join(candidate, "resources", "app", "product.json"));
+            fs.existsSync(path.join(candidate, "Contents", "Resources", "app.asar"));
     };
 
     if (process.platform === 'win32') {
@@ -2147,118 +1890,6 @@ function restore20(resourcesDir) {
 }
 
 // ==========================================
-// Antigravity 1.0 汉化引擎 (旧版 HTML 注入模式)
-// ==========================================
-const OLD_TARGET_FILES = [
-    path.join("resources", "app", "out", "vs", "code", "electron-browser", "workbench", "workbench-jetski-agent.html"),
-    path.join("resources", "app", "out", "vs", "code", "electron-browser", "workbench", "workbench.html")
-];
-
-function backupFiles10(installDir) {
-    for (const relPath of OLD_TARGET_FILES) {
-        const absPath = path.join(installDir, relPath);
-        const bakPath = absPath + ".bak";
-        if (fs.existsSync(absPath) && !fs.existsSync(bakPath)) {
-            fs.copyFileSync(absPath, bakPath);
-            console.log(`[备份] 已创建旧版 HTML 备份: ${path.basename(absPath)}.bak`);
-        }
-    }
-}
-
-function injectHtml10(installDir, htmlRelPath) {
-    const absPath = path.join(installDir, htmlRelPath);
-    if (!fs.existsSync(absPath)) return false;
-    
-    let content = fs.readFileSync(absPath, 'utf-8');
-    
-    const injectStr = '<script src="../../../../ag_agent_hanhua.js"></script>';
-    content = content.replace(/<script.*ag_agent_hanhua\.js.*><\/script>/g, '');
-    
-    if (content.includes('</body>')) {
-        content = content.replace('</body>', `${injectStr}</body>`);
-    } else {
-        content += injectStr;
-    }
-        
-    fs.writeFileSync(absPath, content, 'utf-8');
-    return true;
-}
-
-function updateChecksums10(installDir) {
-    const productJsonPath = path.join(installDir, "resources", "app", "product.json");
-    if (!fs.existsSync(productJsonPath)) return;
-    
-    const data = JSON.parse(fs.readFileSync(productJsonPath, 'utf-8'));
-    
-    for (const relPath of OLD_TARGET_FILES) {
-        const absPath = path.join(installDir, relPath);
-        if (fs.existsSync(absPath)) {
-            const key = relPath.replace(/\\/g, "/").replace("resources/app/out/", "");
-            
-            const fileBuffer = fs.readFileSync(absPath);
-            const hash = crypto.createHash('sha256').update(fileBuffer).digest();
-            data.checksums[key] = hash.toString('base64').replace(/=/g, '');
-        }
-    }
-    
-    fs.writeFileSync(productJsonPath, JSON.stringify(data, null, '\t'), 'utf-8');
-}
-
-function install10(installDir) {
-    console.log("====== 检测到 Antigravity 1.0 架构，正在使用 HTML 注入引擎 ======");
-    backupFiles10(installDir);
-    
-    // 生成单独的 js 汉化文件
-    const hanhuaJsPath = path.join(installDir, "resources", "app", "out", "ag_agent_hanhua.js");
-    fs.mkdirSync(path.dirname(hanhuaJsPath), { recursive: true });
-    
-    const jsContent = generateJs();
-    fs.writeFileSync(hanhuaJsPath, jsContent, 'utf-8');
-        
-    for (const html of OLD_TARGET_FILES) {
-        if (injectHtml10(installDir, html)) {
-            console.log(`[√] 注入成功: ${path.basename(html)}`);
-        }
-    }
-            
-    updateChecksums10(installDir);
-    resignAppOnMac(installDir);
-    console.log("[√] Antigravity 1.0 汉化部署完成！");
-    return true;
-}
-
-function restore10(installDir) {
-    console.log("====== 正在恢复 Antigravity 1.0 官方原版 ======");
-    let changed = false;
-    for (const relPath of OLD_TARGET_FILES) {
-        const absPath = path.join(installDir, relPath);
-        const bakPath = absPath + ".bak";
-        if (fs.existsSync(bakPath)) {
-            fs.copyFileSync(bakPath, absPath);
-            fs.unlinkSync(bakPath);
-            console.log(`[还原] 已恢复 HTML: ${path.basename(absPath)}`);
-            changed = true;
-        }
-    }
-    
-    const hanhuaJsPath = path.join(installDir, "resources", "app", "out", "ag_agent_hanhua.js");
-    if (fs.existsSync(hanhuaJsPath)) {
-        fs.unlinkSync(hanhuaJsPath);
-        console.log(`[还原] 已删除汉化脚本`);
-        changed = true;
-    }
-        
-    if (changed) {
-        updateChecksums10(installDir);
-        resignAppOnMac(installDir);
-        console.log("[√] 校验值已同步，1.0 软件恢复至原始状态。");
-    } else {
-        console.log("[!] 未找到 1.0 备份文件。");
-    }
-    return true;
-}
-
-// ==========================================
 // 代理模块管理 (Windows 平台可选注入)
 // ==========================================
 function injectProxyIfNeeded(installDir) {
@@ -2380,28 +2011,18 @@ function main() {
 
     ensureWritePermission(resourcesDir);
 
-    // 4. 根据架构执行
-    const asarPath = path.join(resourcesDir, "app.asar");
-    const isV2 = fs.existsSync(asarPath);
+    // 4. 执行安装或卸载恢复
     let success = false;
 
     if (huifu) {
         console.log("====== 正在卸载中文汉化，恢复官方原版 ======");
-        if (isV2) {
-            success = restore20(resourcesDir);
-        } else {
-            success = restore10(installDir);
-        }
+        success = restore20(resourcesDir);
         if (success) {
             restoreProxyIfNeeded(installDir);
         }
     } else {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
-        if (isV2) {
-            success = install20(resourcesDir);
-        } else {
-            success = install10(installDir);
-        }
+        success = install20(resourcesDir);
         if (success) {
             injectProxyIfNeeded(installDir);
         }
