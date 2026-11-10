@@ -229,19 +229,49 @@ function checkIfAppIsRunning() {
     return false;
 }
 
+function sleepSync(ms) {
+    try {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+    } catch (e) {
+        const start = Date.now();
+        while (Date.now() - start < ms) {}
+    }
+}
+
 function closeAntigravityProcesses() {
     console.log("[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...");
     try {
+        // 第一阶段：发送温和退出信号 (WM_CLOSE / SIGTERM)，让 Electron 执行 before-quit 保存窗口状态并安全关闭 language_server SQLite 数据库
         if (process.platform === 'win32') {
+            child_process.execSync('taskkill /im Antigravity.exe >nul 2>nul');
+        } else {
+            child_process.execSync('killall -TERM Antigravity >/dev/null 2>&1; pkill -TERM -x Antigravity >/dev/null 2>&1');
+        }
+    } catch (e) {}
+
+    // 轮询等待客户端优雅退出（最多等待 4 秒）
+    const waitStart = Date.now();
+    while (Date.now() - waitStart < 4000) {
+        sleepSync(250);
+        if (!checkIfAppIsRunning()) {
+            sleepSync(300);
+            return;
+        }
+    }
+
+    // 第二阶段：若超时仍未退出（例如开启了后台常驻或弹窗阻塞），先温和关闭 language_server 再强制结束残余进程
+    try {
+        if (process.platform === 'win32') {
+            child_process.execSync('taskkill /im language_server.exe >nul 2>nul');
+            sleepSync(400);
             child_process.execSync('taskkill /f /im Antigravity.exe /t >nul 2>nul');
         } else {
-            child_process.execSync('killall Antigravity >/dev/null 2>&1; killall "Antigravity Helper" >/dev/null 2>&1; pkill -x Antigravity >/dev/null 2>&1; pkill -f "/Contents/MacOS/Antigravity" >/dev/null 2>&1');
+            child_process.execSync('killall -TERM language_server >/dev/null 2>&1');
+            sleepSync(400);
+            child_process.execSync('killall -9 Antigravity >/dev/null 2>&1; killall -9 "Antigravity Helper" >/dev/null 2>&1; pkill -9 -x Antigravity >/dev/null 2>&1; pkill -9 -f "/Contents/MacOS/Antigravity" >/dev/null 2>&1');
         }
-    } catch (e) {
-        // ignore
-    }
-    const start = Date.now();
-    while (Date.now() - start < 1500) {}
+    } catch (e) {}
+    sleepSync(800);
 }
 
 function detectInstallationDir(manualDir) {
@@ -658,7 +688,7 @@ function main() {
     wasAppRunning = checkIfAppIsRunning();
     if (noKill) {
         console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
-    } else {
+    } else if (wasAppRunning) {
         closeAntigravityProcesses();
     }
 
