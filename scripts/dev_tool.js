@@ -289,6 +289,7 @@ function isNaturalUiString(s) {
     if (!/^[A-Z0-9\[]/.test(t)) return false;
     if (!/[a-zA-Z]{2,}/.test(t)) return false;
     if (/^M[\s\d.-]/.test(t)) return false;
+    if (/^\d+(?:px|rem|em|vh|vw|%|s|ms)?\s+(?:auto|solid|dashed|dotted|none)\b/i.test(t)) return false;
     if (/^(https?:|file:|mailto:|data:|chrome:|antigravity:|vscode:|ws:|wss:|go\/|b\/)/i.test(t)) return false;
     if (/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i.test(t)) return false;
     if (!t.includes(' ')) {
@@ -336,13 +337,13 @@ function extractUiStringsFromBundle(js) {
         addCandidate(m[5] ?? m[6], `condProp:${prop}`);
     }
 
-    const ternaryRegex = /(?:return|\b[a-zA-Z0-9_$]+\s*=)\s*[^;{}()]+?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    const ternaryRegex = /(?:return|\b[a-zA-Z0-9_$]+\s*=|,|\()\s*[^;{}()]{1,120}?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
     while ((m = ternaryRegex.exec(js)) !== null) {
         addCandidate(m[1] ?? m[2], 'ternary');
         addCandidate(m[3] ?? m[4], 'ternary');
     }
 
-    const ceRegex = /createElement\(\s*(?:[A-Za-z0-9_$.]+|"[a-z0-9-]+")\s*,\s*(?:null|void 0|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|[A-Za-z0-9_$.]+)\s*,([\s\S]{1,400}?)\)/g;
+    const ceRegex = /createElement\(\s*(?:[A-Za-z0-9_$.]+|"[a-z0-9-]+")\s*,\s*(?:null|void 0|\{[^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*\}|[A-Za-z0-9_$.]+)\s*,([\s\S]{1,400}?)\)/g;
     while ((m = ceRegex.exec(js)) !== null) {
         const childrenChunk = m[1];
         const strMatches = childrenChunk.matchAll(/(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g);
@@ -375,6 +376,78 @@ async function cmdScanUi(args = []) {
     console.log(`[*] 正在从客户端 (v${appVersion}) https://127.0.0.1:${httpsPort}/main.js 提取全量界面与悬浮提示词条...`);
     const js = await fetchUrl(`https://127.0.0.1:${httpsPort}/main.js`);
     const extracted = extractUiStringsFromBundle(js);
+
+    // 同步提取 language_server 下发的 Mendel 动态实验文案（如 Interface Layout / Onboarding Personas / Plugin Shelves）
+    if (info.csrfToken) {
+        try {
+            const mendelFlags = await new Promise((resolve, reject) => {
+                const req = https.request(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetMendelFlags`, {
+                    method: 'POST',
+                    rejectUnauthorized: false,
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-codeium-csrf-token': info.csrfToken
+                    }
+                }, res => {
+                    const chunks = [];
+                    res.on('data', c => chunks.push(c));
+                    res.on('end', () => {
+                        if (res.statusCode !== 200) return resolve([]);
+                        try {
+                            const data = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+                            resolve(data.flags || []);
+                        } catch (e) {
+                            resolve([]);
+                        }
+                    });
+                });
+                req.on('error', () => resolve([]));
+                req.write('{}');
+                req.end();
+            });
+            const addMendelStr = (raw, flagName) => {
+                if (!raw || typeof raw !== 'string') return;
+                const s = normalizeUiText(raw);
+                if (!isNaturalUiString(s)) return;
+                if (!extracted.has(s)) extracted.set(s, new Set());
+                extracted.get(s).add(`mendel:${flagName}`);
+            };
+            for (const f of mendelFlags) {
+                const val = f && f.value;
+                if (!val) continue;
+                if (f.name === 'project-4k-mode-copy' || f.name === 'agy-onboarding-personas' || f.name === 'agy-plugin-shelves') {
+                    try {
+                        const parsed = JSON.parse(val);
+                        const walk = (node) => {
+                            if (!node || typeof node !== 'object') return;
+                            if (Array.isArray(node)) {
+                                for (const item of node) walk(item);
+                                return;
+                            }
+                            for (const [k, v] of Object.entries(node)) {
+                                if (typeof v === 'string' && (k === 'title' || k === 'description' || k === 'name' || k === 'subtitle' || k === 'label')) {
+                                    addMendelStr(v, f.name);
+                                } else if (k === 'examples' && Array.isArray(v)) {
+                                    for (const ex of v) addMendelStr(ex, f.name);
+                                } else if (typeof v === 'object') {
+                                    walk(v);
+                                }
+                            }
+                        };
+                        walk(parsed);
+                    } catch (e) {}
+                } else if (f.name === 'third-party-tools-disclaimer-text') {
+                    const idx = val.indexOf('{privacyPolicyLink}');
+                    if (idx !== -1) {
+                        addMendelStr(val.slice(0, idx), f.name);
+                    } else {
+                        addMendelStr(val, f.name);
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
     const allStrings = [...extracted.keys()].sort();
     console.log(`[√] 提取完成！共扫描到 ${allStrings.length} 条界面与悬浮提示词条。`);
 

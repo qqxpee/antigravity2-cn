@@ -138,3 +138,88 @@ test('input and textarea placeholders and titles are translated while values rem
     assert.equal(draft.getAttribute('placeholder'), '搜索会话...');
     assert.equal(draft.value, 'Settings');
 });
+
+test('v2.30.0 dynamic and static UI strings translate in both SC and TC', async t => {
+    const html = `
+      <div id="port-title">Nothing is running on port 5173</div>
+      <div id="port-desc">No server is listening on port 5173 inside the remote workspace. Start it, or ask the agent to, then retry.</div>
+      <button id="unsafe">Proceed to localhost (unsafe)</button>
+      <button id="unsafe-split">Proceed to <!-- -->localhost<!-- --> (unsafe)</button>
+      <h2 id="nux-heading-split">Get Anything Done with <!-- -->Antigravity</h2>
+      <div id="cert-err">The certificate was rejected (ERR_CERT_AUTHORITY_INVALID).</div>
+      <p id="cert-adv">localhost normally uses encryption to protect your information. When the browser tried to connect to localhost this time, the website sent back unusual and incorrect credentials. The certificate is not issued by a trusted authority.</p>
+      <span id="cookie-clear">Clearing cookies and site data for <span class="font-medium">example.com</span> may sign you out of this site.</span>
+      <span id="nux-consent">Allow Google to collect and use your Interactions data, subject to the <a>Google Terms of Service</a>, to help us improve and develop Antigravity and other Google machine-learning products and models in accordance with the <a>Antigravity<!-- --> Privacy Notice</a>. You can control this from your settings at any point.</span>
+      <p id="nux-opt">Customize your experience across the agent, plugins, and product from the settings and marketplace. We won't show you ads or let advertisers influence what Antigravity says.</p>
+      <p id="nux-ctrl">Antigravity's agents are powerful and will help you get a lot done better and faster than before, but still make sure to verify the actions taken by the agent.</p>
+      <p id="nux-corp">For <span>Acme</span>, Antigravity does not collect any of your prompts, content, or model responses but will still collect general usage patterns (e.g., feature adoption, active user counts).</p>
+      <h1 id="hey-name">Hey Alice!</h1>
+      <div id="voice-stats">3 calls · 1.2 MB</div>
+      <div id="voice-del">This deletes 3 call recordings (1.2 MB) from your machine. You can't undo this.</div>
+      <div id="perm-setup" aria-label="Reads, 2 grants">Set up GitHub</div>
+      <div id="cel-step">Step 1 of 3</div>
+      <button id="cel-more">+4 more</button>
+      <div id="nux" title="Help us improve Antigravity.">One last thing before getting started...</div>
+      <div id="cel" aria-label="Available CEL helper functions">Valid CEL</div>
+      <div id="layout-kw-title">Knowledge Work</div>
+      <div id="layout-kw-desc">Simplified interface for research, writing, and everyday tasks.</div>
+      <div id="layout-se-title">Software Engineering</div>
+      <div id="layout-se-desc">Full interface for coding, developer tools, and managing agents.</div>
+      <span id="perm-subtitle">Configure what the agent can do in local and remote conversations.</span>
+      <span id="unreferenced">Not referenced by any feature (<!-- -->3<!-- -->)</span>
+      <div id="no-mcp">No MCP servers found for &quot;<!-- -->postgres<!-- -->&quot;</div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('port-title').textContent, '端口 5173 上没有正在运行的服务');
+    assert.equal(w.document.getElementById('port-desc').textContent, '远程工作区内的端口 5173 上没有正在监听的服务器。请启动该服务器，或让智能体启动它，然后重试。');
+    assert.equal(w.document.getElementById('unsafe').textContent, '继续前往 localhost（不安全）');
+    assert.equal(w.document.getElementById('unsafe-split').textContent, '继续前往 localhost（不安全）');
+    assert.equal(w.document.getElementById('nux-heading-split').textContent, '使用 Antigravity 完成任何工作');
+    assert.equal(w.document.getElementById('cert-err').textContent, '证书已被拒绝 (ERR_CERT_AUTHORITY_INVALID)。');
+    assert.equal(w.document.getElementById('cert-adv').textContent, 'localhost 通常会使用加密技术来保护您的信息。当浏览器此次尝试连接到 localhost 时，该网站发回了异常且不正确的凭据。 证书并非由受信任的机构颁发。');
+    assert.equal(w.document.getElementById('cookie-clear').textContent, '清除 example.com 的 Cookie 和网站数据可能会使您退出该网站的登录状态。');
+    assert.equal(w.document.getElementById('nux-consent').textContent, '允许 Google 在遵守《Google 服务条款》的前提下收集并使用您的交互数据，以帮助我们改进和开发 Antigravity 及其他 Google 机器学习产品与模型（遵循 Antigravity《隐私权声明》）。您可以随时在设置中控制此选项。');
+    assert.equal(w.document.getElementById('nux-opt').textContent, '在设置和插件市场中自定义涵盖智能体、插件和产品的使用体验。我们不会向您展示广告，也不会让广告商影响 Antigravity 的回答内容。');
+    assert.equal(w.document.getElementById('nux-ctrl').textContent, 'Antigravity 的智能体功能强大，能帮助您比以往更好、更快地完成大量工作，但仍请务必核实智能体所执行的操作。');
+    assert.equal(w.document.getElementById('nux-corp').textContent, '对于 Acme, Antigravity 不会收集您的任何提示词、内容或模型响应，但仍会收集一般使用模式（例如功能采用率、活跃用户数）。');
+    assert.equal(w.document.getElementById('hey-name').textContent, '嗨，Alice！');
+    assert.equal(w.document.getElementById('voice-stats').textContent, '3 次通话 · 1.2 MB');
+    assert.equal(w.document.getElementById('voice-del').textContent, '这将从您的本机删除 3 条通话录音记录 (1.2 MB)。此操作无法撤销。');
+    assert.equal(w.document.getElementById('perm-setup').getAttribute('aria-label'), '读取权限，2 项授权');
+    assert.equal(w.document.getElementById('perm-setup').textContent, '设置 GitHub');
+    assert.equal(w.document.getElementById('cel-step').textContent, '第 1 步（共 3 步）');
+    assert.equal(w.document.getElementById('cel-more').textContent, '+4 项更多');
+    assert.equal(w.document.getElementById('nux').getAttribute('title'), '帮助我们改进 Antigravity。');
+    assert.equal(w.document.getElementById('nux').textContent, '开始使用前的最后一步...');
+    assert.equal(w.document.getElementById('cel').getAttribute('aria-label'), '可用的 CEL 辅助函数');
+    assert.equal(w.document.getElementById('cel').textContent, '有效的 CEL');
+    assert.equal(w.document.getElementById('layout-kw-title').textContent, '知识办公');
+    assert.equal(w.document.getElementById('layout-kw-desc').textContent, '面向研究、写作与日常任务的精简界面。');
+    assert.equal(w.document.getElementById('layout-se-title').textContent, '软件工程');
+    assert.equal(w.document.getElementById('layout-se-desc').textContent, '面向编码、开发者工具与智能体管理的完整界面。');
+    assert.equal(w.document.getElementById('perm-subtitle').textContent, '配置智能体在本地和远程会话中可执行的操作。');
+    assert.equal(w.document.getElementById('unreferenced').textContent, '未被任何功能引用 (3)');
+    assert.equal(w.document.getElementById('no-mcp').textContent, '未找到与 "postgres" 匹配的 MCP 服务器');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('port-title').textContent, '連接埠 5173 上沒有正在執行的服務');
+    assert.equal(domTw.window.document.getElementById('unsafe').textContent, '繼續前往 localhost（不安全）');
+    assert.equal(domTw.window.document.getElementById('unsafe-split').textContent, '繼續前往 localhost（不安全）');
+    assert.equal(domTw.window.document.getElementById('nux-heading-split').textContent, '使用 Antigravity 完成任何工作');
+    assert.equal(domTw.window.document.getElementById('cookie-clear').textContent, '清除 example.com 的 Cookie 與網站資料可能會使您登出該網站。');
+    assert.equal(domTw.window.document.getElementById('perm-setup').getAttribute('aria-label'), '讀取權限，2 項授權');
+    assert.equal(domTw.window.document.getElementById('nux').getAttribute('title'), '協助我們改進 Antigravity。');
+    assert.equal(domTw.window.document.getElementById('cel').getAttribute('aria-label'), '可用的 CEL 輔助函式');
+    assert.equal(domTw.window.document.getElementById('layout-kw-title').textContent, '知識辦公');
+    assert.equal(domTw.window.document.getElementById('layout-kw-desc').textContent, '適用於研究、寫作與日常任務的精簡介面。');
+    assert.equal(domTw.window.document.getElementById('layout-se-title').textContent, '軟體工程');
+    assert.equal(domTw.window.document.getElementById('layout-se-desc').textContent, '適用於程式編寫、開發人員工具與管理代理的完整介面。');
+    assert.equal(domTw.window.document.getElementById('perm-subtitle').textContent, '設定代理在本機與遠端對話中可執行的操作。');
+    assert.equal(domTw.window.document.getElementById('unreferenced').textContent, '未被任何功能引用 (3)');
+    assert.equal(domTw.window.document.getElementById('no-mcp').textContent, '找不到與 "postgres" 相符的 MCP 伺服器');
+});
+
+

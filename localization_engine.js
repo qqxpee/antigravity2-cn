@@ -519,6 +519,24 @@ function generateJs() {
                             newAttr = t.replace(/^Voice\\s+speed,\\s+([0-9.]+x)$/i, (m, spd) => {
                                 return USE_TW ? ("語速，" + spd) : ("语速，" + spd);
                             });
+                        } else if (/^Help us improve (.+)\\.$/i.test(t)) {
+                            newAttr = t.replace(/^Help us improve (.+)\\.$/i, (m, name) => {
+                                return USE_TW ? ("協助我們改進 " + name + "。") : ("帮助我们改进 " + name + "。");
+                            });
+                        } else if (/^Review permissions for (.+)$/i.test(t)) {
+                            newAttr = t.replace(/^Review permissions for (.+)$/i, (m, name) => {
+                                return USE_TW ? ("審查 " + name + " 的權限") : ("审查 " + name + " 的权限");
+                            });
+                        } else if (/^Auth code for (.+)$/i.test(t)) {
+                            newAttr = t.replace(/^Auth code for (.+)$/i, (m, name) => {
+                                return USE_TW ? (name + " 的授權碼") : (name + " 的授权码");
+                            });
+                        } else if (/^(.+?),\\s*(\\d+)\\s+grants?$/i.test(t)) {
+                            newAttr = t.replace(/^(.+?),\\s*(\\d+)\\s+grants?$/i, (m, label, num) => {
+                                const normLbl = norm(label);
+                                const lblZh = map.get(normLbl) || lowerMap.get(normLbl.toLowerCase()) || label;
+                                return USE_TW ? (lblZh + "，" + num + " 項授權") : (lblZh + "，" + num + " 项授权");
+                            });
                         }
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
@@ -552,6 +570,21 @@ function generateJs() {
                         if (m) {
                             textChildren[0].nodeValue = USE_TW ? ('顯示另外 ' + m[1] + ' 個...') : ('显示另外 ' + m[1] + ' 个...');
                             translatedValues.set(textChildren[0], textChildren[0].nodeValue);
+                        }
+                    }
+                } else if (/^Get Anything Done with\\s+(.+)$/i.test(elText) && node.children.length === 0) {
+                    const textChildren = Array.from(node.childNodes).filter(c => c.nodeType === Node.TEXT_NODE);
+                    if (textChildren.length >= 2) {
+                        for (let i = 0; i < textChildren.length; i++) {
+                            const tc = textChildren[i];
+                            const v = norm(tc.nodeValue);
+                            if (/^Get Anything Done with$/i.test(v)) {
+                                tc.nodeValue = '使用 ';
+                                translatedValues.set(tc, tc.nodeValue);
+                            } else if (i === textChildren.length - 1 && v) {
+                                tc.nodeValue = tc.nodeValue + ' 完成任何工作';
+                                translatedValues.set(tc, tc.nodeValue);
+                            }
                         }
                     }
                 }
@@ -1024,6 +1057,190 @@ function generateJs() {
                         const n = nounMap[pm[3].toLowerCase()] || pm[3];
                         return v + pm[2] + ' ' + n;
                     }).join('，');
+                } else if (/^Nothing is running on port (\\d+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Nothing is running on port (\\d+)$/i, (match, port) => {
+                        return USE_TW ? ("連接埠 " + port + " 上沒有正在執行的服務") : ("端口 " + port + " 上没有正在运行的服务");
+                    });
+                } else if (/^Resume the conversation to start its workspace again, then start the server on port (\\d+) and retry\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Resume the conversation to start its workspace again, then start the server on port (\\d+) and retry\\.?$/i, (match, port) => {
+                        return USE_TW ? ("請繼續對話以重新啟動其工作區，然後在連接埠 " + port + " 上啟動伺服器並重試。") : ("请继续会话以重新启动其工作区，然后在端口 " + port + " 上启动服务器并重试。");
+                    });
+                } else if (/^No server is listening on port (\\d+) inside the remote workspace\\. Start it, or ask the agent to, then retry\\.?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^No server is listening on port (\\d+) inside the remote workspace\\. Start it, or ask the agent to, then retry\\.?$/i, (match, port) => {
+                        return USE_TW ? ("遠端工作區內的連接埠 " + port + " 上沒有正在監聽的伺服器。請啟動該伺服器，或讓代理啟動它，然後重試。") : ("远程工作区内的端口 " + port + " 上没有正在监听的服务器。请启动该服务器，或让智能体启动它，然后重试。");
+                    });
+                } else if (/^Proceed to (.+) \\(unsafe\\)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Proceed to (.+) \\(unsafe\\)$/i, (match, host) => {
+                        return USE_TW ? ("繼續前往 " + host + "（不安全）") : ("继续前往 " + host + "（不安全）");
+                    });
+                } else if ((valNorm === 'Proceed to' || valNorm === '(unsafe)') && parentText && /^(?:Proceed to|继续前往|繼續前往)\\s+.+\\s*(?:\\(unsafe\\)|（不安全）)$/i.test(parentText)) {
+                    if (valNorm === 'Proceed to') {
+                        newVal = USE_TW ? "繼續前往 " : "继续前往 ";
+                    } else {
+                        newVal = "（不安全）";
+                    }
+                } else if (/^(.+?) normally uses encryption to protect your information\\. When the browser tried to connect to (.+?) this time, the website sent back unusual and incorrect credentials\\.\\s*(.*)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(.+?) normally uses encryption to protect your information\\. When the browser tried to connect to (.+?) this time, the website sent back unusual and incorrect credentials\\.\\s*(.*)$/i, (match, host1, host2, tail) => {
+                        let tailZh = tail;
+                        if (tail) {
+                            const tailNorm = norm(tail);
+                            if (map.has(tailNorm)) tailZh = map.get(tailNorm);
+                            else if (/^The certificate was rejected \\((.+)\\)\\.$/i.test(tailNorm)) {
+                                tailZh = tailNorm.replace(/^The certificate was rejected \\((.+)\\)\\.$/i, (m, code) => USE_TW ? ("憑證已被拒絕 (" + code + ")。") : ("证书已被拒绝 (" + code + ")。"));
+                            }
+                        }
+                        const baseZh = USE_TW
+                            ? (host1 + " 通常會使用加密技術來保護您的資訊。當瀏覽器這次嘗試連線至 " + host2 + " 時，該網站傳回了異常且不正確的憑證。")
+                            : (host1 + " 通常会使用加密技术来保护您的信息。当浏览器此次尝试连接到 " + host2 + " 时，该网站发回了异常且不正确的凭据。");
+                        return tailZh ? (baseZh + " " + tailZh) : baseZh;
+                    });
+                } else if (/^The certificate was rejected \\((.+)\\)\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^The certificate was rejected \\((.+)\\)\\.$/i, (match, code) => {
+                        return USE_TW ? ("憑證已被拒絕 (" + code + ")。") : ("证书已被拒绝 (" + code + ")。");
+                    });
+                } else if (/^Help us improve (.+)\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Help us improve (.+)\\.$/i, (match, name) => {
+                        return USE_TW ? ("協助我們改進 " + name + "。") : ("帮助我们改进 " + name + "。");
+                    });
+                } else if (/^,?\\s*to help us improve and develop\\s+(.+?)\\s+and other Google machine-learning products and models in accordance with the$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^,?\\s*to help us improve and develop\\s+(.+?)\\s+and other Google machine-learning products and models in accordance with the$/i, (match, name) => {
+                        return USE_TW
+                            ? ("的前提下收集並使用您的互動資料，以協助我們改進與開發 " + name + " 及其他 Google 機器學習產品與模型（遵循 ")
+                            : ("的前提下收集并使用您的交互数据，以帮助我们改进和开发 " + name + " 及其他 Google 机器学习产品与模型（遵循 ");
+                    });
+                } else if (/^Get Anything Done with (.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Get Anything Done with (.+)$/i, (match, name) => {
+                        return USE_TW ? ("使用 " + name + " 完成任何工作") : ("使用 " + name + " 完成任何工作");
+                    });
+                } else if (/^Customize your experience across the agent, plugins, and product from the settings and marketplace\\. We won't show you ads or let advertisers influence what (.+) says\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Customize your experience across the agent, plugins, and product from the settings and marketplace\\. We won't show you ads or let advertisers influence what (.+) says\\.$/i, (match, name) => {
+                        return USE_TW
+                            ? ("在設定與市集中自訂涵蓋代理、外掛程式與產品的使用體驗。我們不會向您顯示廣告，也不會讓廣告商影響 " + name + " 的回答。")
+                            : ("在设置和插件市场中自定义涵盖智能体、插件和产品的使用体验。我们不会向您展示广告，也不会让广告商影响 " + name + " 的回答内容。");
+                    });
+                } else if (/^(.+)'s agents are powerful and will help you get a lot done better and faster than before, but still make sure to verify the actions taken by the agent\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(.+)'s agents are powerful and will help you get a lot done better and faster than before, but still make sure to verify the actions taken by the agent\\.$/i, (match, name) => {
+                        return USE_TW
+                            ? (name + " 的代理功能強大，能協助您比以往更好、更快地完成大量工作，但仍請務必核實代理所執行的操作。")
+                            : (name + " 的智能体功能强大，能帮助您比以往更好、更快地完成大量工作，但仍请务必核实智能体所执行的操作。");
+                    });
+                } else if (valNorm === 'For' && parentText && (
+                    parentText.includes('does not collect any of your prompts') ||
+                    parentText.includes('不会收集您的任何提示词') ||
+                    parentText.includes('不會收集您的任何提示詞')
+                )) {
+                    newVal = USE_TW ? "對於 " : "对于 ";
+                } else if (/^Hey\\s+(.+)!$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Hey\\s+(.+)!$/i, (match, name) => {
+                        return (USE_TW ? "嗨，" : "嗨，") + name + "！";
+                    });
+                } else if (/^Review permissions for (.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Review permissions for (.+)$/i, (match, name) => {
+                        return USE_TW ? ("審查 " + name + " 的權限") : ("审查 " + name + " 的权限");
+                    });
+                } else if (/^Set up\\s+(.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Set up\\s+(.+)$/i, (match, name) => {
+                        return (USE_TW ? "設定 " : "设置 ") + name;
+                    });
+                } else if (/^On top of those defaults,\\s*(.+?)\\s+requests the access below\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^On top of those defaults,\\s*(.+?)\\s+requests the access below\\.$/i, (match, name) => {
+                        return USE_TW
+                            ? (" 除上述預設權限外，" + name + " 還要求以下存取權限。")
+                            : (" 除上述默认权限外，" + name + " 还请求以下访问权限。");
+                    });
+                } else if (/^(\\d+)\\s+calls?\\s*·\\s*([0-9.]+)\\s*MB$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\\d+)\\s+calls?\\s*·\\s*([0-9.]+)\\s*MB$/i, (match, num, mb) => {
+                        return USE_TW ? (num + " 次通話 · " + mb + " MB") : (num + " 次通话 · " + mb + " MB");
+                    });
+                } else if (/^Deleted\\s+(\\d+)\\s+recordings?\\s*\\(([0-9.]+)\\s*MB\\)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Deleted\\s+(\\d+)\\s+recordings?\\s*\\(([0-9.]+)\\s*MB\\)$/i, (match, num, mb) => {
+                        return USE_TW ? ("已刪除 " + num + " 筆錄音紀錄 (" + mb + " MB)") : ("已删除 " + num + " 条录音记录 (" + mb + " MB)");
+                    });
+                } else if (/^Failed to delete recordings:\\s*(.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Failed to delete recordings:\\s*(.+)$/i, (match, err) => {
+                        return (USE_TW ? "刪除錄音紀錄失敗：" : "删除录音记录失败：") + err;
+                    });
+                } else if (/^This deletes\\s+(\\d+)\\s+call recordings?\\s*\\(([0-9.]+)\\s*MB\\)\\s+from your machine\\.\\s*You can't undo this\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^This deletes\\s+(\\d+)\\s+call recordings?\\s*\\(([0-9.]+)\\s*MB\\)\\s+from your machine\\.\\s*You can't undo this\\.$/i, (match, num, mb) => {
+                        return USE_TW
+                            ? ("這將從您的本機刪除 " + num + " 筆通話錄音紀錄 (" + mb + " MB)。此操作無法復原。")
+                            : ("这将从您的本机删除 " + num + " 条通话录音记录 (" + mb + " MB)。此操作无法撤销。");
+                    });
+                } else if (/^Step\\s+(\\d+)\\s+of\\s+(\\d+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Step\\s+(\\d+)\\s+of\\s+(\\d+)$/i, (match, a, b) => {
+                        return "第 " + a + " 步（共 " + b + " 步）";
+                    });
+                } else if (/^\\+(\\d+)\\s+more$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^\\+(\\d+)\\s+more$/i, (match, num) => {
+                        return "+" + num + (USE_TW ? " 項更多" : " 项更多");
+                    });
+                } else if (/^Not referenced by any feature\\s*\\((\\d+)\\)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Not referenced by any feature\\s*\\((\\d+)\\)$/i, (match, num) => {
+                        return USE_TW ? ("未被任何功能引用 (" + num + ")") : ("未被任何功能引用 (" + num + ")");
+                    });
+                } else if (/^Zipping\\s+(.+?)(?:\\.\\.\\.|…)?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Zipping\\s+(.+?)(?:\\.\\.\\.|…)?$/i, (match, name) => {
+                        return (USE_TW ? "正在壓縮 " : "正在压缩 ") + name + "…";
+                    });
+                } else if (valNorm === 'Zipping' && parentText && /^Zipping\\s+/i.test(parentText)) {
+                    newVal = USE_TW ? "正在壓縮 " : "正在压缩 ";
+                } else if (/^To switch accounts,\\s*sign out in the\\s+(.+?)\\s+and sign in again\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^To switch accounts,\\s*sign out in the\\s+(.+?)\\s+and sign in again\\.$/i, (match, mgr) => {
+                        const mgrZh = map.get(norm(mgr)) || mgr;
+                        return USE_TW ? ("如需切換帳號，請在" + mgrZh + "中登出並重新登入。") : ("如需切换账号，请在" + mgrZh + "中退出登录并重新登录。");
+                    });
+                } else if (/^There are currently no Build with\\s+(.+?)\\s+plugins available\\.$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^There are currently no Build with\\s+(.+?)\\s+plugins available\\.$/i, (match, name) => {
+                        return USE_TW ? ("目前尚無可用的 " + name + " 建構外掛程式。") : ("当前暂无可用的 " + name + " 构建插件。");
+                    });
+                } else if (/^No MCP servers found for\\s+"(.+)"$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^No MCP servers found for\\s+"(.+)"$/i, (match, q) => {
+                        return USE_TW ? ("找不到與「" + q + "」相符的 MCP 伺服器") : ("未找到与“" + q + "”匹配的 MCP 服务器");
+                    });
+                } else if (valNorm === 'No MCP servers found for "' && parentText && /^No MCP servers found for\\s+"/i.test(parentText)) {
+                    newVal = USE_TW ? '找不到與 "' : '未找到与 "';
+                } else if (valNorm === '"' && parentText && /^(?:No MCP servers found for|未找到与|找不到與)\\s+"/i.test(parentText)) {
+                    newVal = USE_TW ? '" 相符的 MCP 伺服器' : '" 匹配的 MCP 服务器';
+                } else if (parentText && (
+                    parentText.includes('can only be deleted by deleting that automation') ||
+                    parentText.includes('只能通过删除该自动化任务来一并删除') ||
+                    parentText.includes('只能透過刪除該自動化工作來一併刪除')
+                )) {
+                    if (/^This\\s+(.+?)\\s+is managed by the$/i.test(valNorm)) {
+                        newVal = valNorm.replace(/^This\\s+(.+?)\\s+is managed by the$/i, (m, kind) => {
+                            const kindZh = map.get(norm(kind)) || lowerMap.get(norm(kind).toLowerCase()) || kind;
+                            return (USE_TW ? "此" : "此") + kindZh + (USE_TW ? "由 " : "由 ");
+                        });
+                    } else if (valNorm === 'This') {
+                        newVal = "此";
+                    } else if (valNorm === 'is managed by the') {
+                        newVal = "由 ";
+                    }
+                } else if (valNorm === 'may sign you out of this site.') {
+                    newVal = USE_TW ? " 的 Cookie 與網站資料可能會使您登出該網站。" : " 的 Cookie 和网站数据可能会使您退出该网站的登录状态。";
+                } else if (valNorm === '(for example, passwords, messages, or credit cards).') {
+                    newVal = USE_TW ? " 竊取您的資訊（例如密碼、訊息或信用卡資訊）。" : " 窃取您的信息（例如密码、消息或信用卡信息）。";
+                } else if (valNorm === 'in your browser.' && node.parentElement && node.parentElement.textContent && (
+                    node.parentElement.textContent.includes('Finish signing in') ||
+                    node.parentElement.textContent.includes('请在浏览器中完成登录') ||
+                    node.parentElement.textContent.includes('請在瀏覽器中完成登入')
+                )) {
+                    newVal = "";
+                } else if (valNorm === '. You can control this from your settings at any point.') {
+                    newVal = USE_TW ? "）。您可以隨時在設定中控制此選項。" : "）。您可以随时在设置中控制此选项。";
+                } else if (valNorm === 'needs a few details from you before it can run.') {
+                    newVal = USE_TW ? " 需要您提供一些詳細資訊才能執行。" : " 需要您提供一些详细信息才能运行。";
+                } else if (parentText && (
+                    parentText.includes('already exists') ||
+                    parentText.includes('已在此电脑上存在') ||
+                    parentText.includes('已在此電腦上存在') ||
+                    parentText.includes('）已存在。')
+                )) {
+                    if (valNorm === 'An' || valNorm === 'A') newVal = "";
+                    else if (valNorm === 'automation') newVal = USE_TW ? "自動化工作 " : "自动化任务 ";
+                    else if (valNorm === 'scheduled task') newVal = USE_TW ? "排程工作 " : "计划任务 ";
+                    else if (valNorm === 'with the ID "' || valNorm === 'with ID') newVal = USE_TW ? "（ID 為 " : "（ID 为 ";
+                    else if (valNorm === '" already exists.' || valNorm === 'already exists.') newVal = "）已存在。";
                 } else if (valNorm.length > 15 && valNorm.includes(' ')) {
                     // 2. 长句子串滑动替换与末尾截断智能匹配 (仅当原句带有省略号截断时，才允许基于长前缀匹配；不含空格的标识符不进行子串替换)
                     const isTruncated = (valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35;
@@ -1661,7 +1878,7 @@ function validateAsarCandidate(sourcePath, candidatePath) {
     if (!preload || !preload.body || !preload.body.includes(Buffer.from(SIGNATURE_START))) throw new Error('Missing localization payload');
 }
 
-function install20(resourcesDir) {
+function install20(resourcesDir, noKill = false) {
     const asarPath = path.join(resourcesDir, "app.asar");
     const bakPath = path.join(resourcesDir, "app.asar.bak");
 
@@ -1746,6 +1963,9 @@ function install20(resourcesDir) {
         'Command Palette': '命令選擇區',
         'Docs': '說明文件',
         'Check for Updates': '檢查更新',
+        'Checking for Updates...': '正在檢查更新...',
+        'Downloading Update...': '正在下載更新...',
+        'Restart to Update': '重新啟動以更新',
         'Toggle Developer Tools': '切換開發人員工具',
         'Undo': '復原',
         'Redo': '重做',
@@ -1757,6 +1977,7 @@ function install20(resourcesDir) {
         'Maximize': '最大化',
         'Close': '關閉',
         'Zoom': '縮放',
+        'Actual Size': '實際大小',
         'Reset Zoom': '重設縮放',
         'Zoom In': '放大',
         'Zoom Out': '縮小',
@@ -1799,6 +2020,9 @@ function install20(resourcesDir) {
         'Command Palette': '命令面板',
         'Docs': '文档',
         'Check for Updates': '检查更新',
+        'Checking for Updates...': '正在检查更新...',
+        'Downloading Update...': '正在下载更新...',
+        'Restart to Update': '重启以更新',
         'Toggle Developer Tools': '切换开发者工具',
         'Undo': '撤销',
         'Redo': '重做',
@@ -1810,6 +2034,7 @@ function install20(resourcesDir) {
         'Maximize': '最大化',
         'Close': '关闭',
         'Zoom': '缩放',
+        'Actual Size': '实际大小',
         'Reset Zoom': '重置缩放',
         'Zoom In': '放大',
         'Zoom Out': '缩小',
@@ -1852,6 +2077,7 @@ function install20(resourcesDir) {
                 mnemonic = "(&" + m[1] + ")";
                 cleanLabel = label.replace('&', '');
             }
+            if (!item._origLabel) item._origLabel = label;
             if (!item._origCleanLabel) item._origCleanLabel = cleanLabel;
             if (translations[cleanLabel]) {
                 item.label = translations[cleanLabel] + mnemonic;
@@ -1871,6 +2097,7 @@ function install20(resourcesDir) {
         menu.items.find = function(pred, thisArg) {
             return origFind((it, idx, arr) => {
                 if (pred.call(thisArg, it, idx, arr)) return true;
+                if (it && it._origLabel && pred.call(thisArg, { ...it, label: it._origLabel }, idx, arr)) return true;
                 if (it && it._origCleanLabel && pred.call(thisArg, { ...it, label: it._origCleanLabel }, idx, arr)) return true;
                 return false;
             });
@@ -1914,10 +2141,14 @@ function install20(resourcesDir) {
     const translations = ${USE_TW ? `{
         'No agents running': '無執行中的代理',
         'Open Antigravity': '開啟 Antigravity',
+        'Connect to WSL': '連線至 WSL',
+        'Reopen Locally': '在本機重新開啟',
         'Quit': '結束'
     }` : `{
         'No agents running': '无运行中的智能体',
         'Open Antigravity': '打开 Antigravity',
+        'Connect to WSL': '连接到 WSL',
+        'Reopen Locally': '在本地重新打开',
         'Quit': '退出'
     }`};
     for (const item of actions) {
@@ -1925,9 +2156,9 @@ function install20(resourcesDir) {
         if (translations[item.label]) {
             item.label = translations[item.label];
         } else if (item.label.startsWith('Open ')) {
-            item.label = (USE_TW ? '開啟 ' : '打开 ') + item.label.slice(5);
+            item.label = (${USE_TW ? "'開啟 '" : "'打开 '"}) + item.label.slice(5);
         } else if (item.label === 'Quit') {
-            item.label = USE_TW ? '結束' : '退出';
+            item.label = ${USE_TW ? "'結束'" : "'退出'"};
         }
     }
     /* --- TRAY TRANSLATION END --- */`;
@@ -1936,6 +2167,31 @@ function install20(resourcesDir) {
         if (trayPatched === trayCleaned) {
             console.warn(`[警告] 未能在 tray.js 中找到 createTray 函数插入点。`);
         }
+
+        // 1b. 注入 insertTrayMenuItem 里的动态菜单项翻译块
+        const targetInsert = /function\s+insertTrayMenuItem\s*\(([^)]*)\)\s*\{/;
+        const replacementInsert = (match, args) => `function insertTrayMenuItem(${args}) {
+    /* --- TRAY TRANSLATION START --- */
+    const trayItemTranslations = ${USE_TW ? `{
+        'Connect to WSL': '連線至 WSL',
+        'Reopen Locally': '在本機重新開啟',
+        'Open Antigravity': '開啟 Antigravity',
+        'Quit': '結束'
+    }` : `{
+        'Connect to WSL': '连接到 WSL',
+        'Reopen Locally': '在本地重新打开',
+        'Open Antigravity': '打开 Antigravity',
+        'Quit': '退出'
+    }`};
+    if (options && options.label) {
+        if (trayItemTranslations[options.label]) {
+            options = { ...options, label: trayItemTranslations[options.label] };
+        } else if (options.label.startsWith('Open ')) {
+            options = { ...options, label: (${USE_TW ? "'開啟 '" : "'打开 '"}) + options.label.slice(5) };
+        }
+    }
+    /* --- TRAY TRANSLATION END --- */`;
+        trayPatched = trayPatched.replace(targetInsert, replacementInsert);
         
         // 2. 注入系統匣圖示點兩下彈出/聚焦 Antigravity 介面事件
         const dblClickTarget = /tray\.setContextMenu\(contextMenu\);/;
@@ -1984,12 +2240,19 @@ function install20(resourcesDir) {
         console.log(`[修改] 加载页汉化注入成功！`);
     }
 
-    // 3.4 注入 updater.js (更新弹窗汉化)
+    // 3.4 注入 updater.js (更新弹窗及菜单状态汉化)
     const updaterPath = path.join(tempDir, "dist", "updater.js");
     if (fs.existsSync(updaterPath)) {
         console.log(`[修改] 正在向 updater.js 注入更新弹窗汉化...`);
         let updaterContent = fs.readFileSync(updaterPath, 'utf-8');
         
+        // 同步汉化 MenuUpdateStep 枚举值，确保 menu.js 中 updateActions[menuItem.label] 点击事件与状态切换一致
+        updaterContent = updaterContent
+            .replace('MenuUpdateStep["CheckForUpdates"] = "Check for Updates";', USE_TW ? 'MenuUpdateStep["CheckForUpdates"] = "檢查更新";' : 'MenuUpdateStep["CheckForUpdates"] = "检查更新";')
+            .replace('MenuUpdateStep["CheckingForUpdates"] = "Checking for Updates...";', USE_TW ? 'MenuUpdateStep["CheckingForUpdates"] = "正在檢查更新...";' : 'MenuUpdateStep["CheckingForUpdates"] = "正在检查更新...";')
+            .replace('MenuUpdateStep["DownloadingUpdate"] = "Downloading Update...";', USE_TW ? 'MenuUpdateStep["DownloadingUpdate"] = "正在下載更新...";' : 'MenuUpdateStep["DownloadingUpdate"] = "正在下载更新...";')
+            .replace('MenuUpdateStep["RestartToUpdate"] = "Restart to Update";', USE_TW ? 'MenuUpdateStep["RestartToUpdate"] = "重新啟動以更新";' : 'MenuUpdateStep["RestartToUpdate"] = "重启以更新";');
+
         // 替换 Check for Updates 弹窗的属性
         const targetOptions = `                title: 'Check for Updates',
                 message: 'No updates available',
@@ -2039,7 +2302,17 @@ function install20(resourcesDir) {
         throw error;
     }
 
-    cleanElectronCache();
+    if (!(noKill && wasAppRunning)) {
+        cleanElectronCache();
+    }
+    if (buildDir && !retainRecoveryFiles) {
+        try {
+            fs.rmSync(buildDir, { recursive: true, force: true });
+            buildDir = undefined;
+        } catch (error) {
+            console.warn(`[提示] 临时目录已保留: ${buildDir}`);
+        }
+    }
     resignAppOnMac(resourcesDir);
     console.log(`[√] Antigravity 2.0 汉化部署完成！`);
     return true;
@@ -2340,7 +2613,7 @@ function main() {
     } else {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
         if (isV2) {
-            success = install20(resourcesDir);
+            success = install20(resourcesDir, noKill);
         } else {
             success = install10(installDir);
         }
@@ -2349,8 +2622,8 @@ function main() {
         }
     }
 
-    // 5. 校验通过且原来客户端在运行，则自动重新启动客户端
-    if (success && wasAppRunning) {
+    // 5. 校验通过且原来客户端在运行（且未指定 --no-kill），则自动重新启动客户端
+    if (success && wasAppRunning && !noKill) {
         console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
         try {
             if (process.platform === 'win32') {
