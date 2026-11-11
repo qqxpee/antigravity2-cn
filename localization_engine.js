@@ -767,7 +767,8 @@ function main() {
     }
 
     // 5. 校验通过且原来客户端在运行，则自动重新启动客户端
-    if (success && wasAppRunning) {
+    const isAppBundle = installDir.endsWith('.app') || fs.existsSync(path.join(installDir, 'Contents', 'MacOS')) || (process.platform === 'win32' && fs.existsSync(path.join(installDir, 'Antigravity.exe')));
+    if (success && wasAppRunning && isAppBundle) {
         console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
         try {
             if (process.platform === 'win32') {
