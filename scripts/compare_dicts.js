@@ -23,6 +23,7 @@ function compareDicts() {
     
     // Check if the set of files is identical
     const allFiles = Array.from(new Set([...scFiles, ...tcFiles])).sort();
+    const seenAcrossFiles = new Map();
     
     for (const file of allFiles) {
         const scFilePath = path.join(dictsDir, file);
@@ -49,11 +50,17 @@ function compareDicts() {
             const scKeySet = new Set(scKeys);
             const tcKeySet = new Set(tcKeys);
             
-            // Check keys in SC but not in TC
+            // Check keys in SC but not in TC, and cross-file duplicate keys
             for (const key of scKeys) {
                 if (!tcKeySet.has(key)) {
                     console.error(`Error in ${file}: Key "${key}" exists in dicts but is missing in dicts_tw.`);
                     hasError = true;
+                }
+                if (seenAcrossFiles.has(key)) {
+                    console.error(`Error: Duplicate key "${key}" found in both ${seenAcrossFiles.get(key)} and ${file}.`);
+                    hasError = true;
+                } else {
+                    seenAcrossFiles.set(key, file);
                 }
             }
             
