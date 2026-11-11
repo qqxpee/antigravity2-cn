@@ -169,3 +169,155 @@ test('permission write-in translates reject label and placeholder while preservi
     assert.equal(answer.value, 'No');
     assert.equal(w.document.getElementById('other').textContent, 'No');
 });
+
+test('Worked for / Thought for progress headers translate trailing update counts in SC and TC', async t => {
+    const html = `
+      <button id="worked-combined">Worked for 3m · 1 update</button>
+      <button id="thought-combined">Thought for 12s · 4 updates</button>
+      <button id="split-header"><span>Worked for 3m</span><span> · 1 update</span></button>
+      <span id="standalone-update">2 updates</span>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('worked-combined').textContent, '已工作 3 分钟 · 1 项更新');
+    assert.equal(w.document.getElementById('thought-combined').textContent, '已思考 12 秒 · 4 项更新');
+    assert.equal(w.document.getElementById('split-header').textContent, '已工作 3 分钟 · 1 项更新');
+    assert.equal(w.document.getElementById('standalone-update').textContent, '2 项更新');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('worked-combined').textContent, '已工作 3 分鐘 · 1 項更新');
+    assert.equal(domTw.window.document.getElementById('thought-combined').textContent, '已思考 12 秒 · 4 項更新');
+    assert.equal(domTw.window.document.getElementById('split-header').textContent, '已工作 3 分鐘 · 1 項更新');
+    assert.equal(domTw.window.document.getElementById('standalone-update').textContent, '2 項更新');
+});
+
+test('Swarm sidecar UI translates chrome, graph replay, legend and filters while isolating board messages and roster IDs', async t => {
+    const swarmHtml = `
+      <div id="board" data-testid="swarm-board">
+        <header class="header">
+          <div class="header-row">
+            <h1 id="swarm-title" data-testid="swarm-title">PPT正式汇报四稿深析与技能学习机制</h1>
+            <span id="live" title="Updates automatically" data-testid="swarm-live"><span id="live-label">Live</span></span>
+          </div>
+          <nav class="tabs" aria-label="Swarm views" data-testid="swarm-tabs">
+            <button id="tab-ov" data-testid="swarm-tab-overview">Overview</button>
+            <button id="tab-feed" data-testid="swarm-tab-feed">Board<span id="cnt-feed">10</span></button>
+            <button id="tab-mem" data-testid="swarm-tab-members">Members<span id="cnt-mem">6</span></button>
+            <button id="tab-graph" data-testid="swarm-tab-graph">Graph</button>
+            <button id="tab-raw" data-testid="swarm-tab-raw">Raw</button>
+          </nav>
+        </header>
+        <section id="tab-body-feed">
+          <input id="f-search" type="search" placeholder="Search" aria-label="Search posts">
+          <button id="f-toggle" title="Filters" aria-label="Filters"></button>
+          <select id="f-agent" aria-label="Filter by poster">
+            <option value="">From anyone</option>
+            <option value="coordinator">From coordinator</option>
+          </select>
+          <select id="f-mention" aria-label="Filter by recipient">
+            <option value="">To anyone</option>
+            <option value="@none">To no one</option>
+            <option value="@all">To @all</option>
+            <option value="critic-architect">To critic-architect</option>
+          </select>
+          <button id="chip-coord" title="coordinator · Coordinator · Active · 3 posts\nClick to hide from the board">
+            <span class="chip-name">coordinator (you)</span>
+          </button>
+          <div class="divider" data-testid="swarm-unread-divider" id="unread-div">New</div>
+          <div class="msg-body md" id="post-body">@critic-architect Settings Overview Board Live Graph</div>
+          <span class="sys-text" id="sys-msg">created #design — Overview Board</span>
+        </section>
+        <section id="tab-body-graph">
+          <div class="player">
+            <button id="replay-play" title="Play / pause replay (space)" aria-label="Play replay"></button>
+            <button id="replay-live" title="Show everything and follow live">Live</button>
+            <span id="replay-label"><b>10</b> of 10 · #10 at 9:00 (+15m 25s)</span>
+            <label class="switch" title="Hide killed and inactive members from the graph"><span>Hide inactive</span></label>
+            <label class="switch" title="Draw @all as an edge to every member"><span>Expand @all</span></label>
+            <select id="replay-timing" aria-label="Replay pacing" title="Replay pacing">
+              <option value="even" selected>Even pacing</option>
+              <option value="real">Real-time gaps</option>
+            </select>
+          </div>
+          <svg id="graph" data-testid="swarm-graph" aria-label="Who @mentions whom">
+            <path class="edge"><title id="edge-tip">coordinator → critic-architect: 5 direct, 2 via @all</title></path>
+            <g class="node">
+              <title id="node-tip">coordinator · Coordinator · Active · 5 steps · 3 posts\nClick to open conversation</title>
+              <text class="node-label" id="node-coord">coordinator</text>
+            </g>
+          </svg>
+          <div class="graph-legend">
+            <span class="legend-item" id="lg-1">@mention, width = count</span>
+            <span class="legend-item" id="lg-2">via @all</span>
+            <span class="legend-item" id="lg-3">posted with no mention</span>
+            <span class="legend-item" id="lg-4">@all posts, drawn by Expand @all</span>
+          </div>
+        </section>
+        <section id="tab-body-raw">
+          <div class="raw-meta"><span class="path" id="raw-path">/Users/demo/board.jsonl</span><span class="size" id="raw-size">· 4.2 KB · 10 lines</span></div>
+          <pre id="raw" class="raw">{"agent":"coordinator","text":"Settings"}</pre>
+        </section>
+      </div>
+    `;
+    const w = await fixture(t, swarmHtml);
+    w.eval(loadRuntime());
+    await settle();
+
+    assert.equal(w.document.getElementById('live').getAttribute('title'), '自动更新');
+    assert.equal(w.document.getElementById('live-label').textContent, '实时');
+    assert.equal(w.document.getElementById('tab-ov').textContent, '概览');
+    assert.equal(w.document.getElementById('tab-feed').textContent, '看板10');
+    assert.equal(w.document.getElementById('tab-mem').textContent, '成员6');
+    assert.equal(w.document.getElementById('tab-graph').textContent, '关系图');
+    assert.equal(w.document.getElementById('tab-raw').textContent, '原始数据');
+    assert.equal(w.document.getElementById('f-search').getAttribute('placeholder'), '搜索');
+    assert.equal(w.document.getElementById('f-search').getAttribute('aria-label'), '搜索消息');
+    assert.equal(w.document.getElementById('f-toggle').getAttribute('title'), '筛选');
+    assert.equal(w.document.getElementById('f-agent').options[0].textContent, '来自任何人');
+    assert.equal(w.document.getElementById('f-agent').options[1].textContent, '来自 coordinator');
+    assert.equal(w.document.getElementById('f-agent').options[1].value, 'coordinator');
+    assert.equal(w.document.getElementById('f-mention').options[0].textContent, '发给任何人');
+    assert.equal(w.document.getElementById('f-mention').options[1].textContent, '未提及任何人');
+    assert.equal(w.document.getElementById('f-mention').options[2].textContent, '发给 @all');
+    assert.equal(w.document.getElementById('f-mention').options[3].textContent, '发给 critic-architect');
+    assert.equal(w.document.getElementById('chip-coord').getAttribute('title'), 'coordinator · 协调器 · 活跃 · 3 条消息\n点击在看板中隐藏');
+    assert.equal(w.document.querySelector('#chip-coord .chip-name').textContent, 'coordinator（你）');
+    assert.equal(w.document.getElementById('unread-div').textContent, '新消息');
+    assert.equal(w.document.getElementById('replay-label').textContent, '10 / 10 · #10 于 9:00 (+15 分钟 25 秒)');
+    w.document.getElementById('replay-label').innerHTML = '<b>10 posts</b> over 15m 25s';
+    await settle();
+    assert.equal(w.document.getElementById('replay-label').textContent, '10 条消息 · 历时 15 分钟 25 秒');
+    assert.equal(w.document.getElementById('replay-timing').options[0].textContent, '匀速回放');
+    assert.equal(w.document.getElementById('replay-timing').options[1].textContent, '按真实时间间隔');
+    assert.equal(w.document.getElementById('replay-timing').value, 'even');
+    assert.equal(w.document.getElementById('edge-tip').textContent, 'coordinator → critic-architect：5 次直接提及，2 次通过 @all');
+    assert.equal(w.document.getElementById('node-tip').textContent, 'coordinator · 协调器 · 活跃 · 5 步 · 3 条消息\n点击打开会话');
+    assert.equal(w.document.getElementById('node-coord').textContent, 'coordinator');
+    assert.equal(w.document.getElementById('lg-1').textContent, '@提及（线宽代表次数）');
+    assert.equal(w.document.getElementById('lg-2').textContent, '通过 @all 广播');
+    assert.equal(w.document.getElementById('lg-3').textContent, '未 @提及他人的发言');
+    assert.equal(w.document.getElementById('lg-4').textContent, '@all 广播消息（开启“展开 @all”时连线）');
+    assert.equal(w.document.getElementById('raw-path').textContent, '/Users/demo/board.jsonl');
+    assert.equal(w.document.getElementById('raw-size').textContent, '· 4.2 KB · 10 行');
+    assert.equal(w.document.getElementById('raw').textContent, '{"agent":"coordinator","text":"Settings"}');
+    assert.equal(w.document.getElementById('post-body').textContent, '@critic-architect Settings Overview Board Live Graph');
+    assert.equal(w.document.getElementById('sys-msg').textContent, 'created #design — Overview Board');
+
+    const nonSwarm = await fixture(t, '<div id="plain-board">Board</div><div id="plain-graph">Graph</div><div id="plain-raw">Raw</div>');
+    assert.equal(nonSwarm.document.getElementById('plain-board').textContent, 'Board');
+    assert.equal(nonSwarm.document.getElementById('plain-graph').textContent, 'Graph');
+    assert.equal(nonSwarm.document.getElementById('plain-raw').textContent, 'Raw');
+
+    const domTw = createDom(swarmHtml);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('tab-graph').textContent, '關係圖');
+    assert.equal(domTw.window.document.getElementById('tab-raw').textContent, '原始資料');
+    assert.equal(domTw.window.document.getElementById('unread-div').textContent, '新訊息');
+    assert.equal(domTw.window.document.getElementById('replay-label').textContent, '10 / 10 · #10 於 9:00 (+15 分鐘 25 秒)');
+    assert.equal(domTw.window.document.getElementById('replay-timing').options[0].textContent, '等速重播');
+    assert.equal(domTw.window.document.getElementById('lg-4').textContent, '@all 廣播訊息（開啟「展開 @all」時連線）');
+});

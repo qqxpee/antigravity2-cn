@@ -7,6 +7,7 @@ const child_process = require('child_process');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('./src/asar_patcher');
 const {
     patchPreloadJs,
+    patchUtilsJs,
     patchMenuJs,
     patchTrayJs,
     patchLoadingOverlayJs,
@@ -104,6 +105,9 @@ if (USE_TW) {
         "[修改] 加载页汉化注入成功！": "[修改] 載入頁漢化注入成功！",
         "[修改] 正在向 updater.js 注入更新弹窗汉化...": "[修改] 正在向 updater.js 注入更新彈出視窗漢化...",
         "[修改] 更新弹窗汉化注入成功！": "[修改] 更新彈出視窗漢化注入成功！",
+        "[修改] 正在向 utils.js 注入伴生面板 (Sidecar) 汉化钩子...": "[修改] 正在向 utils.js 注入伴生面板 (Sidecar) 漢化掛鉤...",
+        "[修改] 伴生面板 (Sidecar) 汉化钩子注入成功！": "[修改] 伴生面板 (Sidecar) 漢化掛鉤注入成功！",
+        "[警告] 未能在 utils.js 中找到 Sidecar 钩子插入点。": "[警告] 未能在 utils.js 中找到 Sidecar 掛鉤插入點。",
         "[打包] 正在使用原生引擎生成并校验汉化候选包...": "[打包] 正在使用原生引擎產生並校驗漢化候選包...",
         "[√] Antigravity 2.0 汉化部署完成！": "[√] Antigravity 2.0 繁體中文化套用完成！",
         "[!] 未找到备份文件 app.asar.bak，可能尚未安装过汉化或备份被删除。": "[!] 未找到備份檔案 app.asar.bak，可能尚未安裝過繁中化或備份已被刪除。",
@@ -528,6 +532,7 @@ function install20(resourcesDir) {
         const translationJs = generateJs();
         const modifierMap = new Map([
             ['dist/preload.js', content => patchPreloadJs(content, translationJs, SIGNATURE_START, SIGNATURE_END)],
+            ['dist/utils.js', content => patchUtilsJs(content, SIGNATURE_START, SIGNATURE_END)],
             ['dist/menu.js', content => patchMenuJs(content, USE_TW)],
             ['dist/tray.js', content => patchTrayJs(content, USE_TW)],
             ['dist/loadingOverlay.js', content => patchLoadingOverlayJs(content, USE_TW)],

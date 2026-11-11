@@ -1,9 +1,13 @@
 (() => {
+    if (typeof window !== 'undefined' && typeof window.__agCnRuntimeStart === 'function') {
+        window.__agCnRuntimeStart();
+        return;
+    }
     // V13.0 模块化表驱动物理隔离引擎 (原生独立 JS 运行时)
     const USE_TW = __USE_TW_PLACEHOLDER__;
     const map = new Map(Object.entries(DICT_PLACEHOLDER));
     const lowerMap = new Map();
-    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search']);
+    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator']);
     for (const [k, v] of map.entries()) {
         const lowerK = k.toLowerCase();
         if (LOWER_WORDS_EXCLUDE.has(lowerK) && k !== lowerK) {
@@ -21,7 +25,7 @@
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
+    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
 
     function isCodeOrEditor(node) {
         try {
@@ -61,7 +65,7 @@
 
     function translateWithShortcut(val) {
         if (!val) return null;
-        const match = val.match(/^(.+?)\s*\(((?:Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\+?[^)]*|Enter|Escape|Esc|Space|Tab|Backspace|Delete|⏎|Aa|ab|\.\*|-|0|[a-zA-Z0-9])\)$/i);
+        const match = val.match(/^(.+?)\s*\(((?:Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\+?[^)]*|Enter|Escape|Esc|Space|Tab|Backspace|Delete|⏎|←|→|↑|↓|Aa|ab|\.\*|-|0|[a-zA-Z0-9])\)$/i);
         if (match) {
             const prefix = match[1].trim();
             const normPref = norm(prefix);
@@ -243,6 +247,97 @@
         yr: ['年', '年']
     };
 
+    function formatCompactDuration(str) {
+        return String(str || '').trim()
+            .replace(/(\d+)\s*d\b/gi, '$1 天')
+            .replace(/(\d+)\s*h\b/gi, USE_TW ? '$1 小時' : '$1 小时')
+            .replace(/(\d+)\s*m\b/gi, USE_TW ? '$1 分鐘' : '$1 分钟')
+            .replace(/(\d+)\s*s\b/gi, '$1 秒');
+    }
+
+    const SCOPED_SWARM_MAP = {
+        'Board': ['看板', '看板'],
+        'Graph': ['关系图', '關係圖'],
+        'Raw': ['原始数据', '原始資料'],
+        'Reconnecting': ['正在重连', '正在重新連線'],
+        'Replay': ['回放', '重播'],
+        'Follow': ['跟随', '跟隨'],
+        'Latest': ['最新', '最新'],
+        'Channels': ['频道', '頻道'],
+        'Filters': ['筛选', '篩選'],
+        'Coordinator': ['协调器', '協調器'],
+        'Waiting': ['等待中', '等待中'],
+        'Retired': ['已退役', '已退役'],
+        'Paused': ['已暂停', '已暫停'],
+        'Working...': ['工作中...', '執行中...'],
+        'Empty.': ['暂无内容。', '尚無內容。'],
+        '(empty)': ['（空）', '（空）'],
+        'stale': ['已过期', '已過期'],
+        'system:': ['系统：', '系統：'],
+        'Goal': ['目标', '目標'],
+        'Team': ['团队', '團隊'],
+        'Threads': ['工作线', '討論串'],
+        'Now': ['当前', '目前'],
+        'Progress': ['进度', '進度'],
+        'Tasks': ['任务', '任務'],
+        'Other': ['其他', '其他'],
+        'Moving': ['推进中', '推進中'],
+        'Reply': ['回复', '回覆'],
+        'Frames': ['画面', '畫面']
+    };
+
+    function isSwarmUiContext(el) {
+        try {
+            const doc = (el && el.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+            if (doc && (doc.getElementById('swarm-title') || doc.getElementById('replay-label') || doc.querySelector('[data-testid^="swarm-"]'))) {
+                return true;
+            }
+            if (el && typeof el.closest === 'function') {
+                return Boolean(el.closest('[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar'));
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    function translateSwarmComposite(raw) {
+        if (!raw || typeof raw !== 'string') return null;
+        const trimmed = raw.trim();
+        const edgeMatch = trimmed.match(/^([^\s→]+)\s*→\s*([^\s:]+):\s*(\d+)\s+direct(?:,\s*(\d+)\s+via @all)?$/i);
+        if (edgeMatch) {
+            return edgeMatch[1] + ' → ' + edgeMatch[2] + '：' + edgeMatch[3] + ' 次直接提及' +
+                (edgeMatch[4] ? ('，' + edgeMatch[4] + (USE_TW ? ' 次透過 @all' : ' 次通过 @all')) : '');
+        }
+        const outsiderMatch = trimmed.match(/^(\S+)\s+\(not on the roster\)$/i);
+        if (outsiderMatch) {
+            return outsiderMatch[1] + (USE_TW ? '（不在成員名單中）' : '（不在成员名单中）');
+        }
+        if (!raw.includes('·') && !raw.includes('\n')) return null;
+        let changed = false;
+        const lines = raw.split('\n').map(line => {
+            const ln = norm(line);
+            if (map.has(ln)) {
+                changed = true;
+                return map.get(ln);
+            }
+            if (!line.includes(' · ')) return line;
+            const segs = line.split(' · ').map(seg => {
+                const s = seg.trim();
+                if (s === 'Coordinator') { changed = true; return USE_TW ? '協調器' : '协调器'; }
+                if (s === 'Active') { changed = true; return USE_TW ? '執行中' : '活跃'; }
+                if (s === 'Waiting') { changed = true; return '等待中'; }
+                if (s === 'Killed') { changed = true; return USE_TW ? '已終止' : '已终止'; }
+                if (/^\d+\s+posts?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+posts?$/i, (_, n) => n + (USE_TW ? ' 則訊息' : ' 条消息')); }
+                if (/^\d+\s+steps?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+steps?$/i, '$1 步'); }
+                if (/^\d+\s+unaddressed$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+unaddressed$/i, (_, n) => n + (USE_TW ? ' 則未指定對象' : ' 条未指定对象')); }
+                if (/^\d+\s+unread$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+unread$/i, (_, n) => n + (USE_TW ? ' 則未讀' : ' 条未读')); }
+                if (/^runs on\s+(.+)$/i.test(s)) { changed = true; return s.replace(/^runs on\s+(.+)$/i, (_, h) => (USE_TW ? '執行於 ' : '运行于 ') + h); }
+                return seg;
+            });
+            return segs.join(' · ');
+        });
+        return changed ? lines.join('\n') : null;
+    }
+
     function translatePermissionChoice(value) {
         if (typeof value !== 'string') return null;
 
@@ -391,11 +486,19 @@
 
         // 反馈、思考状态、浏览器安全警告与步骤汇总
         [/^Send feedback as(\s+(.+))?$/i, (m, p1, email) => email ? ("以 " + email + (USE_TW ? " 身分傳送意見回饋" : " 身份发送反馈")) : (USE_TW ? "以此身分傳送意見回饋：" : "以如下身份发送反馈：")],
-        [/^(Thought|Thinking|Worked) for\s+(.+)$/i, (m, verb, dur) => {
+        [/^(Thought|Thinking|Worked) for\s+(.+)$/i, (m, verb, rest) => {
             const vZh = /^Thought/i.test(verb) ? "已思考 " : (/^Thinking/i.test(verb) ? "正在思考 " : "已工作 ");
-            const dZh = dur.trim().replace(/(\d+)\s*h(?:ours?|r)?/gi, USE_TW ? "$1 小時" : "$1 小时").replace(/(\d+)\s*m(?:inutes?|in)?/gi, USE_TW ? "$1 分鐘" : "$1 分钟").replace(/(\d+)\s*s(?:econds?|ec)?/gi, "$1 秒");
-            return vZh + dZh;
+            let durPart = rest.trim();
+            let updateSuffix = "";
+            const updMatch = durPart.match(/^(.*?)\s*·\s*(\d+)\s+updates?$/i);
+            if (updMatch) {
+                durPart = updMatch[1].trim();
+                updateSuffix = " · " + updMatch[2] + (USE_TW ? " 項更新" : " 项更新");
+            }
+            const dZh = durPart.replace(/(\d+)\s*h(?:ours?|r)?/gi, USE_TW ? "$1 小時" : "$1 小时").replace(/(\d+)\s*m(?:inutes?|in)?/gi, USE_TW ? "$1 分鐘" : "$1 分钟").replace(/(\d+)\s*s(?:econds?|ec)?/gi, "$1 秒");
+            return vZh + dZh + updateSuffix;
         }],
+        [/^(?:(·\s*))?(\d+)\s+updates?$/i, (m, dot, num) => (dot ? " · " : "") + num + (USE_TW ? " 項更新" : " 项更新")],
         [/^Low contrast ratio \(([^)]+)\)\.\s*Text may be hard to read\.?$/i, (m, ratio) => USE_TW ? ("對比度過低 (" + ratio + ")，文字可能難以閱讀。") : ("对比度过低 (" + ratio + ")，文字可能难以阅读。")],
         [/^Preview unavailable\s*[—–-]\s*(.+)$/i, (m, reason) => (USE_TW ? "預覽不可用 — " : "预览不可用 — ") + reason],
         [/^Proceed to\s+(.+?)\s+\(unsafe\)$/i, (m, host) => USE_TW ? ("繼續前往 " + host + "（不安全）") : ("继续前往 " + host + "（不安全）")],
@@ -417,7 +520,50 @@
                 const n = nounMap[pm[3].toLowerCase()] || pm[3];
                 return v + pm[2] + ' ' + n;
             }).join('，');
-        }]
+        }],
+
+        // Swarm 伴生面板 (Sidecar) 动态消息、回放、关系图与概览状态
+        [/^(\d+)\s+posts?$/i, (m, n) => n + (USE_TW ? " 則訊息" : " 条消息")],
+        [/^(\d+)\s+posts?\s+since the view was updated$/i, (m, n) => USE_TW ? ("自檢視上次更新以來有 " + n + " 則新訊息") : ("自视图上次更新以来有 " + n + " 条新消息")],
+        [/^Narrator read up to #(\d+) of (\d+)$/i, (m, a, b) => USE_TW ? ("解說員已讀至 #" + a + " / " + b) : ("解说员已读至 #" + a + " / " + b)],
+        [/^read #(\d+)(?:\s*·\s*updated\s+(.+?)\s+ago)?$/i, (m, seq, dur) => (USE_TW ? "已讀至 #" : "已读至 #") + seq + (dur ? (" · " + formatCompactDuration(dur) + "前更新") : "")],
+        [/^Posted in #([^\s;]+);\s*click to show only #([^\s;]+)$/i, (m, c1, c2) => USE_TW ? ("發佈於 #" + c1 + "；按一下僅顯示 #" + c2) : ("发布于 #" + c1 + "；点击仅显示 #" + c2)],
+        [/^#([^\s]+)\s+\(archived\)$/i, (m, ch) => "#" + ch + (USE_TW ? "（已封存）" : "（已归档）")],
+        [/^#([^\s]+)\s+is archived:\s*this addresses nobody$/i, (m, ch) => "#" + ch + (USE_TW ? " 已封存：不會通知任何成員" : " 已归档：不会通知任何成员")],
+        [/^Everyone in #([^\s]+)$/i, (m, ch) => "#" + ch + (USE_TW ? " 中的所有成員" : " 中的所有成员")],
+        [/^Go to #(\d+)(?:\s*\(([^)]+)\))?$/i, (m, seq, who) => (USE_TW ? "前往 #" : "跳转到 #") + seq + (who ? (" (" + who + ")") : "")],
+        [/^The narrator's last step failed:\s*(.+)$/i, (m, detail) => (USE_TW ? "解說員上一步驟失敗：" : "解说员上一步执行失败：") + detail],
+        [/^the narrator's view failed \((.+)\)$/i, (m, r) => USE_TW ? ("解說員檢視載入失敗 (" + r + ")") : ("解说员视图加载失败 (" + r + ")")],
+        [/^overview\s*·\s*from the narrator's notes\s*\((.+)\)$/i, (m, r) => {
+            const rNorm = norm(r);
+            const rZh = map.get(rNorm) || r;
+            return (USE_TW ? "概覽 · 來自解說員筆記（" : "概览 · 来自解说员笔记（") + rZh + "）";
+        }],
+        [/^Opening (.+?)'s conversation needs the app\.$/i, (m, who) => USE_TW ? ("需要在應用程式中開啟 " + who + " 的對話。") : ("需要在客户端应用中打开 " + who + " 的会话。")],
+        [/^(.+?) runs on (.+?); open it there\.$/i, (m, name, host) => USE_TW ? (name + " 執行於 " + host + "；請在該處開啟。") : (name + " 运行于 " + host + "；请在该处打开。")],
+        [/^Copied ["“](.+)["”]\.\s*Paste it in the chat\.$/i, (m, txt) => USE_TW ? ("已複製「" + txt + "」。請貼到對話框中。") : ("已复制“" + txt + "”。请粘贴到聊天框中。")],
+        [/^Type ["“](.+)["”]\s+in the chat\.$/i, (m, txt) => USE_TW ? ("請在對話框中輸入「" + txt + "」。") : ("请在聊天框中输入“" + txt + "”。")],
+        [/^Copied ["“](.+)["”]\.\s*Paste it to the coordinator and say what you want changed\.$/i, (m, txt) => USE_TW ? ("已複製「" + txt + "」。請貼給協調器並說明您想修改的內容。") : ("已复制“" + txt + "”。请粘贴给协调器并说明您想修改的内容。")],
+        [/^Tell the coordinator:\s*["“](.+)["”]$/i, (m, txt) => USE_TW ? ("請告訴協調器：「" + txt + "」") : ("请告诉协调器：“" + txt + "”")],
+        [/^@([^\s]+)\s+ran out of quota(?:\s+for\s+(.+))?$/i, (m, who, dur) => "@" + who + (USE_TW ? " 配額已耗盡" : " 配额已耗尽") + (dur ? ((USE_TW ? "（已持續 " : "（已持续 ") + formatCompactDuration(dur) + "）") : "")],
+        [/^@([^\s]+)\s+looks stuck(?:\s+for\s+(.+))?$/i, (m, who, dur) => "@" + who + " 似乎卡住了" + (dur ? ((USE_TW ? "（已持續 " : "（已持续 ") + formatCompactDuration(dur) + "）") : "")],
+        [/^@([^\s]+)\s+hit an error(?:\s+for\s+(.+))?$/i, (m, who, dur) => "@" + who + (USE_TW ? " 發生錯誤" : " 遇到错误") + (dur ? ((USE_TW ? "（已持續 " : "（已持续 ") + formatCompactDuration(dur) + "）") : "")],
+        [/^seen just now$/i, () => USE_TW ? "剛剛上線" : "刚刚在线"],
+        [/^last seen (\d+)(m|h|d) ago$/i, (m, n, u) => (USE_TW ? "上次上線：" : "上次在线：") + n + " " + UNIT_MAP[u.toLowerCase()][USE_TW ? 1 : 0] + "前"],
+        [/^(\d+)\s+of\s+(\d+)\s+tasks?\s+done$/i, (m, d, tot) => d + " / " + tot + (USE_TW ? " 項任務已完成" : " 项任务已完成")],
+        [/^([0-9]+\/[0-9]+|[0-9]+%)\s+done$/i, (m, lbl) => "已完成 " + lbl],
+        [/^(\d+)\s+needs?\s+you$/i, (m, n) => n + (USE_TW ? " 項待你處理" : " 项待你处理")],
+        [/^(\d+)\s+blocked$/i, (m, n) => n + (USE_TW ? " 項受阻" : " 项受阻")],
+        [/^(\d+)\s+threads?\s+open$/i, (m, n) => n + (USE_TW ? " 個討論串進行中" : " 条工作线进行中")],
+        [/^(\d+)\s+active$/i, (m, n) => n + (USE_TW ? " 項進行中" : " 项进行中")],
+        [/^Remote\s*·\s*(\d+)\s+machines?$/i, (m, n) => (USE_TW ? "遠端 · " : "远程 · ") + n + (USE_TW ? " 台機器" : " 台机器")],
+        [/^Remote\s*·\s*(reconnecting|connecting|unavailable)$/i, (m, st) => {
+            const stLow = st.toLowerCase();
+            const stZh = stLow === 'reconnecting'
+                ? (USE_TW ? '正在重新連線' : '正在重连')
+                : (stLow === 'connecting' ? (USE_TW ? '正在連線' : '正在连接') : '不可用');
+            return (USE_TW ? "遠端 · " : "远程 · ") + stZh;
+        }],
     ];
 
     function translateExactOrDynamic(t) {
@@ -508,6 +654,47 @@
                 return '否';
             }
         }
+        if (p.id === 'replay-label' || (typeof p.closest === 'function' && p.closest('#replay-label'))) {
+            const ofMatch = valNorm.match(/^of\s+(\d+)(?:\s*·\s*#(\d+)\s+at\s+(.+?)\s*\(\+([^)]+)\))?$/i);
+            if (ofMatch) {
+                return " / " + ofMatch[1] + (ofMatch[2]
+                    ? (" · #" + ofMatch[2] + (USE_TW ? " 於 " : " 于 ") + ofMatch[3] + " (+" + formatCompactDuration(ofMatch[4]) + ")")
+                    : "");
+            }
+            const overMatch = valNorm.match(/^over\s+(.+)$/i);
+            if (overMatch) {
+                return (USE_TW ? " · 歷時 " : " · 历时 ") + formatCompactDuration(overMatch[1]);
+            }
+        }
+        if (p.tagName === 'OPTION' && p.parentElement) {
+            if (p.parentElement.id === 'f-agent' && /^From\s+(.+)$/i.test(valNorm)) {
+                return valNorm.replace(/^From\s+(.+)$/i, (_, who) => (USE_TW ? "來自 " : "来自 ") + who);
+            }
+            if (p.parentElement.id === 'f-mention' && /^To\s+(.+)$/i.test(valNorm)) {
+                return valNorm.replace(/^To\s+(.+)$/i, (_, who) => (USE_TW ? "傳給 " : "发给 ") + who);
+            }
+        }
+        if (p.classList && p.classList.contains('chip-name') && /\s+\(you\)$/i.test(valNorm)) {
+            return valNorm.replace(/\s+\(you\)$/i, "（你）");
+        }
+        if (p.classList && p.classList.contains('size') && /\d+\s+lines?$/i.test(valNorm)) {
+            return valNorm.replace(/(\d+)\s+lines?$/i, "$1 行");
+        }
+        if (p.id === 'empty-body') {
+            if (valNorm === 'Swarms started in this conversation appear here automatically, with their board, members and @mention graph. Start one with') {
+                return USE_TW
+                    ? "在此對話中啟動的 Swarm 會自動顯示於此，包含看板、成員清單與 @提及關係圖。輸入 "
+                    : "在此会话中启动的 Swarm 会自动显示在这里，包含看板、成员列表和 @提及关系图。输入 ";
+            }
+            if (valNorm === 'Open this pane from a conversation to see its swarm. Swarms started there appear here automatically; start one with') {
+                return USE_TW
+                    ? "請從對話中開啟此面板以檢視其 Swarm。在對話中啟動的 Swarm 會自動顯示於此；輸入 "
+                    : "请从会话中打开此面板以查看其 Swarm。在会话中启动的 Swarm 会自动显示在这里；输入 ";
+            }
+            if (valNorm === '.') {
+                return USE_TW ? " 即可啟動。" : " 即可启动。";
+            }
+        }
         return null;
     }
 
@@ -525,6 +712,7 @@
                 const tag = node.tagName.toUpperCase();
                 if (SKIP_TAGS.includes(tag)) return;
                 // 翻译属性：placeholder, title, aria-label (即使输入框获焦时也应正常汉化 placeholder 提示)
+                const inSwarmEl = isSwarmUiContext(node);
                 for (const attr of ['placeholder', 'title', 'aria-label']) {
                     const v = node.getAttribute(attr);
                     if (v) {
@@ -533,6 +721,13 @@
                         if (!newAttr) {
                             if (isFilePathOrUri(t)) continue;
                             newAttr = translateExactOrDynamic(t);
+                        }
+                        if (!newAttr && inSwarmEl) {
+                            if (Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, t)) {
+                                newAttr = SCOPED_SWARM_MAP[t][USE_TW ? 1 : 0];
+                            } else {
+                                newAttr = translateSwarmComposite(v);
+                            }
                         }
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
@@ -643,6 +838,14 @@
                     }
                     return;
                 }
+                if ((valNorm === 'New' || (cachedValue === originalVal && valNorm === map.get('New'))) && node.parentElement?.getAttribute?.('data-testid') === 'swarm-unread-divider') {
+                    const unreadLabel = USE_TW ? '新訊息' : '新消息';
+                    if (originalVal !== unreadLabel) {
+                        translatedValues.set(node, unreadLabel);
+                        node.nodeValue = unreadLabel;
+                    }
+                    return;
+                }
                 if (cachedValue === originalVal) return;
 
                 // Material Symbol 字体缺失图标修复
@@ -662,6 +865,13 @@
                     const ctxTrans = translateContextualText(node, originalVal, valNorm);
                     if (ctxTrans !== null) {
                         newVal = ctxTrans;
+                    } else if (isSwarmUiContext(node.parentElement) && Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, valNorm)) {
+                        newVal = SCOPED_SWARM_MAP[valNorm][USE_TW ? 1 : 0];
+                    } else if (isSwarmUiContext(node.parentElement)) {
+                        const swarmComp = translateSwarmComposite(originalVal);
+                        if (swarmComp !== null) {
+                            newVal = swarmComp;
+                        }
                     } else if (valNorm.length > 15 && valNorm.includes(' ')) {
                         // 长句子串滑动替换与末尾截断智能匹配
                         const isTruncated = (valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35;
@@ -719,6 +929,9 @@
             } catch (e) {}
         }
     };
+    if (typeof window !== 'undefined') {
+        window.__agCnRuntimeStart = startEngine;
+    }
 
     const origAttachShadow = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function() {

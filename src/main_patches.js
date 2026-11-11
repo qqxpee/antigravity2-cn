@@ -25,6 +25,107 @@ function cleanTrayJsContent(content) {
     return content;
 }
 
+function cleanUtilsJsContent(content) {
+    return content.replace(/\n?\s*\/\* --- SIDECAR TRANSLATION START --- \*\/[\s\S]*?\/\* --- SIDECAR TRANSLATION END --- \*\//g, '');
+}
+
+function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
+    console.log(`[修改] 正在向 utils.js 注入伴生面板 (Sidecar) 汉化钩子...`);
+    const cleaned = cleanUtilsJsContent(utilsContent);
+    const targetStr = "hubContents.on('will-navigate', guardExternalNavigation);";
+    const idx = cleaned.indexOf(targetStr);
+    if (idx === -1) {
+        console.warn(`[警告] 未能在 utils.js 中找到 Sidecar 钩子插入点。`);
+        return cleaned;
+    }
+
+    const sidecarHookJs = `/* --- SIDECAR TRANSLATION START --- */
+    const getSidecarLocalizationScript = () => {
+        const preloadFile = typeof path_1 !== 'undefined' && path_1 && path_1.default
+            ? path_1.default.join(__dirname, 'preload.js')
+            : require('path').join(__dirname, 'preload.js');
+        const cacheKey = '__agSidecarLocalizationScript:' + preloadFile;
+        if (typeof globalThis[cacheKey] === 'string') {
+            return globalThis[cacheKey];
+        }
+        try {
+            const fsMod = typeof fs !== 'undefined' && fs && typeof fs.readFileSync === 'function' ? fs : require('fs');
+            const preloadSrc = fsMod.readFileSync(preloadFile, 'utf8');
+            const sIdx = preloadSrc.indexOf(${JSON.stringify(signatureStart)});
+            const eIdx = preloadSrc.indexOf(${JSON.stringify(signatureEnd)});
+            if (sIdx !== -1 && eIdx !== -1 && sIdx < eIdx) {
+                const extracted = preloadSrc.slice(sIdx, eIdx + ${signatureEnd.length});
+                globalThis[cacheKey] = extracted;
+                return extracted;
+            }
+        } catch (_err) {}
+        return '';
+    };
+    const resolveSidecarSubframe = (event, frameProcessId, frameRoutingId) => {
+        if (event && event.frame) return event.frame;
+        if (typeof frameProcessId === 'number' && typeof frameRoutingId === 'number') {
+            return electron_1.webFrameMain?.fromId?.(frameProcessId, frameRoutingId) ?? null;
+        }
+        return null;
+    };
+    const checkSidecarIframeInHub = (targetUrl) => {
+        try {
+            const target = new URL(targetUrl);
+            const iframes = document.querySelectorAll('iframe[data-testid="sidecar-iframe"]');
+            for (const el of iframes) {
+                const raw = el.getAttribute('src') || el.src || '';
+                if (!raw) continue;
+                const u = new URL(raw, location.href);
+                if (u.origin !== target.origin) continue;
+                const baseDir = u.pathname.slice(0, u.pathname.lastIndexOf('/') + 1);
+                if (u.origin !== location.origin || target.pathname === u.pathname || target.pathname.startsWith(baseDir)) {
+                    return true;
+                }
+            }
+        } catch (_e) {}
+        return false;
+    };
+    const injectSidecarSubframe = (frame) => {
+        try {
+            if (!frame || frame.isDestroyed?.() || win.isDestroyed?.() || hubContents.isDestroyed?.()) return;
+            const mainFrame = hubContents.mainFrame;
+            if (!mainFrame || frame === mainFrame || frame.parent !== mainFrame) return;
+            const frameUrl = String(frame.url || '');
+            if (!/^https?:\\/\\//i.test(frameUrl)) return;
+            const frameOrigin = String(frame.origin || '');
+            if (!frameOrigin || frameOrigin === 'null') return;
+            const script = getSidecarLocalizationScript();
+            if (!script) return;
+            const checkExpr = '(' + checkSidecarIframeInHub.toString() + ')(' + JSON.stringify(frameUrl) + ')';
+            Promise.resolve(mainFrame.executeJavaScript(checkExpr))
+                .then((isSidecar) => {
+                    if (!isSidecar) return;
+                    if (frame.isDestroyed?.() || win.isDestroyed?.() || hubContents.isDestroyed?.()) return;
+                    return frame.executeJavaScript(script);
+                })
+                .catch(() => undefined);
+        } catch (_err) {}
+    };
+    const onSidecarFrameNavigate = (event, _url, _httpResponseCode, _httpStatusText, isMainFrame, frameProcessId, frameRoutingId) => {
+        if (isMainFrame) return;
+        injectSidecarSubframe(resolveSidecarSubframe(event, frameProcessId, frameRoutingId));
+    };
+    const onSidecarFrameFinishLoad = (event, isMainFrame, frameProcessId, frameRoutingId) => {
+        if (isMainFrame) return;
+        injectSidecarSubframe(resolveSidecarSubframe(event, frameProcessId, frameRoutingId));
+    };
+    hubContents.on('did-frame-navigate', onSidecarFrameNavigate);
+    hubContents.on('did-frame-finish-load', onSidecarFrameFinishLoad);
+    win.on('closed', () => {
+        hubContents.off?.('did-frame-navigate', onSidecarFrameNavigate);
+        hubContents.off?.('did-frame-finish-load', onSidecarFrameFinishLoad);
+    });
+    /* --- SIDECAR TRANSLATION END --- */`;
+
+    console.log(`[修改] 伴生面板 (Sidecar) 汉化钩子注入成功！`);
+    return cleaned.substring(0, idx) + sidecarHookJs + "\n    " + cleaned.substring(idx);
+}
+
 function patchPreloadJs(content, translationJs, signatureStart, signatureEnd) {
     console.log(`[修改] 正在向 preload.js 注入汉化代码...`);
     const cleanedContent = cleanJsContent(content, signatureStart, signatureEnd);
@@ -299,6 +400,7 @@ function patchUpdaterJs(updaterContent, useTw) {
 
 module.exports = {
     patchPreloadJs,
+    patchUtilsJs,
     patchMenuJs,
     patchTrayJs,
     patchLoadingOverlayJs,
