@@ -241,7 +241,7 @@ function sleepSync(ms) {
 function closeAntigravityProcesses() {
     console.log("[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...");
     try {
-        // 第一阶段：发送温和退出信号 (WM_CLOSE / SIGTERM)，让 Electron 执行 before-quit 保存窗口状态并安全关闭 language_server SQLite 数据库
+        // 第一阶段：尝试发送温和退出信号 (WM_CLOSE / SIGTERM)，让客户端有机会触发 before-quit 优雅落盘
         if (process.platform === 'win32') {
             child_process.execSync('taskkill /im Antigravity.exe >nul 2>nul');
         } else {
@@ -249,29 +249,22 @@ function closeAntigravityProcesses() {
         }
     } catch (e) {}
 
-    // 轮询等待客户端优雅退出（最多等待 4 秒）
+    // 等待最多 2.5 秒让主进程响应退出
     const waitStart = Date.now();
-    while (Date.now() - waitStart < 4000) {
+    while (Date.now() - waitStart < 2500) {
         sleepSync(250);
-        if (!checkIfAppIsRunning()) {
-            sleepSync(300);
-            return;
-        }
+        if (!checkIfAppIsRunning()) break;
     }
 
-    // 第二阶段：若超时仍未退出（例如开启了后台常驻或弹窗阻塞），先温和关闭 language_server 再强制结束残余进程
+    // 第二阶段：无论主窗口是否已关闭，都必须执行 /f /t 彻底清理所有残余的 Electron GPU/渲染子进程，彻底释放 app.asar 文件锁
     try {
         if (process.platform === 'win32') {
-            child_process.execSync('taskkill /im language_server.exe >nul 2>nul');
-            sleepSync(400);
             child_process.execSync('taskkill /f /im Antigravity.exe /t >nul 2>nul');
         } else {
-            child_process.execSync('killall -TERM language_server >/dev/null 2>&1');
-            sleepSync(400);
-            child_process.execSync('killall -9 Antigravity >/dev/null 2>&1; killall -9 "Antigravity Helper" >/dev/null 2>&1; pkill -9 -x Antigravity >/dev/null 2>&1; pkill -9 -f "/Contents/MacOS/Antigravity" >/dev/null 2>&1');
+            child_process.execSync('killall Antigravity >/dev/null 2>&1; killall "Antigravity Helper" >/dev/null 2>&1; pkill -x Antigravity >/dev/null 2>&1; pkill -f "/Contents/MacOS/Antigravity" >/dev/null 2>&1');
         }
     } catch (e) {}
-    sleepSync(800);
+    sleepSync(1200);
 }
 
 function detectInstallationDir(manualDir) {
@@ -481,6 +474,32 @@ function ensureWritePermission(targetDir) {
 // ==========================================
 // Antigravity 2.0 汉化部署引擎 (零依赖纯 Node.js 原生 ASAR 打包模式)
 // ==========================================
+function replaceFileWithRetry(srcPath, destPath) {
+    let lastErr;
+    for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+            fs.renameSync(srcPath, destPath);
+            return;
+        } catch (err) {
+            lastErr = err;
+            if (err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES') {
+                if (attempt === 2 && process.platform === 'win32') {
+                    try { child_process.execSync('taskkill /f /im Antigravity.exe /t >nul 2>nul'); } catch (e) {}
+                }
+                sleepSync(400);
+                continue;
+            }
+            throw err;
+        }
+    }
+    try {
+        fs.copyFileSync(srcPath, destPath);
+        fs.unlinkSync(srcPath);
+    } catch (copyErr) {
+        throw lastErr;
+    }
+}
+
 function install20(resourcesDir) {
     const asarPath = path.join(resourcesDir, "app.asar");
     const bakPath = path.join(resourcesDir, "app.asar.bak");
@@ -534,12 +553,12 @@ function install20(resourcesDir) {
             throw new Error('App changed during localization; please retry after the update completes');
         }
 
-        fs.renameSync(candidatePath, asarPath);
+        replaceFileWithRetry(candidatePath, asarPath);
         try {
-            if (refreshBackup) fs.renameSync(sourceArchive, bakPath);
+            if (refreshBackup) replaceFileWithRetry(sourceArchive, bakPath);
         } catch (error) {
             try {
-                fs.renameSync(rollbackArchive, asarPath);
+                replaceFileWithRetry(rollbackArchive, asarPath);
             } catch (rollbackError) {
                 retainRecoveryFiles = true;
                 throw new Error(`Backup promotion and rollback failed; original app retained at ${rollbackArchive}: ${rollbackError.message}`);
@@ -579,7 +598,7 @@ function restore20(resourcesDir) {
             const candidate = path.join(restoreDir, 'app.asar');
             fs.copyFileSync(bakPath, candidate);
             readAsarLayout(candidate);
-            fs.renameSync(candidate, asarPath);
+            replaceFileWithRetry(candidate, asarPath);
         } finally {
             fs.rmSync(restoreDir, { recursive: true, force: true });
         }
@@ -690,6 +709,8 @@ function main() {
         console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
     } else if (wasAppRunning) {
         closeAntigravityProcesses();
+    } else if (process.platform === 'win32') {
+        try { child_process.execSync('taskkill /f /im Antigravity.exe /t >nul 2>nul'); } catch (e) {}
     }
 
     // 3. 找到 resources 资源目录
