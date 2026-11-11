@@ -139,6 +139,37 @@ test('input and textarea placeholders and titles are translated while values rem
     assert.equal(draft.value, 'Settings');
 });
 
+test('dynamic permission choices translate around commands without altering payloads or code blocks', async t => {
+    const cmd = `'$p="$HOME\\.gemini\\GEMINI.md"; Get-Content $p'`;
+    const w = await fixture(t, `
+        <h2 id="title">Allow running this command outside the sandbox?</h2>
+        <button id="conv"></button>
+        <button id="proj"></button>
+        <button id="unscoped"></button>
+        <button id="static-conv">Yes, and always allow in this conversation</button>
+        <pre id="code">Yes, and always allow 'command'</pre>
+    `, window => {
+        window.document.getElementById('conv').textContent = `Yes, and always allow ${cmd} in this conversation`;
+        window.document.getElementById('proj').textContent = `Yes, and always allow ${cmd} in this project`;
+        window.document.getElementById('unscoped').textContent = `Yes, and always allow echo run  in this conversation`;
+    });
+    assert.equal(w.document.getElementById('title').textContent, '是否允许在沙箱外运行此命令？');
+    assert.equal(w.document.getElementById('conv').textContent, `是，且在此会话中始终允许运行 ${cmd}`);
+    assert.equal(w.document.getElementById('proj').textContent, `是，且在此项目中始终允许运行 ${cmd}`);
+    assert.equal(w.document.getElementById('unscoped').textContent, '是，且始终允许运行 echo run  in this conversation');
+    assert.equal(w.document.getElementById('static-conv').textContent, '是，且在此会话中始终允许');
+    assert.equal(w.document.getElementById('code').textContent, "Yes, and always allow 'command'");
+});
+
+test('permission write-in translates reject label and placeholder while preserving input value', async t => {
+    const w = await fixture(t, '<label><input type="radio" value="__write_in__"><div><span id="reject">No</span><textarea id="answer" data-testid="ask-question-writein" placeholder="(tell the agent what to do instead)">No</textarea></div></label><span id="other">No</span>');
+    const answer = w.document.getElementById('answer');
+    assert.equal(w.document.getElementById('reject').textContent, '否');
+    assert.equal(answer.getAttribute('placeholder'), '（告诉智能体改做什么）');
+    assert.equal(answer.value, 'No');
+    assert.equal(w.document.getElementById('other').textContent, 'No');
+});
+
 test('v2.30.0 and v2.31.0 dynamic and static UI strings translate in both SC and TC', async t => {
     const html = `
       <div id="port-title">Nothing is running on port 5173</div>

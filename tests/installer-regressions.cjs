@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
+const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
 
 const repoRoot = path.join(__dirname, '..');
 const engineSource = fs.readFileSync(path.join(repoRoot, 'localization_engine.js'), 'utf8');
@@ -31,9 +32,6 @@ function writeArchive(destination, entries, unpackDirs = []) {
         const entry = { size: body.length };
         if (value.unpacked) {
             entry.unpacked = true;
-            const file = path.join(destination + '.unpacked', ...parts);
-            fs.mkdirSync(path.dirname(file), { recursive: true });
-            fs.writeFileSync(file, body);
         } else {
             entry.offset = String(offset);
             offset += body.length;
@@ -52,6 +50,48 @@ function writeArchive(destination, entries, unpackDirs = []) {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, Buffer.concat([prefix, ...bodies]));
 }
+
+test('patchAsarArchive updates target files in-place and preserves unpacked layout', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-asar-test-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const src = path.join(root, 'app.asar');
+    const dst = path.join(root, 'app.asar.tmp');
+    writeArchive(src, {
+        'dist/preload.js': { body: '// original preload' },
+        'package.json': { body: '{"version":"2.30.0"}' },
+        'node_modules/mcp/index.js': { body: '// external MCP', unpacked: true },
+    }, ['node_modules/mcp']);
+
+    patchAsarArchive(src, dst, new Map([
+        ['dist/preload.js', orig => `${orig}\n${signature}`],
+    ]));
+
+    validateAsarCandidate(src, dst, signature);
+    const layout = readAsarLayout(dst);
+    assert.equal(layout.files.get('node_modules/mcp/index.js').unpacked, true);
+    assert.equal(layout.files.get('package.json').body.toString('utf8'), '{"version":"2.30.0"}');
+});
+
+test('validateAsarCandidate rejects tampered non-target files or lost unpacked flags', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-asar-test-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const src = path.join(root, 'app.asar');
+    const badUnpacked = path.join(root, 'bad-unpacked.asar');
+    const baseEntries = {
+        'dist/preload.js': { body: `// original\n${signature}` },
+        'package.json': { body: '{"version":"2.30.0"}' },
+        'node_modules/mcp/index.js': { body: '// external MCP', unpacked: true },
+    };
+    writeArchive(src, baseEntries, ['node_modules/mcp']);
+    writeArchive(badUnpacked, {
+        ...baseEntries,
+        'node_modules/mcp/index.js': { body: '// external MCP', unpacked: false },
+    });
+
+    assert.throws(() => validateAsarCandidate(src, badUnpacked, signature), /ASAR layout changed/);
+});
 
 function sandbox(t, { platform = 'win32', localized = false, backup = true, packFailure = false, dropUnpacked = false, backupRenameFailure = false } = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-installer-test-'));
@@ -188,6 +228,8 @@ test('candidate with lost unpacked flags is rejected before commit', t => {
 test('successful install preserves external files and creates restorable original backup', t => {
     const s = sandbox(t, { backup: false });
     const external = path.join(s.archive + '.unpacked', 'node_modules', 'mcp', 'index.js');
+    fs.mkdirSync(path.dirname(external), { recursive: true });
+    fs.writeFileSync(external, '// external MCP');
     const beforeExternal = fs.readFileSync(external);
     assert.equal(s.context.install20(s.resources), true);
     assert.deepEqual(fs.readFileSync(s.backupPath), s.originalLive);

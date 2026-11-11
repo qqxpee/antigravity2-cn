@@ -6,15 +6,7 @@ const { loadRuntime } = require('./helpers/runtime-loader.cjs');
 function fixture(html, beforeInject) {
     const dom = new JSDOM(html, { url: 'https://example.invalid', runScripts: 'outside-only' });
     const { window } = dom;
-    const timers = new Map();
-    let nextTimer = 0;
     window.console = { log() {}, warn() {}, error() {} };
-    window.setTimeout = (callback, delay) => {
-        const id = ++nextTimer;
-        timers.set(id, { callback, delay });
-        return id;
-    };
-    window.clearTimeout = id => timers.delete(id);
     Object.defineProperty(window.document, 'readyState', { value: 'complete' });
     if (beforeInject) beforeInject(window);
     window.eval(loadRuntime());
@@ -22,13 +14,6 @@ function fixture(html, beforeInject) {
         window,
         async flush() {
             await new Promise(resolve => setImmediate(resolve));
-        },
-        runCaptureTimer() {
-            const captureTimers = [...timers.entries()].filter(([, timer]) => timer.delay === 600);
-            assert.equal(captureTimers.length, 1, 'A single MCP capture should be scheduled');
-            const [id, timer] = captureTimers[0];
-            timers.delete(id);
-            timer.callback();
         },
         close() { window.close(); },
     };
