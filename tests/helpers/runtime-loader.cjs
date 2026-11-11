@@ -32,6 +32,9 @@ function loadEngine({ argv = [] } = {}) {
             if (moduleName === 'child_process' || moduleName === 'node:child_process') {
                 return inertChildProcess;
             }
+            if (moduleName === './src/asar_patcher' || moduleName === './src/main_patches') {
+                return require(path.resolve(repositoryRoot, moduleName));
+            }
             if (!['fs', 'path', 'os', 'crypto'].includes(moduleName)) {
                 throw new Error(`Unexpected dependency while generating runtime: ${moduleName}`);
             }

@@ -357,6 +357,19 @@ function extractUiStringsFromBundle(js) {
         }
     }
 
+    // 4. createElement 直接传递字符串子节点 (避免子节点包含括号如 "(invoked with /browser)" 时被 ceRegex 误截断)
+    const directCeRegex = /createElement\(\s*(?:[A-Za-z0-9_$.]+|"[a-z0-9-]+")\s*,\s*(?:null|void 0|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|[A-Za-z0-9_$.]+)\s*,\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    while ((m = directCeRegex.exec(js)) !== null) {
+        addCandidate(m[1] ?? m[2], 'jsx:child');
+    }
+
+    // 5. 条件属性单侧字符串匹配 (覆盖形如 description: cond ? "str" : createElement(...) 的非对称三元表达式)
+    const condPropSingleRegex = /(?:(?:"(aria-label|data-tooltip-content)")|\b(label|sublabel|title|placeholder|description|shortDescription|tooltip|tooltipText|tooltipContent|ariaLabel|heading|subheading|subtitle|header|content|message|detail))\s*:\s*[^,?{}]+?\?\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
+    while ((m = condPropSingleRegex.exec(js)) !== null) {
+        const prop = m[1] || m[2];
+        addCandidate(m[3] ?? m[4], `condProp:${prop}`);
+    }
+
     return extracted;
 }
 
@@ -380,7 +393,7 @@ async function cmdScanUi(args = []) {
     // 同步提取 language_server 下发的 Mendel 动态实验文案（如 Interface Layout / Onboarding Personas / Plugin Shelves）
     if (info.csrfToken) {
         try {
-            const mendelFlags = await new Promise((resolve, reject) => {
+            const mendelFlags = await new Promise((resolve) => {
                 const req = https.request(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetMendelFlags`, {
                     method: 'POST',
                     rejectUnauthorized: false,
@@ -447,7 +460,6 @@ async function cmdScanUi(args = []) {
             }
         } catch (e) {}
     }
-
     const allStrings = [...extracted.keys()].sort();
     console.log(`[√] 提取完成！共扫描到 ${allStrings.length} 条界面与悬浮提示词条。`);
 

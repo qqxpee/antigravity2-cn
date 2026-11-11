@@ -5,12 +5,14 @@ const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
 
-const engineSource = fs.readFileSync(path.join(__dirname, '..', 'localization_engine.js'), 'utf8');
+const repoRoot = path.join(__dirname, '..');
+const engineSource = fs.readFileSync(path.join(repoRoot, 'localization_engine.js'), 'utf8');
+const asarPatcherSource = fs.readFileSync(path.join(repoRoot, 'src', 'asar_patcher.js'), 'utf8');
+const mainPatches = require(path.join(repoRoot, 'src', 'main_patches.js'));
 assert.match(engineSource, /\bmain\(\);\s*$/);
 const noMain = engineSource.replace(/\bmain\(\);\s*$/, '');
 const signature = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
 
-// Small real ASAR fixtures, with no npm dependency or executable app assets.
 function writeArchive(destination, entries, unpackDirs = []) {
     const header = { files: {} };
     const bodies = [];
@@ -51,7 +53,7 @@ function writeArchive(destination, entries, unpackDirs = []) {
     fs.writeFileSync(destination, Buffer.concat([prefix, ...bodies]));
 }
 
-function sandbox(t, { localized = false, backup = true, packFailure = false, dropUnpacked = false, backupRenameFailure = false } = {}) {
+function sandbox(t, { platform = 'win32', localized = false, backup = true, packFailure = false, dropUnpacked = false, backupRenameFailure = false } = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-installer-test-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const inside = value => {
@@ -59,12 +61,17 @@ function sandbox(t, { localized = false, backup = true, packFailure = false, dro
         assert.ok(resolved.startsWith(root + path.sep), `Write escaped sandbox: ${resolved}`);
         return resolved;
     };
-    const resources = path.join(root, 'install', 'resources');
+    const resources = platform === 'darwin'
+        ? path.join(root, 'Antigravity.app', 'Contents', 'Resources')
+        : path.join(root, 'install', 'resources');
     const archive = path.join(resources, 'app.asar');
     const backupPath = archive + '.bak';
     const entries = {
         'dist/preload.js': { body: '// original preload' },
-        'package.json': { body: '{"version":"2.28.2"}' },
+        'dist/menu.js': { body: 'const menu = { items: [] };\nelectron_1.Menu.setApplicationMenu(menu);' },
+        'dist/tray.js': { body: 'function createTray(actions) { tray.setContextMenu(contextMenu); }\nfunction insertTrayMenuItem(menu, options) {}' },
+        'dist/updater.js': { body: 'MenuUpdateStep["CheckForUpdates"] = "Check for Updates";\nMenuUpdateStep["RestartToUpdate"] = "Restart to Update";' },
+        'package.json': { body: '{"version":"2.31.0"}' },
         'node_modules/mcp/index.js': { body: '// external MCP', unpacked: true },
     };
     writeArchive(archive, entries, ['node_modules/mcp']);
@@ -77,11 +84,49 @@ function sandbox(t, { localized = false, backup = true, packFailure = false, dro
         if (['writeFileSync', 'mkdirSync', 'mkdtempSync', 'rmSync', 'unlinkSync'].includes(key)) return (p, ...args) => target[key](inside(p), ...args);
         if (['copyFileSync', 'cpSync', 'renameSync'].includes(key)) return (from, to, ...args) => {
             inside(from); inside(to);
-            if (key === 'renameSync' && backupRenameFailure && to === backupPath) throw new Error('Injected backup rename failure');
+            if ((key === 'renameSync' || key === 'copyFileSync') && backupRenameFailure && to === backupPath) {
+                throw new Error('Injected backup rename failure');
+            }
             return target[key](from, to, ...args);
         };
         return target[key];
     } });
+
+    const patcherModule = { exports: {} };
+    vm.runInNewContext(asarPatcherSource, {
+        module: patcherModule,
+        exports: patcherModule.exports,
+        Buffer,
+        require(name) {
+            if (name === 'fs') return safeFs;
+            if (name === 'crypto') return require('node:crypto');
+            throw new Error(`Unexpected patcher module: ${name}`);
+        },
+    });
+    const realPatcher = patcherModule.exports;
+    const hookedPatcher = {
+        ...realPatcher,
+        patchAsarArchive(src, dest, modifierMap) {
+            assert.notEqual(dest, archive);
+            assert.deepEqual(fs.readFileSync(archive), originalLive);
+            if (packFailure) {
+                safeFs.writeFileSync(dest, 'PARTIAL CANDIDATE');
+                throw new Error('Injected pack failure after truncation');
+            }
+            if (dropUnpacked) {
+                const candidateEntries = {};
+                for (const [name, entry] of Object.entries(entries)) {
+                    let body = entry.body;
+                    if (modifierMap.has(name)) body = modifierMap.get(name)(String(body));
+                    candidateEntries[name] = { body, unpacked: false };
+                }
+                writeArchive(dest, candidateEntries, []);
+                return new Map([['dist/preload.js', Buffer.from(candidateEntries['dist/preload.js'].body)]]);
+            }
+            return realPatcher.patchAsarArchive(src, dest, modifierMap);
+        },
+    };
+
     const context = vm.createContext({
         require(name) {
             if (name === 'fs') return safeFs;
@@ -94,41 +139,22 @@ function sandbox(t, { localized = false, backup = true, packFailure = false, dro
                     new vm.Script(fs.readFileSync(args[1], 'utf8'));
                 },
             };
+            if (name === './src/asar_patcher') return hookedPatcher;
+            if (name === './src/main_patches') return mainPatches;
             if (['path', 'crypto'].includes(name)) return require(name);
             throw new Error(`Unexpected module: ${name}`);
         },
-        process: { platform: 'win32', argv: [], env: { APPDATA: root }, execPath: process.execPath },
+        process: { platform, argv: [], env: { APPDATA: root, HOME: root, PATH: process.env.PATH || '' }, execPath: process.execPath },
         __dirname: root, Buffer, console: { log: (...args) => logs.push(args.join(' ')), warn: (...args) => logs.push(args.join(' ')), error: (...args) => logs.push(args.join(' ')) },
     });
     vm.runInContext(noMain, context);
     context.generateJs = () => `${signature}\n// test injection`;
+    const signChecks = [];
     context.runCommandSync = command => {
-        const match = command.match(/\b(extract|pack) "([^"]+)" "([^"]+)"/);
-        assert.ok(match, command);
-        const [, operation, from, to] = match;
-        inside(from); inside(to);
-        if (operation === 'extract') {
-            for (const [name, file] of context.readAsarLayout(from).files) {
-                const output = path.join(to, ...name.split('/'));
-                fs.mkdirSync(path.dirname(output), { recursive: true });
-                fs.writeFileSync(output, file.unpacked ? fs.readFileSync(path.join(from + '.unpacked', ...name.split('/'))) : file.body);
-            }
-        } else {
-            // The output must be a candidate, never the live app.
-            assert.notEqual(to, archive);
-            assert.deepEqual(fs.readFileSync(archive), originalLive);
-            assert.match(command, /--unpack-dir "node_modules"/);
-            if (packFailure) {
-                fs.writeFileSync(to, 'PARTIAL CANDIDATE');
-                return { success: false, stdout: '', stderr: 'Injected pack failure after truncation' };
-            }
-            const candidateEntries = {};
-            for (const [name, entry] of Object.entries(entries)) candidateEntries[name] = { body: fs.readFileSync(path.join(from, ...name.split('/'))), unpacked: dropUnpacked ? false : entry.unpacked };
-            writeArchive(to, candidateEntries, dropUnpacked ? [] : ['node_modules/mcp']);
-        }
+        signChecks.push({ command, entriesInResources: fs.readdirSync(resources) });
         return { success: true, stdout: '', stderr: '' };
     };
-    return { root, context, resources, archive, backupPath, originalLive, originalBackup, logs };
+    return { root, context, resources, archive, backupPath, originalLive, originalBackup, logs, signChecks, realPatcher };
 }
 
 test('failed packaging preserves live app and existing backup', t => {
@@ -166,10 +192,22 @@ test('successful install preserves external files and creates restorable origina
     assert.equal(s.context.install20(s.resources), true);
     assert.deepEqual(fs.readFileSync(s.backupPath), s.originalLive);
     assert.deepEqual(fs.readFileSync(external), beforeExternal);
-    assert.equal(s.context.readAsarLayout(s.archive).files.get('node_modules/mcp/index.js').unpacked, true);
+    assert.equal(s.realPatcher.readAsarLayout(s.archive).files.get('node_modules/mcp/index.js').unpacked, true);
     assert.equal(s.context.restore20(s.resources), true);
     assert.deepEqual(fs.readFileSync(s.archive), s.originalLive);
     assert.deepEqual(fs.readFileSync(s.backupPath), s.originalLive);
+});
+
+test('macOS removes temporary build directory before running codesign so sealed resources stay valid', t => {
+    const s = sandbox(t, { platform: 'darwin', backup: false });
+    assert.equal(s.context.install20(s.resources), true);
+    const codesignCall = s.signChecks.find(c => c.command.includes('codesign'));
+    assert.ok(codesignCall, 'Expected codesign to run on darwin');
+    assert.equal(
+        codesignCall.entriesInResources.some(name => name.startsWith('.antigravity-localize-')),
+        false,
+        `Temporary build directory must be deleted before codesign, saw: ${codesignCall.entriesInResources.join(', ')}`
+    );
 });
 
 test('backup promotion failure rolls back the app without altering existing backup', t => {
@@ -198,43 +236,4 @@ test('proxy installation syncs and updates files from proxy_config', t => {
     fs.writeFileSync(path.join(install, 'version.dll'), 'existing unrelated proxy');
     s.context.injectProxyIfNeeded(install);
     assert.equal(fs.readFileSync(path.join(install, 'version.dll'), 'utf8'), 'requested proxy');
-});
-
-test('347 individually unpacked files collapse to one directory despite a long install path', t => {
-    const s = sandbox(t);
-    const entries = { 'dist/preload.js': { body: '// packed preload' }, 'node_modules/packed/index.js': { body: '// packed dependency' } };
-    for (let i = 0; i < 347; i++) {
-        entries[`node_modules/chrome-devtools-mcp/build/features/group-${i % 17}/feature-${i}.js`] = { body: `// file ${i}`, unpacked: true };
-    }
-    // Deliberately omit directory flags, as in the official desktop archive.
-    const fixture = path.join(s.root, 'many-unpacked.asar');
-    writeArchive(fixture, entries);
-    const layout = s.context.readAsarLayout(fixture);
-    assert.deepEqual(Array.from(layout.unpackDirs), ['node_modules/chrome-devtools-mcp']);
-    assert.deepEqual(Array.from(layout.unpackFiles), []);
-    const longPath = path.join(s.root, 'very-long-install-directory-'.repeat(7), 'extracted');
-    const args = s.context.asarUnpackArguments(layout, longPath);
-    assert.equal(args, ' --unpack-dir "node_modules/chrome-devtools-mcp"');
-    assert.ok(args.length < 100);
-    assert.equal([...layout.files.values()].filter(file => file.unpacked).length, 347);
-});
-
-test('mixed directories retain packed leaves and only promote wholly unpacked children', t => {
-    const s = sandbox(t);
-    const fixture = path.join(s.root, 'mixed.asar');
-    writeArchive(fixture, {
-        'dist/preload.js': { body: '// packed preload' },
-        'vendor/mixed/packed.js': { body: '// packed' },
-        'vendor/mixed/loose.node': { body: '// unpacked sibling', unpacked: true },
-        'vendor/mixed/native/a.node': { body: '// unpacked A', unpacked: true },
-        'vendor/mixed/native/nested/b.node': { body: '// unpacked B', unpacked: true },
-        'vendor/second/index.js': { body: '// unpacked C', unpacked: true },
-    });
-    const layout = s.context.readAsarLayout(fixture);
-    assert.deepEqual(Array.from(layout.unpackDirs), ['vendor/mixed/native', 'vendor/second']);
-    assert.deepEqual(Array.from(layout.unpackFiles), ['vendor/mixed/loose.node']);
-    assert.equal(layout.files.get('vendor/mixed/packed.js').unpacked, false);
-    const args = s.context.asarUnpackArguments(layout, path.join(s.root, 'extracted'));
-    assert.match(args, /--unpack-dir "\{vendor\/mixed\/native,vendor\/second\}"/);
-    assert.match(args, /--unpack "[^"]*\/vendor\/mixed\/loose\.node"/);
 });
