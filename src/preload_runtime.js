@@ -21,7 +21,7 @@
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
+    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div';
 
     function isCodeOrEditor(node) {
         try {
@@ -243,6 +243,36 @@
         yr: ['年', '年']
     };
 
+    function translatePermissionChoice(value) {
+        if (typeof value !== 'string') return null;
+
+        const saveRule = value.match(/^\s*Yes,\s+save rule for\s+('[\s\S]*'|"[\s\S]*")\s+(in this conversation|globally)\s*$/i);
+        if (saveRule) {
+            const pattern = saveRule[1];
+            const isConv = saveRule[2].toLowerCase() === 'in this conversation';
+            if (USE_TW) {
+                return isConv ? ('是，在此對話中為 ' + pattern + ' 儲存規則') : ('是，全域為 ' + pattern + ' 儲存規則');
+            }
+            return isConv ? ('是，在此会话中为 ' + pattern + ' 保存规则') : ('是，全局为 ' + pattern + ' 保存规则');
+        }
+
+        const match = value.match(/^\s*Yes,\s+and always allow\s+([\s\S]+)$/i);
+        if (!match || /^in this (?:project|conversation)$/i.test(norm(match[1]))) return null;
+
+        // 客户端在命令外层引号之后追加作用域，需先保留命令原文再拼接范围前缀
+        const scoped = match[1].match(/^('[\s\S]*'|"[\s\S]*")\s+in this (project|conversation)\s*$/i);
+        const command = scoped ? scoped[1] : match[1].trimEnd();
+        const scope = scoped && scoped[2] ? scoped[2].toLowerCase() : '';
+        if (USE_TW) {
+            if (scope === 'conversation') return '是，且在此對話中一律允許執行 ' + command;
+            if (scope === 'project') return '是，且在此專案中一律允許執行 ' + command;
+            return '是，且一律允許執行 ' + command;
+        }
+        if (scope === 'conversation') return '是，且在此会话中始终允许运行 ' + command;
+        if (scope === 'project') return '是，且在此项目中始终允许运行 ' + command;
+        return '是，且始终允许运行 ' + command;
+    }
+
     const DYNAMIC_RULES = [
         // 列表展开 / 收起明细
         [/^Show\s+(\d+)\s+more(\s+(results?|items?|commands?|options?))?(\.\.\.|…)?$/i, (m, num, p2, type) => {
@@ -320,8 +350,11 @@
             else if (pLow === 'custom' || pLow.includes('自定义') || pLow.includes('自訂')) translatedPreset = USE_TW ? "自訂 (Custom)" : "自定义 (Custom)";
             return USE_TW ? ("瞭解更多關於 " + translatedPreset + " 的詳細資訊") : ("了解更多关于 " + translatedPreset + " 的信息");
         }],
-        [/^Yes, and always allow '(.+)' in this project$/i, (m, cmd) => USE_TW ? ("是，且在此專案中一律允許執行 '" + cmd + "'") : ("是，且在此项目中始终允许运行 '" + cmd + "'")],
-        [/^Yes, and always allow '(.+)'$/i, (m, cmd) => USE_TW ? ("是，且一律允許執行 '" + cmd + "'") : ("是，且始终允许运行 '" + cmd + "'")],
+        [/^Yes, allow downloads from (.+) for this run$/i, (m, site) => USE_TW ? ("是，本次執行允許從 " + site + " 下載") : ("是，本次运行允许从 " + site + " 下载")],
+        [/^Yes, allow downloads from (.+) in this conversation$/i, (m, site) => USE_TW ? ("是，在此對話中允許從 " + site + " 下載") : ("是，在此会话中允许从 " + site + " 下载")],
+        [/^Yes, always allow downloads from (.+)$/i, (m, site) => USE_TW ? ("是，一律允許從 " + site + " 下載") : ("是，始终允许从 " + site + " 下载")],
+        [/^Yes, allow (.+) in this conversation$/i, (m, target) => USE_TW ? ("是，在此對話中允許 " + target) : ("是，在此会话中允许 " + target)],
+        [/^Yes, always allow (.+)$/i, (m, target) => USE_TW ? ("是，一律允許 " + target) : ("是，始终允许 " + target)],
         [/^(\d+) tools? enabled$/i, (m, num) => USE_TW ? (num + " 個工具已啟用") : (num + " 个工具已启用")],
         [/^Hide\s+tools$/i, () => "收起工具"],
         [/^(\d+)\s+tools$/i, (m, num) => num + (USE_TW ? " 個工具" : " 个工具")],
@@ -466,6 +499,15 @@
             if (valNorm === 'You can change this in') return USE_TW ? "您稍後可在 " : "您稍后可在 ";
             if (valNorm === 'later.') return USE_TW ? " 中變更。" : " 中更改。";
         }
+        if (valNorm === 'No' && p.tagName === 'SPAN') {
+            const writeIn = p.nextElementSibling;
+            const hint = '(tell the agent what to do instead)';
+            const placeholder = writeIn && typeof writeIn.getAttribute === 'function' ? writeIn.getAttribute('placeholder') : null;
+            if (writeIn && typeof writeIn.matches === 'function' && writeIn.matches('textarea[data-testid="ask-question-writein"]') &&
+                (placeholder === hint || placeholder === map.get(hint))) {
+                return '否';
+            }
+        }
         return null;
     }
 
@@ -487,8 +529,11 @@
                     const v = node.getAttribute(attr);
                     if (v) {
                         const t = norm(v);
-                        if (isFilePathOrUri(t)) continue;
-                        const newAttr = translateExactOrDynamic(t);
+                        let newAttr = translatePermissionChoice(v);
+                        if (!newAttr) {
+                            if (isFilePathOrUri(t)) continue;
+                            newAttr = translateExactOrDynamic(t);
+                        }
                         if (newAttr && newAttr !== v) {
                             node.setAttribute(attr, newAttr);
                             if (attr === 'placeholder' && 'placeholder' in node) {
@@ -550,6 +595,15 @@
 
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
+
+                if (translatedValues.get(node) !== originalVal) {
+                    const permChoiceTrans = translatePermissionChoice(originalVal);
+                    if (permChoiceTrans && permChoiceTrans !== originalVal) {
+                        translatedValues.set(node, permChoiceTrans);
+                        node.nodeValue = permChoiceTrans;
+                        return;
+                    }
+                }
 
                 // 处理 FastPick / 列表底部由于 React 节点拆分导致的 "Show ", num, " more..." 分段文本
                 const parentText = node.parentElement && node.parentElement.textContent ? node.parentElement.textContent.trim() : '';
