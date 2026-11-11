@@ -3,7 +3,7 @@
 👉 **[繁體中文版說明文件 (Traditional Chinese README)](README_TW.md)**
 
 > **支持系统**：Windows & macOS (均已内置一键脚本)  
-> **匹配版本**：Antigravity v2.30.0+  
+> **匹配版本**：Antigravity v2.31.0+  
 
 > **核心引擎**：Node.js (无需安装 Python，零依赖，极速极稳)  
 > **汉化范围**：包括软件界面、鼠标悬浮提示 (Tooltip)、顶部系统菜单、任务栏与原生系统右键菜单 (Context Menu)、内置浏览器设置、加载动画、设置面板、插件与自定义项、新手引导及登录页。  

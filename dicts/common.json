@@ -354,5 +354,8 @@
   "Developer Tools": "开发者工具箱",
   "APIs, services, and tools to build, test, secure, and run your apps.": "涵盖构建、测试、安全审计与运行应用所需的 API、云服务与效率工具。",
   "Business": "商业与业务运营",
-  "Payments, CRM, accounting, data, identity, customer support, marketing, and workflow automation.": "涵盖跨境支付、CRM 客户管理、财务会计、数据治理、身份鉴权、客户支持、数字营销与业务流自动化。"
+  "Payments, CRM, accounting, data, identity, customer support, marketing, and workflow automation.": "涵盖跨境支付、CRM 客户管理、财务会计、数据治理、身份鉴权、客户支持、数字营销与业务流自动化。",
+  "Ask anything, @ to mention": "提问任何问题，使用 @ 提及",
+  "Message subagent, @ to mention, / for actions": "向子代理发送消息，使用 @ 提及，/ 执行操作",
+  "Message subagent, @ to mention": "向子代理发送消息，使用 @ 提及"
 }

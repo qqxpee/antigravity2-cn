@@ -22,7 +22,109 @@ function cleanMenuJsContent(content) {
 function cleanTrayJsContent(content) {
     content = content.replace(/\n\s*\/\* --- TRAY TRANSLATION START --- \*\/[\s\S]*?\/\* --- TRAY TRANSLATION END --- \*\//g, '');
     content = content.replace(/\n\s*\/\* --- TRAY DOUBLE CLICK START --- \*\/[\s\S]*?\/\* --- TRAY DOUBLE CLICK END --- \*\//g, '');
+    content = content.replace(/\n\s*\/\* --- TRAY INSERT TRANSLATION START --- \*\/[\s\S]*?\/\* --- TRAY INSERT TRANSLATION END --- \*\//g, '');
     return content;
+}
+
+function cleanUtilsJsContent(content) {
+    return content.replace(/\n?\s*\/\* --- SIDECAR TRANSLATION START --- \*\/[\s\S]*?\/\* --- SIDECAR TRANSLATION END --- \*\//g, '');
+}
+
+function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
+    console.log(`[修改] 正在向 utils.js 注入伴生面板 (Sidecar) 汉化钩子...`);
+    const cleaned = cleanUtilsJsContent(utilsContent);
+    const targetStr = "hubContents.on('will-navigate', guardExternalNavigation);";
+    const idx = cleaned.indexOf(targetStr);
+    if (idx === -1) {
+        console.warn(`[警告] 未能在 utils.js 中找到 Sidecar 钩子插入点。`);
+        return cleaned;
+    }
+
+    const sidecarHookJs = `/* --- SIDECAR TRANSLATION START --- */
+    const getSidecarLocalizationScript = () => {
+        const preloadFile = typeof path_1 !== 'undefined' && path_1 && path_1.default
+            ? path_1.default.join(__dirname, 'preload.js')
+            : require('path').join(__dirname, 'preload.js');
+        const cacheKey = '__agSidecarLocalizationScript:' + preloadFile;
+        if (typeof globalThis[cacheKey] === 'string') {
+            return globalThis[cacheKey];
+        }
+        try {
+            const fsMod = typeof fs !== 'undefined' && fs && typeof fs.readFileSync === 'function' ? fs : require('fs');
+            const preloadSrc = fsMod.readFileSync(preloadFile, 'utf8');
+            const sIdx = preloadSrc.indexOf(${JSON.stringify(signatureStart)});
+            const eIdx = preloadSrc.indexOf(${JSON.stringify(signatureEnd)});
+            if (sIdx !== -1 && eIdx !== -1 && sIdx < eIdx) {
+                const extracted = preloadSrc.slice(sIdx, eIdx + ${signatureEnd.length});
+                globalThis[cacheKey] = extracted;
+                return extracted;
+            }
+        } catch (_err) {}
+        return '';
+    };
+    const resolveSidecarSubframe = (event, frameProcessId, frameRoutingId) => {
+        if (event && event.frame) return event.frame;
+        if (typeof frameProcessId === 'number' && typeof frameRoutingId === 'number') {
+            return electron_1.webFrameMain?.fromId?.(frameProcessId, frameRoutingId) ?? null;
+        }
+        return null;
+    };
+    const checkSidecarIframeInHub = (targetUrl) => {
+        try {
+            const target = new URL(targetUrl);
+            const iframes = document.querySelectorAll('iframe[data-testid="sidecar-iframe"]');
+            for (const el of iframes) {
+                const raw = el.getAttribute('src') || el.src || '';
+                if (!raw) continue;
+                const u = new URL(raw, location.href);
+                if (u.origin !== target.origin) continue;
+                const baseDir = u.pathname.slice(0, u.pathname.lastIndexOf('/') + 1);
+                if (u.origin !== location.origin || target.pathname === u.pathname || target.pathname.startsWith(baseDir)) {
+                    return true;
+                }
+            }
+        } catch (_e) {}
+        return false;
+    };
+    const injectSidecarSubframe = (frame) => {
+        try {
+            if (!frame || frame.isDestroyed?.() || win.isDestroyed?.() || hubContents.isDestroyed?.()) return;
+            const mainFrame = hubContents.mainFrame;
+            if (!mainFrame || frame === mainFrame || frame.parent !== mainFrame) return;
+            const frameUrl = String(frame.url || '');
+            if (!/^https?:\\/\\//i.test(frameUrl)) return;
+            const frameOrigin = String(frame.origin || '');
+            if (!frameOrigin || frameOrigin === 'null') return;
+            const script = getSidecarLocalizationScript();
+            if (!script) return;
+            const checkExpr = '(' + checkSidecarIframeInHub.toString() + ')(' + JSON.stringify(frameUrl) + ')';
+            Promise.resolve(mainFrame.executeJavaScript(checkExpr))
+                .then((isSidecar) => {
+                    if (!isSidecar) return;
+                    if (frame.isDestroyed?.() || win.isDestroyed?.() || hubContents.isDestroyed?.()) return;
+                    return frame.executeJavaScript(script);
+                })
+                .catch(() => undefined);
+        } catch (_err) {}
+    };
+    const onSidecarFrameNavigate = (event, _url, _httpResponseCode, _httpStatusText, isMainFrame, frameProcessId, frameRoutingId) => {
+        if (isMainFrame) return;
+        injectSidecarSubframe(resolveSidecarSubframe(event, frameProcessId, frameRoutingId));
+    };
+    const onSidecarFrameFinishLoad = (event, isMainFrame, frameProcessId, frameRoutingId) => {
+        if (isMainFrame) return;
+        injectSidecarSubframe(resolveSidecarSubframe(event, frameProcessId, frameRoutingId));
+    };
+    hubContents.on('did-frame-navigate', onSidecarFrameNavigate);
+    hubContents.on('did-frame-finish-load', onSidecarFrameFinishLoad);
+    win.on('closed', () => {
+        hubContents.off?.('did-frame-navigate', onSidecarFrameNavigate);
+        hubContents.off?.('did-frame-finish-load', onSidecarFrameFinishLoad);
+    });
+    /* --- SIDECAR TRANSLATION END --- */`;
+
+    console.log(`[修改] 伴生面板 (Sidecar) 汉化钩子注入成功！`);
+    return cleaned.substring(0, idx) + sidecarHookJs + "\n    " + cleaned.substring(idx);
 }
 
 function patchPreloadJs(content, translationJs, signatureStart, signatureEnd) {
@@ -53,6 +155,9 @@ function patchMenuJs(menuContent, useTw) {
         'Command Palette': '命令選擇區',
         'Docs': '說明文件',
         'Check for Updates': '檢查更新',
+        'Checking for Updates...': '正在檢查更新...',
+        'Downloading Update...': '正在下載更新...',
+        'Restart to Update': '重新啟動以更新',
         'Toggle Developer Tools': '切換開發人員工具',
         'Undo': '復原',
         'Redo': '重做',
@@ -65,6 +170,7 @@ function patchMenuJs(menuContent, useTw) {
         'Close': '關閉',
         'Zoom': '縮放',
         'Reset Zoom': '重設縮放',
+        'Actual Size': '實際大小',
         'Zoom In': '放大',
         'Zoom Out': '縮小',
         'Toggle Full Screen': '切換全螢幕',
@@ -106,6 +212,9 @@ function patchMenuJs(menuContent, useTw) {
         'Command Palette': '命令面板',
         'Docs': '文档',
         'Check for Updates': '检查更新',
+        'Checking for Updates...': '正在检查更新...',
+        'Downloading Update...': '正在下载更新...',
+        'Restart to Update': '重启以更新',
         'Toggle Developer Tools': '切换开发者工具',
         'Undo': '撤销',
         'Redo': '重做',
@@ -118,6 +227,7 @@ function patchMenuJs(menuContent, useTw) {
         'Close': '关闭',
         'Zoom': '缩放',
         'Reset Zoom': '重置缩放',
+        'Actual Size': '实际大小',
         'Zoom In': '放大',
         'Zoom Out': '缩小',
         'Toggle Full Screen': '切换全屏',
@@ -159,6 +269,7 @@ function patchMenuJs(menuContent, useTw) {
                 mnemonic = "(&" + m[1] + ")";
                 cleanLabel = label.replace('&', '');
             }
+            if (!item._origLabel) item._origLabel = label;
             if (!item._origCleanLabel) item._origCleanLabel = cleanLabel;
             if (translations[cleanLabel]) {
                 item.label = translations[cleanLabel] + mnemonic;
@@ -178,6 +289,7 @@ function patchMenuJs(menuContent, useTw) {
         menu.items.find = function(pred, thisArg) {
             return origFind((it, idx, arr) => {
                 if (pred.call(thisArg, it, idx, arr)) return true;
+                if (it && it._origLabel && pred.call(thisArg, { ...it, label: it._origLabel }, idx, arr)) return true;
                 if (it && it._origCleanLabel && pred.call(thisArg, { ...it, label: it._origCleanLabel }, idx, arr)) return true;
                 return false;
             });
@@ -215,10 +327,14 @@ function patchTrayJs(trayContent, useTw) {
     const translations = ${useTw ? `{
         'No agents running': '無執行中的代理',
         'Open Antigravity': '開啟 Antigravity',
+        'Connect to WSL': '連線至 WSL',
+        'Reopen Locally': '在本機重新開啟',
         'Quit': '結束'
     }` : `{
         'No agents running': '无运行中的智能体',
         'Open Antigravity': '打开 Antigravity',
+        'Connect to WSL': '连接到 WSL',
+        'Reopen Locally': '在本地重新打开',
         'Quit': '退出'
     }`};
     for (const item of actions) {
@@ -260,6 +376,32 @@ function patchTrayJs(trayContent, useTw) {
         : "countItem.label = count > 0 ? `${count} 个智能体运行中` : '无运行中的智能体';";
     trayPatched = trayPatched.replace(countRegex, replacementCount);
 
+    const targetInsert = /function\s+insertTrayMenuItem\s*\(\s*position\s*,\s*options\s*\)\s*\{/;
+    const replacementInsert = `function insertTrayMenuItem(position, options) {
+    /* --- TRAY INSERT TRANSLATION START --- */
+    const insertTranslations = ${useTw ? `{
+        'No agents running': '無執行中的代理',
+        'Open Antigravity': '開啟 Antigravity',
+        'Connect to WSL': '連線至 WSL',
+        'Reopen Locally': '在本機重新開啟',
+        'Quit': '結束'
+    }` : `{
+        'No agents running': '无运行中的智能体',
+        'Open Antigravity': '打开 Antigravity',
+        'Connect to WSL': '连接到 WSL',
+        'Reopen Locally': '在本地重新打开',
+        'Quit': '退出'
+    }`};
+    if (options && options.label) {
+        if (insertTranslations[options.label]) {
+            options = { ...options, label: insertTranslations[options.label] };
+        } else if (options.label.startsWith('Open ')) {
+            options = { ...options, label: (${useTw ? "true" : "false"} ? '開啟 ' : '打开 ') + options.label.slice(5) };
+        }
+    }
+    /* --- TRAY INSERT TRANSLATION END --- */`;
+    trayPatched = trayPatched.replace(targetInsert, replacementInsert);
+
     console.log(`[修改] 任务栏菜单汉化注入成功！`);
     return trayPatched;
 }
@@ -292,13 +434,19 @@ function patchUpdaterJs(updaterContent, useTw) {
                 message: '暂无可用更新',
                 buttons: ['确定'],`;
 
-    const out = updaterContent.replace(targetOptions, replacementOptions);
+    const out = updaterContent
+        .replace(targetOptions, replacementOptions)
+        .replace('MenuUpdateStep["CheckForUpdates"] = "Check for Updates";', `MenuUpdateStep["CheckForUpdates"] = ${useTw ? '"檢查更新"' : '"检查更新"'};`)
+        .replace('MenuUpdateStep["CheckingForUpdates"] = "Checking for Updates...";', `MenuUpdateStep["CheckingForUpdates"] = ${useTw ? '"正在檢查更新..."' : '"正在检查更新..."'};`)
+        .replace('MenuUpdateStep["DownloadingUpdate"] = "Downloading Update...";', `MenuUpdateStep["DownloadingUpdate"] = ${useTw ? '"正在下載更新..."' : '"正在下载更新..."'};`)
+        .replace('MenuUpdateStep["RestartToUpdate"] = "Restart to Update";', `MenuUpdateStep["RestartToUpdate"] = ${useTw ? '"重新啟動以更新"' : '"重启以更新"'};`);
     console.log(`[修改] 更新弹窗汉化注入成功！`);
     return out;
 }
 
 module.exports = {
     patchPreloadJs,
+    patchUtilsJs,
     patchMenuJs,
     patchTrayJs,
     patchLoadingOverlayJs,

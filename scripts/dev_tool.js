@@ -388,6 +388,64 @@ async function cmdScanUi(args = []) {
     console.log(`[*] 正在从客户端 (v${appVersion}) https://127.0.0.1:${httpsPort}/main.js 提取全量界面与悬浮提示词条...`);
     const js = await fetchUrl(`https://127.0.0.1:${httpsPort}/main.js`);
     const extracted = extractUiStringsFromBundle(js);
+
+    // 同步通过 Connect-Web RPC 提取 Mendel 动态实验下发的 UI 文案 (如新手引导 Persona 卡片与免责声明)
+    if (info.csrfToken) {
+        try {
+            const mendelData = await new Promise((resolve, reject) => {
+                const req = https.request(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetMendelFlags`, {
+                    method: 'POST',
+                    rejectUnauthorized: false,
+                    headers: { 'content-type': 'application/json', 'x-codeium-csrf-token': info.csrfToken }
+                }, res => {
+                    const chunks = [];
+                    res.on('data', c => chunks.push(c));
+                    res.on('end', () => {
+                        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (e) { resolve({}); }
+                    });
+                });
+                req.on('error', () => resolve({}));
+                req.write('{}');
+                req.end();
+            });
+            const exps = (mendelData.experimentConfig && mendelData.experimentConfig.experiments) || mendelData.flags || [];
+            const walkJson = (obj, keyName) => {
+                if (!obj || typeof obj !== 'object') return;
+                if (Array.isArray(obj)) {
+                    for (const item of obj) walkJson(item, keyName);
+                    return;
+                }
+                for (const [k, v] of Object.entries(obj)) {
+                    if (typeof v === 'string' && /^(title|description|label|sublabel|tooltip|placeholder|message|heading|subtitle)$/i.test(k)) {
+                        const s = normalizeUiText(v);
+                        if (isNaturalUiString(s)) {
+                            if (!extracted.has(s)) extracted.set(s, new Set());
+                            extracted.get(s).add(`mendel:${keyName}`);
+                        }
+                    } else if (v && typeof v === 'object') {
+                        walkJson(v, keyName);
+                    }
+                }
+            };
+            for (const exp of exps) {
+                const keyName = exp.keyString || exp.name || 'flag';
+                if (/cli-announcement/i.test(keyName)) continue;
+                const valStr = typeof exp.string === 'string' ? exp.string : (typeof exp.value === 'string' ? exp.value : '');
+                if (!valStr) continue;
+                const trimmed = valStr.trim();
+                if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                    try { walkJson(JSON.parse(trimmed), keyName); } catch (e) {}
+                } else if (trimmed.includes(' ')) {
+                    const s = normalizeUiText(trimmed);
+                    if (isNaturalUiString(s)) {
+                        if (!extracted.has(s)) extracted.set(s, new Set());
+                        extracted.get(s).add(`mendel:${keyName}`);
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
     const allStrings = [...extracted.keys()].sort();
     console.log(`[√] 提取完成！共扫描到 ${allStrings.length} 条界面与悬浮提示词条。`);
 
