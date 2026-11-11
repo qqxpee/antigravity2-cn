@@ -766,27 +766,37 @@ function main() {
         }
     }
 
-    // 5. 校验通过且原来客户端在运行，则自动重新启动客户端
-    if (success && wasAppRunning) {
+    // 5. 校验通过且原来客户端在运行，则自动重新启动客户端（仅当目标为有效客户端包/可执行程序时触发，避免自定义目录误弹 Finder）
+    const resolveMacAppBundle = dir => {
+        const clean = String(dir || '').replace(/[\\/]+$/, '');
+        if (!clean) return null;
+        if (clean.endsWith('.app') || fs.existsSync(path.join(clean, 'Contents', 'MacOS'))) return clean;
+        const parent1 = path.dirname(clean);
+        const parent2 = path.dirname(parent1);
+        if (parent1.endsWith('.app') || fs.existsSync(path.join(parent1, 'Contents', 'MacOS'))) return parent1;
+        if (parent2.endsWith('.app') || fs.existsSync(path.join(parent2, 'Contents', 'MacOS'))) return parent2;
+        return null;
+    };
+    const macAppBundle = process.platform === 'darwin' ? resolveMacAppBundle(installDir) : null;
+    const canRestartApp = process.platform === 'win32'
+        ? fs.existsSync(path.join(installDir, 'Antigravity.exe'))
+        : Boolean(macAppBundle);
+    if (success && wasAppRunning && canRestartApp) {
         console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
         try {
             if (process.platform === 'win32') {
                 const exePath = path.join(installDir, 'Antigravity.exe');
-                if (fs.existsSync(exePath)) {
-                    const child = child_process.spawn(exePath, [], {
-                        detached: true,
-                        stdio: 'ignore'
-                    });
-                    child.unref();
-                    console.log("[启动] 客户端启动成功！");
-                } else {
-                    console.warn(`[警告] 未找到客户端主程序: ${exePath}`);
-                }
+                const child = child_process.spawn(exePath, [], {
+                    detached: true,
+                    stdio: 'ignore'
+                });
+                child.unref();
+                console.log("[启动] 客户端启动成功！");
             } else if (process.platform === 'darwin') {
                 if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
-                    child_process.exec(`sudo -u "${process.env.SUDO_USER}" open "${installDir}"`);
+                    child_process.exec(`sudo -u "${process.env.SUDO_USER}" open "${macAppBundle}"`);
                 } else {
-                    child_process.exec(`open "${installDir}"`);
+                    child_process.exec(`open "${macAppBundle}"`);
                 }
                 console.log("[启动] 客户端启动成功！");
             }

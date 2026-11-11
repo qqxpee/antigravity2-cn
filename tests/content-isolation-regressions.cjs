@@ -372,3 +372,50 @@ test('subagent incoming message header and input placeholder translate in SC and
     assert.equal(domTw.window.document.getElementById('placeholder-full').textContent, '向子代理傳送訊息，使用 @ 提及，/ 執行操作');
     assert.equal(domTw.window.document.getElementById('placeholder-short').textContent, '向子代理傳送訊息，使用 @ 提及');
 });
+
+test('NUX onboarding split TextNodes and post-onboarding welcome tip translate without global single-word pollution', async t => {
+    const html = `
+      <div>
+        <span id="nux-card1">Customize your experience across the agent, plugins, and product from the settings and marketplace. We won\u2019t show you ads or let advertisers influence what Antigravity says.</span>
+        <span id="nux-card1-split">Customize your experience across the agent, plugins, and product from the settings and marketplace. We won\u2019t show you ads or let advertisers influence what <b>Antigravity</b> says.</span>
+        <span id="nux-card3"><b>Antigravity</b>\u2019s agents are powerful and will help you get a lot done better and faster than before, but still make sure to verify the actions taken by the agent.</span>
+        <span id="nux-terms-title">Help us improve Antigravity.</span>
+        <span id="nux-terms-desc">Allow Google to collect and use your Interactions data, subject to the <a href="#">Google <b>Antigravity</b> Terms of Service</a> and <a href="#">Google Privacy Policy</a>. You can control this from your settings at any point.</span>
+        <p id="nux-enterprise">For <b>your plan</b>, <b>Antigravity</b> does not collect any of your prompts, content, or model responses but will still collect general usage patterns (e.g., feature adoption, active user counts).</p>
+        <p id="nux-analytics"><b>Antigravity</b> does not collect any of your prompts, content, or model responses but does collect general usage patterns such as feature adoption and active user counts (\u201cproduct analytics\u201d). Telemetry data will be handled in accordance with the Google Privacy Policy.</p>
+        <li><a href="#">Privacy Notice</a> (excluding product analytics data)</li>
+        <p id="nux-news">Sign up for newsletters, tips and tricks, and other notifications about <b>Antigravity</b>.</p>
+        <p id="welcome-tip" data-testid="post-onboarding-welcome-tip"><span>Tip:</span> Press <kbd>⌘⇧A</kbd> to switch to the Gemini app. Your agents keep working in the background.</p>
+        <span id="random-says">says.</span>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('nux-card1-split').textContent, '从设置与市场中自定义您在智能体、插件及产品上的各项体验。我们不会向您展示广告，也不会让广告主影响 Antigravity 所说的内容。');
+    assert.equal(w.document.getElementById('nux-card3').textContent, 'Antigravity 的智能体功能强大，可帮助您比以往更好、更快地完成更多工作，但仍请务必核验智能体执行的操作。');
+    assert.equal(w.document.getElementById('nux-terms-title').textContent, '帮助改进 Antigravity。');
+    assert.equal(w.document.getElementById('nux-terms-desc').textContent, '允许 Google 收集并使用您的交互数据，但须遵守Google Antigravity服务条款以及Google 隐私政策。您可以随时在设置中控制此选项。');
+    assert.equal(w.document.getElementById('nux-enterprise').textContent, '对于 您的计划，Antigravity不会收集您的任何提示词、内容或模型响应，但仍会收集一般使用模式（例如功能采用率、活跃用户数）。');
+    assert.equal(w.document.getElementById('nux-analytics').textContent, 'Antigravity 不会收集您的任何提示词、内容或模型回复，但会收集功能采用率与活跃用户数等常规使用模式（“产品分析”）。遥测数据将按照 Google 隐私政策处理。');
+    assert.equal(w.document.querySelector('li').textContent, '隐私声明（不含产品分析数据）');
+    assert.equal(w.document.getElementById('nux-news').textContent, '订阅关于以下内容的新闻通讯、技巧提示及其他通知：Antigravity。');
+    assert.equal(w.document.getElementById('welcome-tip').textContent, '提示： 按 ⌘⇧A 即可切换至 Gemini 应用。您的智能体会在后台继续运行。');
+    assert.equal(w.document.getElementById('random-says').textContent, 'says.');
+
+    const reactCard3 = w.document.createElement('span');
+    reactCard3.append(
+        w.document.createTextNode('Antigravity'),
+        w.document.createTextNode('\u2019s agents are powerful and will help you get a lot done better and faster than before, but still make sure to verify the actions taken by the agent.')
+    );
+    w.document.body.appendChild(reactCard3);
+    await settle();
+    assert.equal(reactCard3.textContent, 'Antigravity 的智能体功能强大，可帮助您比以往更好、更快地完成更多工作，但仍请务必核验智能体执行的操作。');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('nux-card1-split').textContent, '從設定與市集中自訂您在代理、外掛程式及產品上的各項體驗。我們不會向您顯示廣告，也不會讓廣告客戶影響 Antigravity 所說的內容。');
+    assert.equal(domTw.window.document.getElementById('nux-card3').textContent, 'Antigravity 的代理功能強大，能協助您比以往更好、更快地完成更多工作，但仍請務必驗證代理執行的操作。');
+    assert.equal(domTw.window.document.getElementById('welcome-tip').textContent, '提示： 按 ⌘⇧A 即可切換至 Gemini 應用程式。您的代理會在背景繼續執行。');
+    assert.equal(domTw.window.document.getElementById('random-says').textContent, 'says.');
+});

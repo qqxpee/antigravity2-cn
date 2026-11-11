@@ -751,11 +751,26 @@
         if (valNorm === 'Customize your experience from visual themes to how autonomous your agent acts and what') {
             return USE_TW ? "自訂您的使用體驗，從視覺佈景主題到代理的自主程度以及 " : "自定义您的使用体验，从视觉主题到智能体的自主程度以及 ";
         }
-        if (valNorm === 'says.' && (pText.includes('autonomous') || pText.includes('自主程度'))) {
-            return " 的提示音。";
+        if (valNorm === "Customize your experience across the agent, plugins, and product from the settings and marketplace. We won't show you ads or let advertisers influence what") {
+            return USE_TW
+                ? "從設定與市集中自訂您在代理、外掛程式及產品上的各項體驗。我們不會向您顯示廣告，也不會讓廣告客戶影響 "
+                : "从设置与市场中自定义您在智能体、插件及产品上的各项体验。我们不会向您展示广告，也不会让广告主影响 ";
+        }
+        if (valNorm === 'says.' && (pText.includes('autonomous') || pText.includes('自主程度') || pText.includes('influence what') || pText.includes('广告主影响') || pText.includes('廣告客戶影響'))) {
+            return (pText.includes('influence what') || pText.includes('广告主影响') || pText.includes('廣告客戶影響'))
+                ? (USE_TW ? " 所說的內容。" : " 所说的内容。")
+                : " 的提示音。";
         }
         if (valNorm === "'s agents are powerful. They can edit files, run commands, and browse the web.") {
             return USE_TW ? " 的代理功能強大，可以編輯檔案、執行指令以及瀏覽網頁。" : " 的智能体功能强大，可以编辑文件、运行命令以及浏览网页。";
+        }
+        if (valNorm === "'s agents are powerful and will help you get a lot done better and faster than before, but still make sure to verify the actions taken by the agent.") {
+            return USE_TW
+                ? " 的代理功能強大，能協助您比以往更好、更快地完成更多工作，但仍請務必驗證代理執行的操作。"
+                : " 的智能体功能强大，可帮助您比以往更好、更快地完成更多工作，但仍请务必核验智能体执行的操作。";
+        }
+        if (valNorm === '(excluding product analytics data)' && (pText.includes('Privacy Notice') || pText.includes('隐私声明') || pText.includes('隱私聲明') || pText.includes('隱私權聲明'))) {
+            return USE_TW ? "（不含產品分析資料）" : "（不含产品分析数据）";
         }
         if (valNorm === 'Terms of Service' && pText.startsWith('Google ')) {
             return USE_TW ? " 服務條款" : " 服务条款";
@@ -763,14 +778,30 @@
         if (valNorm === 'Sign up for newsletters, informational emails, and special offers about') {
             return USE_TW ? "訂閱有關 " : "订阅有关 ";
         }
-        if (valNorm === '.' && (pText.includes('Sign up for newsletters') || pText.includes('订阅有关') || pText.includes('訂閱有關'))) {
-            return USE_TW ? " 的電子報、資訊郵件與特別優惠。" : " 的新闻通讯、资讯邮件和特别优惠。";
+        if (valNorm === '.' && (pText.includes('Sign up for newsletters') || pText.includes('订阅有关') || pText.includes('訂閱有關') || pText.includes('订阅关于') || pText.includes('訂閱關於'))) {
+            return (pText.includes('以下内容') || pText.includes('以下內容'))
+                ? "。"
+                : (USE_TW ? " 的電子報、資訊郵件與特別優惠。" : " 的新闻通讯、资讯邮件和特别优惠。");
         }
-        if (valNorm === 'For' && pText.includes('does not collect and use your Interactions data')) {
-            return USE_TW ? "針對 " : "对于 ";
+        if ((valNorm === 'For' || valNorm === ',') && (pText.includes('does not collect and use your Interactions data') || pText.includes('does not collect any of your prompts') || pText.includes('不会收集您的任何提示') || pText.includes('不會收集您的任何提示'))) {
+            if (valNorm === 'For') return USE_TW ? "針對 " : "对于 ";
+            if (valNorm === ',') return "，";
         }
         if (valNorm === 'does not collect and use your Interactions data for model training, and retains it only to provide the service.') {
             return USE_TW ? " 不會收集或使用您的互動資料進行模型訓練，僅為提供服務而保留該資料。" : " 不会收集或使用您的交互数据进行模型训练，仅为提供服务而保留该数据。";
+        }
+        if (valNorm.startsWith('does not collect any of your prompts, content, or model responses') && valNorm.includes('general usage patterns such as feature adoption')) {
+            return USE_TW
+                ? " 不會收集您的任何提示詞、內容或模型回覆，但會收集功能採用率與活躍使用者人數等一般使用模式（「產品分析」）。遙測資料將依據 Google 隱私權政策處理。"
+                : " 不会收集您的任何提示词、内容或模型回复，但会收集功能采用率与活跃用户数等常规使用模式（“产品分析”）。遥测数据将按照 Google 隐私政策处理。";
+        }
+        if ((typeof p.closest === 'function' && p.closest('[data-testid="post-onboarding-welcome-tip"]')) || (p.getAttribute && p.getAttribute('data-testid') === 'post-onboarding-welcome-tip') || pText.includes('to switch to the Gemini app')) {
+            if (valNorm === 'Press') return " 按 ";
+            if (valNorm === 'to switch to the Gemini app. Your agents keep working in the background.') {
+                return USE_TW
+                    ? " 即可切換至 Gemini 應用程式。您的代理會在背景繼續執行。"
+                    : " 即可切换至 Gemini 应用。您的智能体会在后台继续运行。";
+            }
         }
         if (valNorm === 'To switch accounts, sign out in the') {
             return USE_TW ? "如需切換帳戶，請在" : "如需切换账户，请在";
