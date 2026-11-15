@@ -504,7 +504,7 @@ function replaceFileWithRetry(srcPath, destPath) {
     }
 }
 
-function install20(resourcesDir) {
+function install20(resourcesDir, noKill = false) {
     const asarPath = path.join(resourcesDir, "app.asar");
     const bakPath = path.join(resourcesDir, "app.asar.bak");
 
@@ -579,7 +579,9 @@ function install20(resourcesDir) {
                 console.warn(`[提示] 临时目录已保留: ${buildDir}`);
             }
         }
-        cleanElectronCache();
+        if (!(noKill && wasAppRunning)) {
+            cleanElectronCache();
+        }
         resignAppOnMac(resourcesDir);
         console.log(`[√] Antigravity 2.0 汉化部署完成！`);
         return true;
@@ -760,7 +762,7 @@ function main() {
         }
     } else {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
-        success = install20(resourcesDir);
+        success = install20(resourcesDir, noKill);
         if (success) {
             injectProxyIfNeeded(installDir);
         }
@@ -781,7 +783,7 @@ function main() {
     const canRestartApp = process.platform === 'win32'
         ? fs.existsSync(path.join(installDir, 'Antigravity.exe'))
         : Boolean(macAppBundle);
-    if (success && wasAppRunning && canRestartApp) {
+    if (success && wasAppRunning && !noKill && canRestartApp) {
         console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
         try {
             if (process.platform === 'win32') {

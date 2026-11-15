@@ -655,6 +655,26 @@
             const isCjk = /[\u4e00-\u9fff]/.test(sZh);
             return (isCjk ? (USE_TW ? '來自' : '来自') : (USE_TW ? '來自 ' : '来自 ')) + sZh + (isCjk ? (USE_TW ? '的訊息' : '的消息') : (USE_TW ? ' 的訊息' : ' 的消息'));
         }],
+
+        // v2.32.1 新增界面：草稿胶囊、SSH 远程主机、多智能体视图与插件云端凭据
+        [/^(\d+)\s+Drafts?$/i, (m, n) => n + (USE_TW ? " 則草稿" : " 条草稿")],
+        [/^Resume\s+(\d+)\s+comment drafts?$/i, (m, n) => USE_TW ? ("恢復 " + n + " 則評論草稿") : ("恢复 " + n + " 条评论草稿")],
+        [/^Couldn't connect to\s+(.+)$/i, (m, rest) => (USE_TW ? "無法連線至 " : "无法连接到 ") + rest],
+        [/^Connecting to\s+(.+?)(\.\.\.|…)?$/i, (m, host) => (USE_TW ? "正在連線至 " : "正在连接到 ") + host + "..."],
+        [/^Connected to\s+(.+)$/i, (m, host) => (USE_TW ? "已連線至 " : "已连接到 ") + host],
+        [/^SSH Config\s*\((.+)\)$/i, (m, cfg) => (USE_TW ? "SSH 設定 (" : "SSH 配置 (") + cfg + ")"],
+        [/^(\d+)\s+hidden hosts?$/i, (m, n) => n + (USE_TW ? " 個已隱藏的主機" : " 个已隐藏的主机")],
+        [/^Hide\s+(.+?)\s+from this list$/i, (m, host) => USE_TW ? ("從此清單中隱藏 " + host) : ("从此列表中隐藏 " + host)],
+        [/^Show\s+(.+?)\s+in the list again$/i, (m, host) => USE_TW ? ("重新在清單中顯示 " + host) : ("重新在列表中显示 " + host)],
+        [/^(.+?)\s*\((Focus this tile|Back to all agents)\)$/i, (m, prefix, action) => prefix + "（" + (/^Focus/i.test(action) ? (USE_TW ? "聚焦此窗格" : "聚焦此视图") : (USE_TW ? "返回所有代理" : "返回全部智能体")) + "）"],
+        [/^Sign-ins to (.+?) are kept in the cloud with your account\.(?:\s*(Other credentials stay on this machine\.))?(?:\s*(Credentials are only sent to the domains listed\.))?$/i, (m, providers, otherPart, domainPart) => {
+            let res = USE_TW
+                ? (providers + " 的登入資訊會隨您的帳戶保存在雲端。")
+                : (providers + " 的登录信息会随您的账户保存在云端。");
+            if (otherPart) res += USE_TW ? "其他憑證保留在本機上。" : "其他凭据保留在本机上。";
+            if (domainPart) res += USE_TW ? "憑證僅會傳送至所列出的網域。" : "凭据仅会发送至所列出的域名。";
+            return res;
+        }],
     ];
 
     function translateExactOrDynamic(t) {
@@ -888,6 +908,28 @@
                 return (originalVal.startsWith(' ') ? ' ' : '') + (USE_TW ? "項任務已完成" : "项任务已完成");
             }
         }
+        if (valNorm === 'Missing' && p.getAttribute && /^computer-permissions-badge-/.test(p.getAttribute('data-testid') || '')) {
+            return USE_TW ? '未授權' : '未授权';
+        }
+        if (pText.includes('macOS Privacy & Security') || pText.includes('隐私与安全性') || pText.includes('隱私權與安全性')) {
+            if (valNorm === 'Click') return USE_TW ? '按一下 ' : '点击 ';
+            if (valNorm === 'to open macOS Privacy & Security.') return USE_TW ? ' 以開啟 macOS「隱私權與安全性」。' : ' 以打开 macOS“隐私与安全性”。';
+        }
+        if (pText.includes('Type one above') || pText.includes('请在上方直接输入') || pText.includes('請在上方直接輸入')) {
+            if (valNorm === 'No hosts in') return '在 ';
+            if (valNorm === 'yet. Type one above.') return USE_TW ? ' 中尚無主機，請在上方直接輸入。' : ' 中暂未配置主机，请在上方直接输入。';
+        }
+        if (valNorm === "Couldn't connect to" && typeof p.closest === 'function' && p.closest('[data-testid="ssh-connect-error"]')) {
+            return USE_TW ? '無法連線至 ' : '无法连接到 ';
+        }
+        if (valNorm === 'Layout' && p.parentElement && p.parentElement.hasAttribute && p.parentElement.hasAttribute('data-agy-layout-bar')) {
+            return USE_TW ? '版面配置' : '布局';
+        }
+        if ((p.hasAttribute && p.hasAttribute('data-agy-layout-option')) || (typeof p.closest === 'function' && p.closest('[data-agy-layout]'))) {
+            if (valNorm === 'Stage') return '舞台';
+            if (valNorm === 'Desktop') return '桌面';
+            if (valNorm === 'Grid') return USE_TW ? '網格' : '网格';
+        }
         return null;
     }
 
@@ -913,6 +955,14 @@
                         let newAttr = translatePermissionChoice(v);
                         if (!newAttr && inSwarmEl && Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, t)) {
                             newAttr = SCOPED_SWARM_MAP[t][USE_TW ? 1 : 0];
+                        }
+                        if (!newAttr && attr === 'aria-label') {
+                            if (node.getAttribute('role') === 'radiogroup') {
+                                if (t === 'Icon') newAttr = USE_TW ? '圖示' : '图标';
+                                else if (t === 'Color') newAttr = USE_TW ? '顏色' : '颜色';
+                            } else if (node.hasAttribute('data-agy-layout') && t === 'Layout') {
+                                newAttr = USE_TW ? '版面配置' : '布局';
+                            }
                         }
                         if (!newAttr) {
                             if (isFilePathOrUri(t)) continue;

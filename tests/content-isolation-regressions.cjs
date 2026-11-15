@@ -419,3 +419,94 @@ test('NUX onboarding split TextNodes and post-onboarding welcome tip translate w
     assert.equal(domTw.window.document.getElementById('welcome-tip').textContent, '提示： 按 ⌘⇧A 即可切換至 Gemini 應用程式。您的代理會在背景繼續執行。');
     assert.equal(domTw.window.document.getElementById('random-says').textContent, 'says.');
 });
+
+test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plugin credentials translate without single-word pollution', async t => {
+    const html = `
+      <div>
+        <div id="ssh-err" data-testid="ssh-connect-error"><span id="ssh-err-title">Couldn\u2019t connect to </span></div>
+        <p id="ssh-empty">No hosts in ~/.ssh/config yet. Type one above.</p>
+        <div id="ssh-cfg-title">SSH Config (~/.ssh/config)</div>
+        <button id="ssh-hidden">3 hidden hosts</button>
+        <div id="ssh-connecting">Connecting to devbox\u2026</div>
+        <span id="perm-badge-miss" data-testid="computer-permissions-badge-accessibility">Missing</span>
+        <span id="perm-badge-ok" data-testid="computer-permissions-badge-screenRecording">Granted \u2713</span>
+        <span id="perm-tip">Click <strong>Open \u2197</strong> to open macOS Privacy &amp; Security.</span>
+        <div id="layout-bar" data-agy-layout-bar="">
+          <span id="layout-label">Layout</span>
+          <div id="layout-select" aria-label="Layout" data-agy-layout="stage">
+            <span id="opt-stage" data-agy-layout-option="stage">Stage</span>
+            <span id="opt-desktop" data-agy-layout-option="desktop">Desktop</span>
+            <span id="opt-grid" data-agy-layout-option="grid">Grid</span>
+          </div>
+        </div>
+        <button id="tile-focus" title="Codebase \u00b7 worker-1 (Focus this tile)">Codebase</button>
+        <button id="tile-back" title="Codebase \u00b7 worker-1 (Back to all agents)">Back to all agents</button>
+        <div id="icon-rg" role="radiogroup" aria-label="Icon"></div>
+        <div id="color-rg" role="radiogroup" aria-label="Color"></div>
+        <button id="draft-btn" aria-label="Resume 2 comment drafts"><span>2 Drafts</span></button>
+        <p id="plugin-creds">Sign-ins to GitHub, Linear are kept in the cloud with your account. Other credentials stay on this machine. Credentials are only sent to the domains listed.</p>
+
+        <span id="plain-click">Click</span>
+        <span id="plain-missing">Missing</span>
+        <span id="plain-layout">Layout</span>
+        <span id="plain-stage">Stage</span>
+        <div id="plain-icon" aria-label="Icon">Icon</div>
+        <div id="plain-color" aria-label="Color">Color</div>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    w.document.getElementById('ssh-err-title').appendChild(w.document.createTextNode('devbox'));
+    w.document.getElementById('ssh-empty').textContent = '';
+    w.document.getElementById('ssh-empty').append(
+        w.document.createTextNode('No hosts in '),
+        w.document.createTextNode('~/.ssh/config'),
+        w.document.createTextNode(' yet. Type one above.')
+    );
+    await settle();
+
+    assert.equal(w.document.getElementById('ssh-err-title').textContent, '无法连接到 devbox');
+    assert.equal(w.document.getElementById('ssh-empty').textContent, '在 ~/.ssh/config 中暂未配置主机，请在上方直接输入。');
+    assert.equal(w.document.getElementById('ssh-cfg-title').textContent, 'SSH 配置 (~/.ssh/config)');
+    assert.equal(w.document.getElementById('ssh-hidden').textContent, '3 个已隐藏的主机');
+    assert.equal(w.document.getElementById('ssh-connecting').textContent, '正在连接到 devbox...');
+    assert.equal(w.document.getElementById('perm-badge-miss').textContent, '未授权');
+    assert.equal(w.document.getElementById('perm-badge-ok').textContent, '已授权 ✓');
+    assert.equal(w.document.getElementById('perm-tip').textContent, '点击 打开 ↗ 以打开 macOS“隐私与安全性”。');
+    assert.equal(w.document.getElementById('layout-label').textContent, '布局');
+    assert.equal(w.document.getElementById('layout-select').getAttribute('aria-label'), '布局');
+    assert.equal(w.document.getElementById('opt-stage').textContent, '舞台');
+    assert.equal(w.document.getElementById('opt-desktop').textContent, '桌面');
+    assert.equal(w.document.getElementById('opt-grid').textContent, '网格');
+    assert.equal(w.document.getElementById('tile-focus').getAttribute('title'), 'Codebase · worker-1（聚焦此视图）');
+    assert.equal(w.document.getElementById('tile-back').getAttribute('title'), 'Codebase · worker-1（返回全部智能体）');
+    assert.equal(w.document.getElementById('icon-rg').getAttribute('aria-label'), '图标');
+    assert.equal(w.document.getElementById('color-rg').getAttribute('aria-label'), '颜色');
+    assert.equal(w.document.getElementById('draft-btn').getAttribute('aria-label'), '恢复 2 条评论草稿');
+    assert.equal(w.document.getElementById('draft-btn').textContent, '2 条草稿');
+    assert.equal(w.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登录信息会随您的账户保存在云端。其他凭据保留在本机上。凭据仅会发送至所列出的域名。');
+
+    assert.equal(w.document.getElementById('plain-click').textContent, 'Click');
+    assert.equal(w.document.getElementById('plain-missing').textContent, 'Missing');
+    assert.equal(w.document.getElementById('plain-layout').textContent, 'Layout');
+    assert.equal(w.document.getElementById('plain-stage').textContent, 'Stage');
+    assert.equal(w.document.getElementById('plain-icon').getAttribute('aria-label'), 'Icon');
+    assert.equal(w.document.getElementById('plain-color').getAttribute('aria-label'), 'Color');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('perm-badge-miss').textContent, '未授權');
+    assert.equal(domTw.window.document.getElementById('perm-tip').textContent, '按一下 開啟 ↗ 以開啟 macOS「隱私權與安全性」。');
+    assert.equal(domTw.window.document.getElementById('layout-label').textContent, '版面配置');
+    assert.equal(domTw.window.document.getElementById('layout-select').getAttribute('aria-label'), '版面配置');
+    assert.equal(domTw.window.document.getElementById('opt-grid').textContent, '網格');
+    assert.equal(domTw.window.document.getElementById('tile-focus').getAttribute('title'), 'Codebase · worker-1（聚焦此窗格）');
+    assert.equal(domTw.window.document.getElementById('icon-rg').getAttribute('aria-label'), '圖示');
+    assert.equal(domTw.window.document.getElementById('color-rg').getAttribute('aria-label'), '顏色');
+    assert.equal(domTw.window.document.getElementById('draft-btn').getAttribute('aria-label'), '恢復 2 則評論草稿');
+    assert.equal(domTw.window.document.getElementById('draft-btn').textContent, '2 則草稿');
+    assert.equal(domTw.window.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登入資訊會隨您的帳戶保存在雲端。其他憑證保留在本機上。憑證僅會傳送至所列出的網域。');
+    assert.equal(domTw.window.document.getElementById('plain-click').textContent, 'Click');
+    assert.equal(domTw.window.document.getElementById('plain-missing').textContent, 'Missing');
+});
