@@ -445,11 +445,19 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
         <div id="color-rg" role="radiogroup" aria-label="Color"></div>
         <button id="draft-btn" aria-label="Resume 2 comment drafts"><span>2 Drafts</span></button>
         <p id="plugin-creds">Sign-ins to GitHub, Linear are kept in the cloud with your account. Other credentials stay on this machine. Credentials are only sent to the domains listed.</p>
+        <p id="sandbox-warn-two">Default and Auto need the terminal sandbox, which isn't available on this host.</p>
+        <p id="sandbox-warn-one">Default needs the terminal sandbox, which isn't available on this host.</p>
+        <span id="org-managed" title="managed by your organization">managed by your organization</span>
+        <span id="msg-ing">Messaging Codebase Researcher</span>
+        <span id="msg-ed">Messaged Codebase Researcher</span>
+        <p id="msg-prose">Messaging other services over HTTP requires valid credentials.</p>
+        <div id="save-err">Failed to save project settings: Network error</div>
 
         <span id="plain-click">Click</span>
         <span id="plain-missing">Missing</span>
         <span id="plain-layout">Layout</span>
         <span id="plain-stage">Stage</span>
+        <span id="plain-design">Design</span>
         <div id="plain-icon" aria-label="Icon">Icon</div>
         <div id="plain-color" aria-label="Color">Color</div>
       </div>
@@ -484,11 +492,20 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     assert.equal(w.document.getElementById('draft-btn').getAttribute('aria-label'), '恢复 2 条评论草稿');
     assert.equal(w.document.getElementById('draft-btn').textContent, '2 条草稿');
     assert.equal(w.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登录信息会随您的账户保存在云端。其他凭据保留在本机上。凭据仅会发送至所列出的域名。');
+    assert.equal(w.document.getElementById('sandbox-warn-two').textContent, '默认 (Default) 和 自动 (Auto) 需要终端沙盒，但此主机不可用。');
+    assert.equal(w.document.getElementById('sandbox-warn-one').textContent, '默认 (Default) 需要终端沙盒，但此主机不可用。');
+    assert.equal(w.document.getElementById('org-managed').textContent, '由您的组织管理');
+    assert.equal(w.document.getElementById('org-managed').getAttribute('title'), '由您的组织管理');
+    assert.equal(w.document.getElementById('msg-ing').textContent, '正在向 Codebase Researcher 发送消息');
+    assert.equal(w.document.getElementById('msg-ed').textContent, '已向 Codebase Researcher 发送消息');
+    assert.equal(w.document.getElementById('msg-prose').textContent, 'Messaging other services over HTTP requires valid credentials.');
+    assert.equal(w.document.getElementById('save-err').textContent, '保存项目设置失败：Network error');
 
     assert.equal(w.document.getElementById('plain-click').textContent, 'Click');
     assert.equal(w.document.getElementById('plain-missing').textContent, 'Missing');
     assert.equal(w.document.getElementById('plain-layout').textContent, 'Layout');
     assert.equal(w.document.getElementById('plain-stage').textContent, 'Stage');
+    assert.equal(w.document.getElementById('plain-design').textContent, 'Design');
     assert.equal(w.document.getElementById('plain-icon').getAttribute('aria-label'), 'Icon');
     assert.equal(w.document.getElementById('plain-color').getAttribute('aria-label'), 'Color');
 
@@ -507,6 +524,13 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     assert.equal(domTw.window.document.getElementById('draft-btn').getAttribute('aria-label'), '恢復 2 則評論草稿');
     assert.equal(domTw.window.document.getElementById('draft-btn').textContent, '2 則草稿');
     assert.equal(domTw.window.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登入資訊會隨您的帳戶保存在雲端。其他憑證保留在本機上。憑證僅會傳送至所列出的網域。');
+    assert.equal(domTw.window.document.getElementById('sandbox-warn-two').textContent, '預設 (Default) 與 自動 (Auto) 需要終端機沙箱，但此主機無法使用。');
+    assert.equal(domTw.window.document.getElementById('sandbox-warn-one').textContent, '預設 (Default) 需要終端機沙箱，但此主機無法使用。');
+    assert.equal(domTw.window.document.getElementById('org-managed').textContent, '由您的組織管理');
+    assert.equal(domTw.window.document.getElementById('msg-ing').textContent, '正在傳送訊息給 Codebase Researcher');
+    assert.equal(domTw.window.document.getElementById('msg-ed').textContent, '已傳送訊息給 Codebase Researcher');
+    assert.equal(domTw.window.document.getElementById('save-err').textContent, '儲存專案設定失敗：Network error');
     assert.equal(domTw.window.document.getElementById('plain-click').textContent, 'Click');
     assert.equal(domTw.window.document.getElementById('plain-missing').textContent, 'Missing');
+    assert.equal(domTw.window.document.getElementById('plain-design').textContent, 'Design');
 });

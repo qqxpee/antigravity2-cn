@@ -675,6 +675,25 @@
             if (domainPart) res += USE_TW ? "憑證僅會傳送至所列出的網域。" : "凭据仅会发送至所列出的域名。";
             return res;
         }],
+        [/^(.+?)\s+needs?\s+the terminal sandbox,\s+which isn't available on this host\.$/i, (m, presets) => {
+            const labels = presets.split(/\s+and\s+/i).map(p => {
+                const k = norm(p);
+                return map.get(k) || lowerMap.get(k.toLowerCase()) || k;
+            });
+            const joined = labels.join(USE_TW ? " 與 " : " 和 ");
+            return joined + (USE_TW ? " 需要終端機沙箱，但此主機無法使用。" : " 需要终端沙盒，但此主机不可用。");
+        }],
+        [/^(Messaging|Messaged)\s+(.+)$/, (m, verb, role) => {
+            const rTrim = role.trim();
+            if (rTrim.length > 60 || /[.!?。！？]$/.test(rTrim)) return m;
+            const rNorm = norm(rTrim);
+            const rZh = map.get(rNorm) || rTrim;
+            if (verb === 'Messaging') {
+                return (USE_TW ? "正在傳送訊息給 " : "正在向 ") + rZh + (USE_TW ? "" : " 发送消息");
+            }
+            return (USE_TW ? "已傳送訊息給 " : "已向 ") + rZh + (USE_TW ? "" : " 发送消息");
+        }],
+        [/^Failed to save project settings:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存專案設定失敗：" : "保存项目设置失败：") + err],
     ];
 
     function translateExactOrDynamic(t) {

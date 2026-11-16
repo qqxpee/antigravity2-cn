@@ -3463,10 +3463,7 @@
   "Canvas · written by your Chief of Staff · display only": "Canvas · 由您的幕僚長撰寫 · 僅供顯示",
   "Checking availability...": "正在檢查可用性...",
   "Data & Analytics": "資料與分析",
-  "Design": "設計",
   "Google does not control the availability or functionality of third party developer tools. Your data from third party developer tools connected to your Antigravity instance may be shared with Google. Google will protect any such data in accordance with the Google Privacy Policy, found here:": "Google 不控制第三方開發人員工具的可用性或功能。與您的 Antigravity 執行個體連結的第三方開發人員工具中的資料可能會與 Google 共用。Google 將根據《Google 隱私權政策》保護此類資料，詳情請參閱：",
-  "Messaged": "已傳送訊息",
-  "Messaging": "正在傳送訊息",
   "Next (→)": "下一個 (→)",
   "Previous (←)": "上一個 (←)",
   "Required": "必填",
@@ -3555,5 +3552,7 @@
   "View MCP servers": "檢視 MCP 伺服器",
   "Waiting for the SSH connection to finish": "正在等待 SSH 連線完成",
   "macOS Permissions Ready": "macOS 權限已就緒",
-  "✓ macOS permissions granted": "✓ macOS 權限已授予"
+  "✓ macOS permissions granted": "✓ macOS 權限已授予",
+  "managed by your organization": "由您的組織管理",
+  "Messaging subagents isn't supported in remote conversations yet.": "遠端對話暫不支援向子代理傳送訊息。"
 }
