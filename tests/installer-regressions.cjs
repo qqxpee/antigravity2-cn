@@ -125,13 +125,21 @@ test('patchUtilsJs injects localization only into verified sidecar-iframe child 
         origin: 'https://127.0.0.1:51000',
         isDestroyed: () => false,
         executeJavaScript(expr) {
+            const ChromeURL = class extends URL {
+                get origin() {
+                    return this.protocol === 'plugin:' ? `plugin://${this.hostname}` : super.origin;
+                }
+            };
             const evalDom = vm.createContext({
-                URL,
+                URL: ChromeURL,
                 location: { href: 'https://127.0.0.1:51000/index.html', origin: 'https://127.0.0.1:51000' },
                 document: {
                     querySelectorAll(sel) {
                         assert.equal(sel, 'iframe[data-testid="sidecar-iframe"]');
-                        return [{ getAttribute: name => (name === 'src' ? 'http://127.0.0.1:52123/index.html?conversationId=abc' : null) }];
+                        return [
+                            { getAttribute: name => (name === 'src' ? 'http://127.0.0.1:52123/index.html?conversationId=abc' : null) },
+                            { getAttribute: name => (name === 'src' ? 'plugin://swarm-auth/?conversationId=abc' : null) },
+                        ];
                     },
                 },
             });
@@ -182,17 +190,23 @@ test('patchUtilsJs injects localization only into verified sidecar-iframe child 
 
     const browserFrame = makeFrame({ url: 'http://localhost:3000/app', origin: 'http://localhost:3000' });
     const sidecarFrame = makeFrame({ url: 'http://127.0.0.1:52123/index.html?conversationId=abc', origin: 'http://127.0.0.1:52123' });
+    const pluginSidecarFrame = makeFrame({ url: 'plugin://swarm-auth/?conversationId=abc', origin: 'plugin://swarm-auth' });
+    const unknownPluginFrame = makeFrame({ url: 'plugin://other-auth/', origin: 'plugin://other-auth' });
     const nestedSrcdoc = makeFrame({ url: 'about:srcdoc', origin: 'null', parent: sidecarFrame });
 
     finishLoadHandlers[0]({ frame: mainFrame }, true, 1, 1);
     finishLoadHandlers[0]({ frame: browserFrame }, false, 1, 2);
     finishLoadHandlers[0]({ frame: nestedSrcdoc }, false, 1, 3);
     finishLoadHandlers[0]({ frame: sidecarFrame }, false, 1, 4);
+    finishLoadHandlers[0]({ frame: pluginSidecarFrame }, false, 1, 5);
+    finishLoadHandlers[0]({ frame: unknownPluginFrame }, false, 1, 6);
     await new Promise(resolve => setTimeout(resolve, 20));
 
-    assert.equal(injectedScripts.length, 1);
+    assert.equal(injectedScripts.length, 2);
     assert.equal(injectedScripts[0].url, 'http://127.0.0.1:52123/index.html?conversationId=abc');
     assert.equal(injectedScripts[0].code, translationJs);
+    assert.equal(injectedScripts[1].url, 'plugin://swarm-auth/?conversationId=abc');
+    assert.equal(injectedScripts[1].code, translationJs);
 
     for (const fn of winListeners.get('closed') || []) fn();
     assert.equal((hubListeners.get('did-frame-finish-load') || []).length, 0);

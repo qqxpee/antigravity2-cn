@@ -92,7 +92,7 @@ function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
             const mainFrame = hubContents.mainFrame;
             if (!mainFrame || frame === mainFrame || frame.parent !== mainFrame) return;
             const frameUrl = String(frame.url || '');
-            if (!/^https?:\\/\\//i.test(frameUrl)) return;
+            if (!/^(?:https?|plugin):\\/\\//i.test(frameUrl)) return;
             const frameOrigin = String(frame.origin || '');
             if (!frameOrigin || frameOrigin === 'null') return;
             const script = getSidecarLocalizationScript();
