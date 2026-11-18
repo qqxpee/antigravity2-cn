@@ -5,7 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
-const { patchPreloadJs, patchUtilsJs } = require('../src/main_patches');
+const { patchPreloadJs, patchUtilsJs, patchTrayJs } = require('../src/main_patches');
 
 const signature = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
 const signatureEnd = '/* --- ANTIGRAVITY CHINESE LOCALIZATION END --- */';
@@ -211,4 +211,35 @@ test('patchUtilsJs injects localization only into verified sidecar-iframe child 
     for (const fn of winListeners.get('closed') || []) fn();
     assert.equal((hubListeners.get('did-frame-finish-load') || []).length, 0);
     assert.equal((hubListeners.get('did-frame-navigate') || []).length, 0);
+});
+
+test('patchPreloadJs prevents ASI syntax/runtime errors when original preload lacks trailing semicolon', () => {
+    const original = 'const x = 1';
+    const payload = `${signature}\n(() => { globalThis.__ran = true; })();\n${signatureEnd}`;
+    const patched = patchPreloadJs(original, payload, signature, signatureEnd);
+    const ctx = { globalThis: {} };
+    vm.runInNewContext(patched, ctx);
+    assert.equal(ctx.globalThis.__ran, true);
+});
+
+test('patchTrayJs count replacement is bounded and cleanTrayJsContent restores original expression', () => {
+    const originalTray = [
+        'function createTray() {',
+        '    const actions = [];',
+        "    countItem.label = (count > 0 ? count + ' agents' : 'No agents') + ' running';",
+        '    const tail = "keep \' running\'; untouched";',
+        '}',
+        'function insertTrayMenuItem(position, options) {}',
+    ].join('\n');
+
+    const sc = patchTrayJs(originalTray, false);
+    assert.match(sc, /个智能体运行中/);
+    assert.match(sc, /const tail = "keep ' running'; untouched";/);
+
+    const tc = patchTrayJs(sc, true);
+    assert.match(tc, /個代理執行中/);
+    assert.doesNotMatch(tc, /个智能体运行中/);
+
+    const scAgain = patchTrayJs(tc, false);
+    assert.equal(scAgain, sc);
 });

@@ -18,16 +18,21 @@
 
     const longEntries = Array.from(map.entries())
         .filter(([k]) => k.length > 15 && k.includes(' '))
-        .sort((a, b) => b[0].length - a[0].length);
+        .sort((a, b) => b[0].length - a[0].length)
+        .map(([k, v]) => [k, v, k.toLowerCase()]);
     const translatedValues = new WeakMap();
+    const unchangedTextValues = new WeakMap();
+    const longMissCache = new WeakMap();
+    const originalParentTexts = new WeakMap();
+    const dfsParentTexts = new WeakMap();
 
     // 轻量级安全隔离：跳过脚本、样式、代码块(pre/code)
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
+    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
 
-    function isCodeOrEditor(node) {
+    function isCodeOrEditor(node, forAttribute) {
         try {
             if (!node) return false;
             let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
@@ -35,17 +40,20 @@
                 el = node.getRootNode().host || null;
             }
             if (!el) return false;
-            if (el.isContentEditable) return true;
+            const isFormFieldAttr = Boolean(forAttribute && node.nodeType === Node.ELEMENT_NODE && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'));
+            if (!isFormFieldAttr && el.isContentEditable) return true;
             if (node.nodeType === Node.TEXT_NODE && el) {
                 if (el.tagName === 'TEXTAREA') return true;
                 if (el.tagName === 'OPTION' && !el.hasAttribute('value')) return true;
             }
-            const active = document.activeElement;
-            if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active.getAttribute && active.getAttribute('data-lexical-editor') === 'true')) && (active === el || active.contains(el))) {
-                return true;
+            if (!isFormFieldAttr) {
+                const active = document.activeElement;
+                if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active.getAttribute && active.getAttribute('data-lexical-editor') === 'true')) && (active === el || active.contains(el))) {
+                    return true;
+                }
             }
             while (el) {
-                if (el.isContentEditable) return true;
+                if (!(isFormFieldAttr && el === node) && el.isContentEditable) return true;
                 if (typeof el.closest === 'function' && el.closest(CODE_ISOLATION_SELECTOR)) {
                     return true;
                 }
@@ -54,7 +62,7 @@
             }
             return false;
         } catch (e) {
-            return false;
+            return true;
         }
     }
 
@@ -307,14 +315,20 @@
         'paused': ['已暂停', '已暫停']
     };
 
+    const SWARM_UI_SELECTOR = '[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar, #tab-overview, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label';
+
     function isSwarmUiContext(el) {
         try {
-            const doc = (el && el.ownerDocument) || (typeof document !== 'undefined' ? document : null);
-            if (doc && (doc.getElementById('swarm-title') || doc.getElementById('replay-label') || doc.querySelector('[data-testid^="swarm-"]'))) {
-                return true;
+            let cur = el && el.nodeType === Node.ELEMENT_NODE ? el : (el && el.parentElement) || null;
+            if (!cur && el && typeof el.getRootNode === 'function') {
+                cur = el.getRootNode().host || null;
             }
-            if (el && typeof el.closest === 'function') {
-                return Boolean(el.closest('[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar'));
+            while (cur) {
+                if (typeof cur.closest === 'function' && cur.closest(SWARM_UI_SELECTOR)) {
+                    return true;
+                }
+                const root = typeof cur.getRootNode === 'function' ? cur.getRootNode() : null;
+                cur = (root && root.host) ? root.host : null;
             }
         } catch (e) {}
         return false;
@@ -527,7 +541,7 @@
         [/^(.+?): i\/o timeout$/i, (m, prefix) => prefix + (USE_TW ? ": I/O 逾時 (i/o timeout)" : ": I/O 超时 (i/o timeout)")],
 
         // 远程 MCP 通用描述句式
-        [/^The (.+?) remote MCP server lets you access and run (.+?) tools to (.+)$/i, (m, name, tools) => name + (USE_TW ? " 遠端 MCP 伺服器可讓您存取並執行 " : " 远程 MCP 服务器可让您访问并运行 ") + tools + (USE_TW ? " 工具以進行管理與操作。" : " 工具以进行管理与操作。")],
+        [/^The (.+?) remote MCP server lets you access and run (.+?) tools to (.+)$/i, (m, name, tools, purpose) => name + (USE_TW ? " 遠端 MCP 伺服器可讓您存取並執行 " : " 远程 MCP 服务器可让您访问并运行 ") + tools + (USE_TW ? " 工具，用於 " : " 工具，用于 ") + purpose],
         [/^The (.+?) remote MCP server lets you manage (.+) resources\.?$/i, (m, name, res) => name + (USE_TW ? " 遠端 MCP 伺服器可讓您管理 " : " 远程 MCP 服务器可让您管理 ") + res + (USE_TW ? " 資源。" : " 资源。")],
         [/^The (.+?) remote MCP server (allows you to|lets you) (.+)$/i, (m, name, verb, rest) => {
             const text = rest.replace(/enroll projects/gi, USE_TW ? "註冊專案" : "注册项目")
@@ -548,7 +562,7 @@
                 durPart = updMatch[1].trim();
                 updateSuffix = " · " + updMatch[2] + (USE_TW ? " 項更新" : " 项更新");
             }
-            const dZh = durPart.replace(/(\d+)\s*h(?:ours?|r)?/gi, USE_TW ? "$1 小時" : "$1 小时").replace(/(\d+)\s*m(?:inutes?|in)?/gi, USE_TW ? "$1 分鐘" : "$1 分钟").replace(/(\d+)\s*s(?:econds?|ec)?/gi, "$1 秒");
+            const dZh = durPart.replace(/(\d+)\s*h(?:ours?|r)?(?![a-z])/gi, USE_TW ? "$1 小時" : "$1 小时").replace(/(\d+)\s*m(?:inutes?|in)?(?![a-z])/gi, USE_TW ? "$1 分鐘" : "$1 分钟").replace(/(\d+)\s*s(?:econds?|ec)?(?![a-z])/gi, "$1 秒");
             return vZh + dZh + updateSuffix;
         }],
         [/^(?:(·\s*))?(\d+)\s+updates?$/i, (m, dot, num) => (dot ? " · " : "") + num + (USE_TW ? " 項更新" : " 项更新")],
@@ -714,7 +728,7 @@
     function translateContextualText(node, originalVal, valNorm) {
         const p = node.parentElement;
         if (!p) return null;
-        const pText = p.textContent || '';
+        const pText = dfsParentTexts.get(p) || originalParentTexts.get(p) || p.textContent || '';
 
         if (/^(\d+)(s|m|h|d|w|mo|yr)$/i.test(valNorm)) {
             return valNorm.replace(/^(\d+)(s|m|h|d|w|mo|yr)$/i, (match, num, unit) => {
@@ -729,7 +743,7 @@
         if ((valNorm === 'Card' || valNorm === 'of') && ((typeof p.closest === 'function' && p.closest('[data-testid="card-deck-counter"]')) || (p.getAttribute && p.getAttribute('data-testid') === 'card-deck-counter'))) {
             return valNorm === 'Card' ? "卡片 " : " / ";
         }
-        if (pText.includes('For corp passwords (such as')) {
+        if (pText.includes('For corp passwords (such as') || pText.includes('如需使用公司密码（例如') || pText.includes('如需使用公司密碼（例如')) {
             if (valNorm === 'For corp passwords (such as') return USE_TW ? "如需使用公司密碼（例如 " : "如需使用公司密码（例如 ";
             if (valNorm === 'or') return " 或 ";
             if (valNorm.startsWith('), use an external SSH session')) return valNorm.replace(/^\), use an external SSH session/i, USE_TW ? "），請使用外部 SSH 工作階段" : "），请使用外部 SSH 会话");
@@ -744,18 +758,18 @@
         if (valNorm === 'Variables' && ((typeof p.closest === 'function' && (p.closest('[data-testid="trigger-cel-tokens"]') || p.closest('[data-testid="trigger-cel-optional-section"]'))) || /Target|Fields|Helpers|目标|目標|字段|欄位/.test(pText))) {
             return USE_TW ? "變數" : "变量";
         }
-        if ((valNorm === 'Search conversations with' || valNorm === 'in the top left.') && pText.includes('in the top left')) {
+        if ((valNorm === 'Search conversations with' || valNorm === 'in the top left.') && (pText.includes('in the top left') || pText.includes('可通过左上角的') || pText.includes('使用左上角的'))) {
             return valNorm === 'Search conversations with' ? (USE_TW ? "使用左上角的" : "可通过左上角的") : (USE_TW ? "搜尋對話。" : "搜索对话。");
         }
-        if ((valNorm === 'View archived in the sidebar' || valNorm === 'menu)') && pText.includes('View archived in the sidebar')) {
+        if ((valNorm === 'View archived in the sidebar' || valNorm === 'menu)') && (pText.includes('View archived in the sidebar') || pText.includes('已归档对话可在侧边栏') || pText.includes('已歸檔對話可在側邊欄'))) {
             return valNorm === 'View archived in the sidebar' ? (USE_TW ? "已歸檔對話可在側邊欄" : "已归档对话可在侧边栏") : (USE_TW ? "選單中查看。" : "菜单中查看。");
         }
-        if ((valNorm === 'For help, visit' || valNorm === 'or join the' || valNorm === 'chat space') && pText.includes('chat space')) {
+        if ((valNorm === 'For help, visit' || valNorm === 'or join the' || valNorm === 'chat space') && (pText.includes('chat space') || pText.includes('聊天空间') || pText.includes('聊天空間'))) {
             if (valNorm === 'For help, visit') return USE_TW ? "如需協助，請造訪" : "如需帮助，请访问";
             if (valNorm === 'or join the') return "或加入";
             if (valNorm === 'chat space') return USE_TW ? "聊天空間" : "聊天空间";
         }
-        if ((valNorm === 'when working' || valNorm === 'in this project' || valNorm === 'in these conversations') && /when working|Global Permissions|全局权限|全域權限|Global Settings|全局设置|全域設定/.test(pText)) {
+        if ((valNorm === 'when working' || valNorm === 'in this project' || valNorm === 'in these conversations') && /when working|Global Permissions|全局权限|全域權限|Global Settings|全局设置|全域設定|在此项目中工作时|在此專案中工作時|在这些会话中工作时|在這些對話中工作時/.test(pText)) {
             if (valNorm === 'when working') {
                 return pText.includes('in this project')
                     ? (USE_TW ? "（在此專案中工作時）" : "（在此项目中工作时）")
@@ -784,7 +798,7 @@
                 return '否';
             }
         }
-        if ((valNorm === 'Proceed to' || valNorm === '(unsafe)') && pText.includes('Proceed to') && pText.includes('(unsafe)')) {
+        if ((valNorm === 'Proceed to' || valNorm === '(unsafe)') && (pText.includes('Proceed to') || pText.includes('继续前往') || pText.includes('繼續前往')) && (pText.includes('(unsafe)') || pText.includes('（不安全）'))) {
             return valNorm === 'Proceed to' ? (USE_TW ? "繼續前往 " : "继续前往 ") : (USE_TW ? "（不安全）" : "（不安全）");
         }
         if (valNorm === 'Customize your experience from visual themes to how autonomous your agent acts and what') {
@@ -818,7 +832,8 @@
             return USE_TW ? "訂閱有關 " : "订阅有关 ";
         }
         if (valNorm === '.' && (pText.includes('Sign up for newsletters') || pText.includes('订阅有关') || pText.includes('訂閱有關') || pText.includes('订阅关于') || pText.includes('訂閱關於'))) {
-            return (pText.includes('以下内容') || pText.includes('以下內容'))
+            const curText = p.textContent || '';
+            return (pText.includes('tips and tricks') || pText.includes('以下内容') || pText.includes('以下內容') || curText.includes('以下内容') || curText.includes('以下內容'))
                 ? "。"
                 : (USE_TW ? " 的電子報、資訊郵件與特別優惠。" : " 的新闻通讯、资讯邮件和特别优惠。");
         }
@@ -952,6 +967,45 @@
         return null;
     }
 
+    function translateElementAttributes(node) {
+        if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
+        const tag = node.tagName.toUpperCase();
+        if (SKIP_TAGS.includes(tag)) return;
+        if (isCodeOrEditor(node, true)) return;
+        const inSwarmEl = isSwarmUiContext(node);
+        for (const attr of ['placeholder', 'title', 'aria-label']) {
+            const v = node.getAttribute(attr);
+            if (v) {
+                const t = norm(v);
+                let newAttr = translatePermissionChoice(v);
+                if (!newAttr && inSwarmEl && Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, t)) {
+                    newAttr = SCOPED_SWARM_MAP[t][USE_TW ? 1 : 0];
+                }
+                if (!newAttr && attr === 'aria-label') {
+                    if (node.getAttribute('role') === 'radiogroup') {
+                        if (t === 'Icon') newAttr = USE_TW ? '圖示' : '图标';
+                        else if (t === 'Color') newAttr = USE_TW ? '顏色' : '颜色';
+                    } else if (node.hasAttribute('data-agy-layout') && t === 'Layout') {
+                        newAttr = USE_TW ? '版面配置' : '布局';
+                    }
+                }
+                if (!newAttr) {
+                    if (isFilePathOrUri(t)) continue;
+                    newAttr = translateExactOrDynamic(t);
+                }
+                if (!newAttr && inSwarmEl) {
+                    newAttr = translateSwarmComposite(v);
+                }
+                if (newAttr && newAttr !== v) {
+                    node.setAttribute(attr, newAttr);
+                    if (attr === 'placeholder' && 'placeholder' in node && node.placeholder !== newAttr) {
+                        node.placeholder = newAttr;
+                    }
+                }
+            }
+        }
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
@@ -965,39 +1019,8 @@
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const tag = node.tagName.toUpperCase();
                 if (SKIP_TAGS.includes(tag)) return;
-                // 翻译属性：placeholder, title, aria-label (即使输入框获焦时也应正常汉化 placeholder 提示)
-                const inSwarmEl = isSwarmUiContext(node);
-                for (const attr of ['placeholder', 'title', 'aria-label']) {
-                    const v = node.getAttribute(attr);
-                    if (v) {
-                        const t = norm(v);
-                        let newAttr = translatePermissionChoice(v);
-                        if (!newAttr && inSwarmEl && Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, t)) {
-                            newAttr = SCOPED_SWARM_MAP[t][USE_TW ? 1 : 0];
-                        }
-                        if (!newAttr && attr === 'aria-label') {
-                            if (node.getAttribute('role') === 'radiogroup') {
-                                if (t === 'Icon') newAttr = USE_TW ? '圖示' : '图标';
-                                else if (t === 'Color') newAttr = USE_TW ? '顏色' : '颜色';
-                            } else if (node.hasAttribute('data-agy-layout') && t === 'Layout') {
-                                newAttr = USE_TW ? '版面配置' : '布局';
-                            }
-                        }
-                        if (!newAttr) {
-                            if (isFilePathOrUri(t)) continue;
-                            newAttr = translateExactOrDynamic(t);
-                        }
-                        if (!newAttr && inSwarmEl) {
-                            newAttr = translateSwarmComposite(v);
-                        }
-                        if (newAttr && newAttr !== v) {
-                            node.setAttribute(attr, newAttr);
-                            if (attr === 'placeholder' && 'placeholder' in node) {
-                                node.placeholder = newAttr;
-                            }
-                        }
-                    }
-                }
+                // 翻译属性：placeholder, title, aria-label（隔离区元素及内部控件已在 translateElementAttributes 前置拦截）
+                translateElementAttributes(node);
 
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return;
                 if (tag === 'OPTION' && !node.hasAttribute('value')) return;
@@ -1081,7 +1104,19 @@
                     observeRoot(node.shadowRoot);
                     translateNode(node.shadowRoot);
                 }
-                for (const child of node.childNodes) translateNode(child);
+                const useParentSnapshot = node.childNodes.length > 1;
+                if (useParentSnapshot) {
+                    const rawPText = node.textContent || '';
+                    dfsParentTexts.set(node, rawPText);
+                    if (!originalParentTexts.has(node)) {
+                        originalParentTexts.set(node, rawPText);
+                    }
+                }
+                try {
+                    for (const child of node.childNodes) translateNode(child);
+                } finally {
+                    if (useParentSnapshot) dfsParentTexts.delete(node);
+                }
 
             } else if (node.nodeType === Node.TEXT_NODE) {
                 if (isCodeOrEditor(node)) return;
@@ -1144,7 +1179,7 @@
                     }
                     return;
                 }
-                if (cachedValue === originalVal) return;
+                if (cachedValue === originalVal || unchangedTextValues.get(node) === originalVal) return;
 
                 // Material Symbol 字体缺失图标修复
                 if (valNorm === 'restore_page' && node.parentElement && (
@@ -1171,43 +1206,137 @@
                         const swarmComp = inSwarmText ? translateSwarmComposite(originalVal) : null;
                         if (swarmComp !== null) {
                             newVal = swarmComp;
-                        } else if (valNorm.length > 15 && valNorm.includes(' ')) {
+                        } else if (valNorm.length > 15 && valNorm.includes(' ') && longMissCache.get(node) !== valNorm) {
                             // 长句子串滑动替换与末尾截断智能匹配
                             const isTruncated = (valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35;
                             const cleanVal = isTruncated ? valNorm.replace(/(\.\.\.|…)$/, '').trim().toLowerCase() : '';
-                            for (const [key, translated] of longEntries) {
-                                if (key.length <= valNorm.length && valNorm.includes(key)) {
-                                    newVal = newVal.split(key).join(translated);
-                                    break;
-                                } else if (isTruncated && cleanVal.length >= 30 && key.toLowerCase().startsWith(cleanVal)) {
+                            let matchedLong = false;
+                            for (const [key, translated, keyLower] of longEntries) {
+                                if (key.length <= valNorm.length) {
+                                    const idx = valNorm.indexOf(key);
+                                    if (idx !== -1) {
+                                        const prevCh = idx > 0 ? valNorm[idx - 1] : '';
+                                        const nextCh = idx + key.length < valNorm.length ? valNorm[idx + key.length] : '';
+                                        const startOk = !/[A-Za-z0-9_]/.test(key[0]) || !/[A-Za-z0-9_]/.test(prevCh);
+                                        const endOk = !/[A-Za-z0-9_]/.test(key[key.length - 1]) || !/[A-Za-z0-9_]/.test(nextCh);
+                                        if (startOk && endOk) {
+                                            if (newVal.includes(key)) {
+                                                newVal = newVal.split(key).join(translated);
+                                            } else {
+                                                const lead = originalVal.match(/^\s*/)[0];
+                                                const trail = originalVal.match(/\s*$/)[0];
+                                                newVal = lead + valNorm.split(key).join(translated) + trail;
+                                            }
+                                            matchedLong = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (isTruncated && cleanVal.length >= 30 && keyLower.startsWith(cleanVal)) {
                                     newVal = translated;
+                                    matchedLong = true;
                                     break;
                                 }
+                            }
+                            if (!matchedLong) {
+                                longMissCache.set(node, valNorm);
                             }
                         }
                     }
                 }
 
                 if (newVal !== originalVal) {
+                    const p = node.parentElement;
+                    if (p && !originalParentTexts.has(p)) {
+                        originalParentTexts.set(p, p.textContent || '');
+                    }
+                    unchangedTextValues.delete(node);
                     translatedValues.set(node, newVal);
                     node.nodeValue = newVal;
+                } else {
+                    unchangedTextValues.set(node, originalVal);
                 }
             }
         } catch (e) {}
     }
 
+    const pendingNodes = new Set();
+    const pendingAttrNodes = new Set();
+    const pendingMenuRefreshTargets = new Set();
+    let flushScheduled = false;
+
+    function invalidateChildTextCaches(target) {
+        if (!target || !target.childNodes) return;
+        for (const c of target.childNodes) {
+            if (c.nodeType === Node.TEXT_NODE) {
+                unchangedTextValues.delete(c);
+            }
+        }
+    }
+
+    function flushPendingTranslations() {
+        flushScheduled = false;
+        const attrNodes = Array.from(pendingAttrNodes);
+        const nodes = Array.from(pendingNodes);
+        const menuTargets = Array.from(pendingMenuRefreshTargets);
+        pendingAttrNodes.clear();
+        pendingNodes.clear();
+        pendingMenuRefreshTargets.clear();
+
+        const queuedSet = new Set(nodes);
+        for (const n of attrNodes) {
+            if (!queuedSet.has(n)) {
+                try { translateElementAttributes(n); } catch (e) {}
+            }
+        }
+        for (const n of nodes) {
+            translateNode(n);
+        }
+        for (const target of menuTargets) {
+            try { refreshMenusLabelledBy(target); } catch (e) {}
+        }
+    }
+
+    function scheduleMutationFlush() {
+        if (flushScheduled) return;
+        flushScheduled = true;
+        if (typeof queueMicrotask === 'function') {
+            queueMicrotask(flushPendingTranslations);
+        } else {
+            Promise.resolve().then(flushPendingTranslations);
+        }
+    }
+
     const observer = new MutationObserver(mutations => {
         for (const m of mutations) {
             if (m.type === 'childList') {
-                for (const n of m.addedNodes) translateNode(n);
+                if (m.removedNodes && m.removedNodes.length > 0) {
+                    originalParentTexts.delete(m.target);
+                }
+                invalidateChildTextCaches(m.target);
+                for (const n of m.addedNodes) pendingNodes.add(n);
             } else if (m.type === 'characterData') {
-                translateNode(m.target);
+                if (m.target.nodeValue !== translatedValues.get(m.target)) {
+                    unchangedTextValues.delete(m.target);
+                    if (m.target.parentElement) {
+                        originalParentTexts.delete(m.target.parentElement);
+                    }
+                    pendingNodes.add(m.target);
+                }
             } else if (m.type === 'attributes') {
-                translateNode(m.target);
+                if (m.attributeName === 'role' || m.attributeName === 'aria-labelledby') {
+                    invalidateChildTextCaches(m.target);
+                    pendingNodes.add(m.target);
+                } else {
+                    pendingAttrNodes.add(m.target);
+                }
                 if (m.attributeName === 'aria-label' || m.attributeName === 'aria-labelledby') {
-                    refreshMenusLabelledBy(m.target);
+                    pendingMenuRefreshTargets.add(m.target);
                 }
             }
+        }
+        if (pendingNodes.size > 0 || pendingAttrNodes.size > 0 || pendingMenuRefreshTargets.size > 0) {
+            scheduleMutationFlush();
         }
     });
 

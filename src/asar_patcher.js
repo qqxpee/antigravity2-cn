@@ -21,7 +21,7 @@ function computeIntegrity(buf) {
     };
 }
 
-function readAsarLayout(archivePath) {
+function parseAsarArchive(archivePath) {
     const data = fs.readFileSync(archivePath);
     if (data.length < 16 || data.readUInt32LE(0) !== 4) throw new Error('Invalid ASAR header');
     const headerSize = data.readUInt32LE(4);
@@ -29,7 +29,13 @@ function readAsarLayout(archivePath) {
     if (headerSize < 8 || jsonSize > headerSize - 8 || 8 + headerSize > data.length) {
         throw new Error('Truncated ASAR header');
     }
+    const payloadStart = 8 + headerSize;
     const header = JSON.parse(data.subarray(16, 16 + jsonSize).toString('utf8'));
+    return { data, payloadStart, header };
+}
+
+function readAsarLayout(archivePath) {
+    const { data, payloadStart, header } = parseAsarArchive(archivePath);
     const files = new Map();
     function visit(node, prefix, inheritedUnpacked) {
         if (!node.files || typeof node.files !== 'object') throw new Error('Invalid ASAR directory');
@@ -46,10 +52,10 @@ function readAsarLayout(archivePath) {
                 let body;
                 if (!unpacked) {
                     const offset = Number(entry.offset);
-                    if (!/^\d+$/.test(String(entry.offset)) || !Number.isSafeInteger(offset) || offset + entry.size > data.length - 8 - headerSize) {
+                    if (!/^\d+$/.test(String(entry.offset)) || !Number.isSafeInteger(offset) || offset + entry.size > data.length - payloadStart) {
                         throw new Error(`Invalid ASAR file offset: ${relative}`);
                     }
-                    body = data.subarray(8 + headerSize + offset, 8 + headerSize + offset + entry.size);
+                    body = data.subarray(payloadStart + offset, payloadStart + offset + entry.size);
                 }
                 files.set(relative, { size: entry.size, unpacked, body });
             }
@@ -60,17 +66,7 @@ function readAsarLayout(archivePath) {
 }
 
 function patchAsarArchive(sourceAsarPath, destAsarPath, modifierMap) {
-    const data = fs.readFileSync(sourceAsarPath);
-    if (data.length < 16 || data.readUInt32LE(0) !== 4) {
-        throw new Error('Invalid ASAR header');
-    }
-    const headerSize = data.readUInt32LE(4);
-    const jsonSize = data.readUInt32LE(12);
-    if (headerSize < 8 || jsonSize > headerSize - 8 || 8 + headerSize > data.length) {
-        throw new Error('Truncated ASAR header');
-    }
-    const payloadStart = 8 + headerSize;
-    const header = JSON.parse(data.subarray(16, 16 + jsonSize).toString('utf8'));
+    const { data, payloadStart, header } = parseAsarArchive(sourceAsarPath);
 
     const bodyChunks = [];
     let currentOffset = 0;

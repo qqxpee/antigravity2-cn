@@ -74,15 +74,18 @@ const BRAND_TITLE_ALIASES = {
 
 function getOptionValue(name, defaultValue) {
     const args = process.argv.slice(2);
+    let result = defaultValue;
     for (let i = 0; i < args.length; i++) {
         if (args[i] === name) {
-            return args[i + 1] || defaultValue;
-        }
-        if (args[i].startsWith(name + '=')) {
-            return args[i].slice(name.length + 1);
+            if (i + 1 < args.length && args[i + 1] && !args[i + 1].startsWith('--')) {
+                result = args[i + 1];
+                i++;
+            }
+        } else if (args[i].startsWith(name + '=')) {
+            result = args[i].slice(name.length + 1);
         }
     }
-    return defaultValue;
+    return result;
 }
 
 const BRAND_TITLE_MODE = BRAND_TITLE_ALIASES[String(getOptionValue('--brand-title', 'english')).toLowerCase()] || 'english';
@@ -114,6 +117,19 @@ if (USE_TW) {
         "[还原] 正在用官方备份文件恢复...": "[還原] 正在使用官方備份檔案還原...",
         "[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...": "[權限] 偵測到目前使用者對 macOS 應用程式目錄缺少寫入權限，正在嘗試請求管理員權限 (sudo) 重新執行...",
         "[√] 官方 app.asar 已成功恢复！": "[√] 官方 app.asar 已成功還原！",
+        "[错误] --install-dir 缺少有效的路径参数！": "[錯誤] --install-dir 缺少有效的路徑參數！",
+        "[错误] --install-dir= 路径不能为空！": "[錯誤] --install-dir= 路徑不能為空！",
+        "[错误] --brand-title 缺少有效的参数值（支持 english / hidden / translated）！": "[錯誤] --brand-title 缺少有效的參數值（支援 english / hidden / translated）！",
+        "[错误] --brand-title= 参数值不能为空！": "[錯誤] --brand-title= 參數值不能為空！",
+        "[错误] 检测到当前 app.asar 已安装过汉化，但官方备份文件 app.asar.bak 丢失！为防止将已汉化文件误存为官方备份，已中止操作。请先恢复官方原版客户端后再安装。": "[錯誤] 偵測到目前 app.asar 已安裝過漢化，但官方備份檔案 app.asar.bak 遺失！為防止將已漢化檔案誤存為官方備份，已中止操作。請先還原官方原版用戶端後再安裝。",
+        "[错误] 管理员提权执行失败或用户取消了密码输入。": "[錯誤] 管理員提權執行失敗或使用者取消了密碼輸入。",
+        "[错误] 汉化未完成，未提交的候选包不会替换客户端: ": "[錯誤] 漢化未完成，未提交的候選封裝不會替換用戶端: ",
+        "[错误] 恢复备份失败: ": "[錯誤] 還原備份失敗: ",
+        "[提示] macOS 写入受限，请使用管理员权限运行脚本。": "[提示] macOS 寫入受限，請使用管理員權限執行指令碼。",
+        "[提示] 临时目录已保留: ": "[提示] 暫存目錄已保留: ",
+        "[错误] 更新 macOS Info.plist 校验值失败，已中止签名: ": "[錯誤] 更新 macOS Info.plist 校驗值失敗，已中止簽名: ",
+        "[错误] 未能识别有效的 ElectronAsarIntegrity 格式，已中止签名。": "[錯誤] 未能識別有效的 ElectronAsarIntegrity 格式，已中止簽名。",
+        "[警告] 清理扩展属性 (xattr) 失败: ": "[警告] 清除延伸屬性 (xattr) 失敗: ",
         "[错误] 手动指定的路径不存在:": "[錯誤] 手動指定的路徑不存在:",
         "[错误] 未在资源目录中找到 app.asar:": "[錯誤] 未在資源目錄中找到 app.asar:",
         "[错误] 未能在 app.asar 中找到 dist/preload.js": "[錯誤] 未能在 app.asar 中找到 dist/preload.js",
@@ -122,21 +138,21 @@ if (USE_TW) {
         "[警告] 未能在 tray.js 中找到 createTray 函数插入点。": "[警告] 未能在 tray.js 中找到 createTray 函式插入點。",
         "[签名] 检测到 macOS 平台，正在对应用包进行本地 ad-hoc 深度重签名: ": "[簽名] 偵測到 macOS 平台，正在對應用程式包進行本機 ad-hoc 深度重新簽名: ",
         "[签名] 重新签名成功！": "[簽名] 重新簽名成功！",
-        "[警告] 重新签名失败。可能会导致应用无法打开。": "[警告] 重新簽名失敗。可能會導致應用程式無法開啟。",
-        "[警告] 未能从路径 ": "[警告] 未能從路徑 ",
-        " 识别到有效的 .app 路径，跳过重新签名。": " 識別到有效的 .app 路徑，跳過重新簽名。",
+        "[错误] 重新签名失败，已中止操作。详情:": "[錯誤] 重新簽名失敗，已中止操作。詳情:",
+        "[错误] 未能从路径 ": "[錯誤] 未能從路徑 ",
+        " 识别到有效的 .app 路径，无法完成 macOS 重签名。": " 識別到有效的 .app 路徑，無法完成 macOS 重新簽名。",
         "[探测] 成功自动识别到 Antigravity 安装目录: ": "[偵測] 成功自動識別到 Antigravity 安裝目錄: ",
         "[错误] 未找到默认安装目录，请使用 --install-dir 手动指定您的安装路径！": "[錯誤] 未找到預設安裝目錄，請使用 --install-dir 手動指定您的安裝路徑！",
         "详情: ": "詳情: ",
         "[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。": "[跳過] 偵測到 --no-kill 參數，跳過關閉 Antigravity 執行進程。",
         "[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...": "[啟動] 偵測到安裝前反重力用戶端處於開啟狀態，正在重新啟動用戶端...",
         "[启动] 客户端启动成功！": "[啟動] 用戶端啟動成功！",
-        "[警告] 未找到客户端主程序: ": "[警告] 未找到用戶端主程式: ",
         "[警告] 客户端启动失败: ": "[警告] 用戶端啟動失敗: ",
         "[代理] 检测到 proxy_config 配置目录，正在注入代理模块...": "[代理] 偵測到 proxy_config 設定目錄，正在注入代理模組...",
         "[代理] 代理模块注入成功: ": "[代理] 代理模組注入成功: ",
         "[代理] 已保留代理文件（无法确认其归属，请按需手动处理）: ": "[代理] 已保留代理檔案（無法確認其歸屬，請按需手動處理）: ",
-        "[代理警告] 注入文件 ": "[代理警告] 注入檔案 "
+        "[代理警告] 注入文件 ": "[代理警告] 注入檔案 ",
+        " 失败: ": " 失敗: "
     };
     const translateMsg = (args) => {
         return args.map(arg => {
@@ -177,23 +193,25 @@ function normalizeText(text) {
 function loadDictionary() {
     const totalMap = {};
     const dictsDir = path.join(__dirname, DICTS_FOLDER);
-    if (fs.existsSync(dictsDir)) {
-        const files = fs.readdirSync(dictsDir);
-        for (const file of files) {
-            if (file.endsWith('.json')) {
-                try {
-                    const filePath = path.join(dictsDir, file);
-                    const fileContent = fs.readFileSync(filePath, 'utf-8');
-                    const data = JSON.parse(fileContent);
-                    for (const [k, v] of Object.entries(data)) {
-                        const normK = normalizeText(k);
-                        if (normK) totalMap[normK] = v;
-                    }
-                } catch (e) {
-                    // ignore
-                }
+    if (!fs.existsSync(dictsDir)) {
+        throw new Error(`词典目录不存在: ${dictsDir}`);
+    }
+    const files = fs.readdirSync(dictsDir).filter(file => file.endsWith('.json')).sort();
+    for (const file of files) {
+        const filePath = path.join(dictsDir, file);
+        try {
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            const data = JSON.parse(fileContent);
+            for (const [k, v] of Object.entries(data)) {
+                const normK = normalizeText(k);
+                if (normK) totalMap[normK] = v;
             }
+        } catch (e) {
+            throw new Error(`词典文件解析失败 (${filePath}): ${e.message}`);
         }
+    }
+    if (Object.keys(totalMap).length === 0) {
+        throw new Error(`词典目录未加载到有效词条: ${dictsDir}`);
     }
     if (BRAND_TITLE_MODE === 'english') {
         delete totalMap[normalizeText('Antigravity')];
@@ -317,8 +335,8 @@ function detectInstallationDir(manualDir) {
                 for (const line of output.split(/\r?\n/)) {
                     const match = line.match(/^\s*(InstallLocation|DisplayIcon)\s+REG_\w+\s+(.+)$/i);
                     if (!match) continue;
-                    let value = match[2].trim().replace(/^"|"$/g, '');
-                    if (/Antigravity\.exe/i.test(value)) {
+                    let value = match[2].trim().replace(/,-?\d+$/, '').trim().replace(/^"|"$/g, '');
+                    if (/Antigravity\.exe$/i.test(value)) {
                         value = path.dirname(value);
                     }
                     addCandidate(value);
@@ -356,13 +374,12 @@ function detectInstallationDir(manualDir) {
     process.exit(1);
 }
 
-function runCommandSync(cmd) {
-    try {
-        const out = child_process.execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', env: { ...process.env } });
-        return { success: true, stdout: out, stderr: '' };
-    } catch (e) {
-        return { success: false, stdout: e.stdout || '', stderr: e.stderr || e.message };
+function spawnCommandSync(cmd, args) {
+    const res = child_process.spawnSync(cmd, args, { encoding: 'utf-8', stdio: 'pipe', env: { ...process.env } });
+    if (res.error) {
+        return { success: false, stdout: res.stdout || '', stderr: res.error.message };
     }
+    return { success: res.status === 0, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
 
 function cleanElectronCache() {
@@ -402,7 +419,7 @@ function cleanElectronCache() {
 }
 
 function resignAppOnMac(anyPath) {
-    if (process.platform !== 'darwin') return;
+    if (process.platform !== 'darwin') return true;
 
     let targetApp = "";
     let current = path.resolve(anyPath);
@@ -416,40 +433,55 @@ function resignAppOnMac(anyPath) {
         current = parent;
     }
 
-    if (targetApp && fs.existsSync(targetApp)) {
+    if (!targetApp || !fs.existsSync(targetApp)) {
+        console.error(`[错误] 未能从路径 ${anyPath} 识别到有效的 .app 路径，无法完成 macOS 重签名。`);
+        return false;
+    }
+
+    const plistPath = path.join(targetApp, 'Contents', 'Info.plist');
+    const macAsarPath = path.join(targetApp, 'Contents', 'Resources', 'app.asar');
+    if (fs.existsSync(plistPath) && fs.existsSync(macAsarPath)) {
         try {
-            const plistPath = path.join(targetApp, 'Contents', 'Info.plist');
-            const macAsarPath = path.join(targetApp, 'Contents', 'Resources', 'app.asar');
-            if (fs.existsSync(plistPath) && fs.existsSync(macAsarPath)) {
-                const plistContent = fs.readFileSync(plistPath, 'utf-8');
-                if (plistContent.includes('ElectronAsarIntegrity')) {
-                    const asarBuf = fs.readFileSync(macAsarPath);
-                    const headerStrSize = asarBuf.readUInt32LE(12);
-                    const headerHash = crypto.createHash('sha256').update(asarBuf.subarray(16, 16 + headerStrSize)).digest('hex');
-                    const integrityRegex = /(<key>ElectronAsarIntegrity<\/key>[\s\S]*?<key>Resources\/app\.asar<\/key>[\s\S]*?<key>hash<\/key>\s*<string>)[a-fA-F0-9]{64}(<\/string>)/;
-                    if (integrityRegex.test(plistContent)) {
-                        const updatedPlist = plistContent.replace(integrityRegex, `$1${headerHash}$2`);
-                        if (updatedPlist !== plistContent) {
-                            fs.writeFileSync(plistPath, updatedPlist, 'utf-8');
-                            console.log('[签名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校验值。');
-                        }
-                    }
+            const plistContent = fs.readFileSync(plistPath, 'utf-8');
+            if (plistContent.includes('ElectronAsarIntegrity')) {
+                const asarBuf = fs.readFileSync(macAsarPath);
+                if (asarBuf.length < 16) {
+                    throw new Error('app.asar 长度不足 16 字节');
+                }
+                const headerStrSize = asarBuf.readUInt32LE(12);
+                if (16 + headerStrSize > asarBuf.length) {
+                    throw new Error('app.asar 头长度越界');
+                }
+                const headerHash = crypto.createHash('sha256').update(asarBuf.subarray(16, 16 + headerStrSize)).digest('hex');
+                const integrityRegex = /(<key>ElectronAsarIntegrity<\/key>[\s\S]*?<key>Resources\/app\.asar<\/key>\s*<dict>(?:(?!<\/dict>)[\s\S])*?<key>hash<\/key>\s*<string>)[a-fA-F0-9]{64}(<\/string>)/;
+                if (!integrityRegex.test(plistContent)) {
+                    console.error(`[错误] 未能识别有效的 ElectronAsarIntegrity 格式，已中止签名。`);
+                    return false;
+                }
+                const updatedPlist = plistContent.replace(integrityRegex, `$1${headerHash}$2`);
+                if (updatedPlist !== plistContent) {
+                    fs.writeFileSync(plistPath, updatedPlist, 'utf-8');
+                    console.log('[签名] 已同步更新 macOS Info.plist 中的 ElectronAsarIntegrity 校验值。');
                 }
             }
-        } catch (e) {}
-        try {
-            runCommandSync(`xattr -cr "${targetApp}"`);
-        } catch (e) {}
-        console.log(`[签名] 检测到 macOS 平台，正在对应用包进行本地 ad-hoc 深度重签名: ${targetApp} ...`);
-        const signRes = runCommandSync(`codesign --force --deep --sign - "${targetApp}"`);
-        if (signRes.success) {
-            console.log(`[签名] 重新签名成功！`);
-        } else {
-            console.warn(`[警告] 重新签名失败。可能会导致应用无法打开。详情:\n${signRes.stderr}\n${signRes.stdout}`);
+        } catch (e) {
+            console.error(`[错误] 更新 macOS Info.plist 校验值失败，已中止签名: ${e.message}`);
+            return false;
         }
-    } else {
-        console.warn(`[警告] 未能从路径 ${anyPath} 识别到有效的 .app 路径，跳过重新签名。`);
     }
+
+    const xattrRes = spawnCommandSync('xattr', ['-cr', targetApp]);
+    if (!xattrRes.success) {
+        console.warn(`[警告] 清理扩展属性 (xattr) 失败: ${xattrRes.stderr || xattrRes.stdout}`);
+    }
+    console.log(`[签名] 检测到 macOS 平台，正在对应用包进行本地 ad-hoc 深度重签名: ${targetApp} ...`);
+    const signRes = spawnCommandSync('codesign', ['--force', '--deep', '--sign', '-', targetApp]);
+    if (signRes.success) {
+        console.log(`[签名] 重新签名成功！`);
+        return true;
+    }
+    console.error(`[错误] 重新签名失败，已中止操作。详情:\n${signRes.stderr}\n${signRes.stdout}`);
+    return false;
 }
 
 function ensureWritePermission(targetDir) {
@@ -500,7 +532,7 @@ function replaceFileWithRetry(srcPath, destPath) {
         fs.copyFileSync(srcPath, destPath);
         fs.unlinkSync(srcPath);
     } catch (copyErr) {
-        throw lastErr;
+        throw new Error(`文件替换失败 (${srcPath} -> ${destPath}): rename=${lastErr ? lastErr.message : 'unknown'}; fallback=${copyErr.message}`);
     }
 }
 
@@ -519,8 +551,13 @@ function install20(resourcesDir, noKill = false) {
         const originalLive = fs.readFileSync(asarPath);
         const isAlreadyLocalized = originalLive.indexOf(Buffer.from(SIGNATURE_START, "utf8")) !== -1;
 
-        const refreshBackup = !isAlreadyLocalized || !fs.existsSync(bakPath);
-        const sourcePath = isAlreadyLocalized && fs.existsSync(bakPath) ? bakPath : asarPath;
+        if (isAlreadyLocalized && !fs.existsSync(bakPath)) {
+            console.error("[错误] 检测到当前 app.asar 已安装过汉化，但官方备份文件 app.asar.bak 丢失！为防止将已汉化文件误存为官方备份，已中止操作。请先恢复官方原版客户端后再安装。");
+            return false;
+        }
+
+        const refreshBackup = !isAlreadyLocalized;
+        const sourcePath = isAlreadyLocalized ? bakPath : asarPath;
 
         buildDir = fs.mkdtempSync(path.join(resourcesDir, '.antigravity-localize-'));
         const sourceArchive = path.join(buildDir, 'source.asar');
@@ -571,18 +608,12 @@ function install20(resourcesDir, noKill = false) {
             throw error;
         }
 
-        if (buildDir && !retainRecoveryFiles) {
-            try {
-                fs.rmSync(buildDir, { recursive: true, force: true });
-                buildDir = undefined;
-            } catch (error) {
-                console.warn(`[提示] 临时目录已保留: ${buildDir}`);
-            }
-        }
         if (!(noKill && wasAppRunning)) {
             cleanElectronCache();
         }
-        resignAppOnMac(resourcesDir);
+        if (!resignAppOnMac(resourcesDir)) {
+            return false;
+        }
         console.log(`[√] Antigravity 2.0 汉化部署完成！`);
         return true;
     } catch (error) {
@@ -624,7 +655,9 @@ function restore20(resourcesDir) {
         }
         return false;
     }
-    resignAppOnMac(resourcesDir);
+    if (!resignAppOnMac(resourcesDir)) {
+        return false;
+    }
     console.log("[√] 官方 app.asar 已成功恢复！");
     return true;
 }
@@ -697,6 +730,9 @@ function restoreProxyIfNeeded(installDir) {
 // 入口
 // ==========================================
 function main() {
+    if (typeof require === 'function' && typeof module !== 'undefined' && require.main && require.main !== module) {
+        return;
+    }
     let huifu = false;
     let manualDir = "";
     let noKill = false;
@@ -706,12 +742,31 @@ function main() {
         if (args[i] === '--huifu') {
             huifu = true;
         } else if (args[i] === '--install-dir') {
-            manualDir = args[i + 1] || "";
+            if (i + 1 >= args.length || !args[i + 1] || args[i + 1].startsWith('--')) {
+                console.error('[错误] --install-dir 缺少有效的路径参数！');
+                process.exit(1);
+            }
+            manualDir = args[i + 1];
             i++;
+        } else if (args[i].startsWith('--install-dir=')) {
+            manualDir = args[i].slice('--install-dir='.length);
+            if (!manualDir) {
+                console.error('[错误] --install-dir= 路径不能为空！');
+                process.exit(1);
+            }
         } else if (args[i] === '--no-kill') {
             noKill = true;
         } else if (args[i] === '--brand-title') {
+            if (i + 1 >= args.length || !args[i + 1] || args[i + 1].startsWith('--')) {
+                console.error('[错误] --brand-title 缺少有效的参数值（支持 english / hidden / translated）！');
+                process.exit(1);
+            }
             i++;
+        } else if (args[i].startsWith('--brand-title=')) {
+            if (!args[i].slice('--brand-title='.length)) {
+                console.error('[错误] --brand-title= 参数值不能为空！');
+                process.exit(1);
+            }
         }
     }
 
@@ -795,12 +850,14 @@ function main() {
                 child.unref();
                 console.log("[启动] 客户端启动成功！");
             } else if (process.platform === 'darwin') {
-                if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
-                    child_process.exec(`sudo -u "${process.env.SUDO_USER}" open "${macAppBundle}"`);
+                const openRes = (process.env.SUDO_USER && process.env.SUDO_USER !== 'root')
+                    ? spawnCommandSync('sudo', ['-u', process.env.SUDO_USER, 'open', macAppBundle])
+                    : spawnCommandSync('open', [macAppBundle]);
+                if (openRes.success) {
+                    console.log("[启动] 客户端启动成功！");
                 } else {
-                    child_process.exec(`open "${macAppBundle}"`);
+                    console.warn(`[警告] 客户端启动失败: ${openRes.stderr || openRes.stdout}`);
                 }
-                console.log("[启动] 客户端启动成功！");
             }
         } catch (e) {
             console.warn(`[警告] 客户端启动失败: ${e.message}`);
@@ -810,6 +867,10 @@ function main() {
     if (!success) {
         process.exit(1);
     }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { generateJs };
 }
 
 main();

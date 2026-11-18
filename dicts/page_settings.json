@@ -1,5 +1,4 @@
 {
-  "9222": "9222",
   "Agent Settings": "智能体设置",
   "Loading custom agents...": "正在加载自定义智能体...",
   "Loading metrics...": "正在加载指标数据...",
@@ -226,7 +225,6 @@
   "Settings - Browser": "设置 - 浏览器",
   "Settings - Autocomplete": "设置 - Tab 键补全",
   "Settings - Editor": "设置 - 编辑器",
-  "Settings-": "设置-",
   "agent": "智能体",
   "AGENT": "智能体",
   "account": "账户",
@@ -343,7 +341,6 @@
   "Configure the browser subagent. It requires": "配置浏览器子代理。它需要安装 ",
   "Google Chrome": "Google Chrome",
   "to be installed.": "。",
-  "to be installed": "",
   "It requires Google Chrome to be installed.": "它需要安装 Google Chrome。",
   "It requires Google Chrome to be installed": "它需要安装 Google Chrome",
   "requires Google Chrome to be installed.": "需要安装 Google Chrome。",

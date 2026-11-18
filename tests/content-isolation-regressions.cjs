@@ -272,10 +272,13 @@ test('Swarm sidecar UI translates chrome, onboarding, overview cards, graph repl
           <pre id="raw" class="raw">{"agent":"coordinator","text":"Settings"}</pre>
         </section>
       </div>
+      <div id="same-doc-outside-swarm">
+        <span id="outside-board">Board</span>
+        <span id="outside-graph">Graph</span>
+        <span id="outside-raw">Raw</span>
+      </div>
     `;
     const w = await fixture(t, swarmHtml);
-    w.eval(loadRuntime());
-    await settle();
 
     assert.equal(w.document.getElementById('live').getAttribute('title'), '自动更新');
     assert.equal(w.document.getElementById('live-label').textContent, '实时');
@@ -324,6 +327,9 @@ test('Swarm sidecar UI translates chrome, onboarding, overview cards, graph repl
     assert.equal(w.document.getElementById('raw').textContent, '{"agent":"coordinator","text":"Settings"}');
     assert.equal(w.document.getElementById('post-body').textContent, '@critic-architect Settings Overview Board Live Graph');
     assert.equal(w.document.getElementById('sys-msg').textContent, 'created #design — Overview Board');
+    assert.equal(w.document.getElementById('outside-board').textContent, 'Board');
+    assert.equal(w.document.getElementById('outside-graph').textContent, 'Graph');
+    assert.equal(w.document.getElementById('outside-raw').textContent, 'Raw');
 
     const nonSwarm = await fixture(t, '<div id="plain-board">Board</div><div id="plain-graph">Graph</div><div id="plain-raw">Raw</div>');
     assert.equal(nonSwarm.document.getElementById('plain-board').textContent, 'Board');
@@ -533,4 +539,47 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     assert.equal(domTw.window.document.getElementById('plain-click').textContent, 'Click');
     assert.equal(domTw.window.document.getElementById('plain-missing').textContent, 'Missing');
     assert.equal(domTw.window.document.getElementById('plain-design').textContent, 'Design');
+});
+
+test('protected containers isolate attributes and scripts while contextual siblings and duration boundaries hold', async t => {
+    const html = `
+      <div>
+        <div class="monaco-editor">
+          <input id="monaco-input" placeholder="Search" title="Settings" aria-label="Filter">
+        </div>
+        <div class="terminal">
+          <span id="term-span" title="Close">Settings</span>
+        </div>
+        <div data-testid="planner-response-text">
+          <span id="ai-span" title="Open">Open</span>
+        </div>
+        <input id="normal-input" placeholder="Search">
+        <script id="inline-script">const label = "Settings";</script>
+        <p id="archived-tip">View archived in the sidebar <b>More</b> menu)</p>
+        <p id="unsafe-link">Proceed to <span>example.com</span> (unsafe)</p>
+        <span id="dur-ms">Thought for 12ms</span>
+        <span id="dur-mo">Thought for 5mo</span>
+        <span id="dur-m">Thought for 5m</span>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    const monacoInput = w.document.getElementById('monaco-input');
+    assert.equal(monacoInput.getAttribute('placeholder'), 'Search');
+    assert.equal(monacoInput.getAttribute('title'), 'Settings');
+    assert.equal(monacoInput.getAttribute('aria-label'), 'Filter');
+    assert.equal(w.document.getElementById('term-span').getAttribute('title'), 'Close');
+    assert.equal(w.document.getElementById('term-span').textContent, 'Settings');
+    assert.equal(w.document.getElementById('ai-span').getAttribute('title'), 'Open');
+    assert.equal(w.document.getElementById('ai-span').textContent, 'Open');
+    assert.equal(w.document.getElementById('normal-input').getAttribute('placeholder'), '搜索');
+
+    w.document.getElementById('inline-script').firstChild.nodeValue = 'Settings';
+    await settle();
+    assert.equal(w.document.getElementById('inline-script').textContent, 'Settings');
+
+    assert.equal(w.document.getElementById('archived-tip').textContent, '在侧边栏中查看已归档项更多菜单中查看。');
+    assert.equal(w.document.getElementById('unsafe-link').textContent, '继续前往 example.com（不安全）');
+    assert.equal(w.document.getElementById('dur-ms').textContent, '已思考 12ms');
+    assert.equal(w.document.getElementById('dur-mo').textContent, '已思考 5mo');
+    assert.equal(w.document.getElementById('dur-m').textContent, '已思考 5 分钟');
 });

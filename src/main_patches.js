@@ -3,7 +3,7 @@ function escapeRegExp(string) {
 }
 
 function cleanJsContent(content, signatureStart, signatureEnd) {
-    const regex = new RegExp(escapeRegExp(signatureStart) + "[\\s\\S]*?" + escapeRegExp(signatureEnd), "g");
+    const regex = new RegExp("(?:\\r?\\n;)?\\r?\\n?" + escapeRegExp(signatureStart) + "[\\s\\S]*?" + escapeRegExp(signatureEnd), "g");
     return content.replace(regex, "");
 }
 
@@ -23,6 +23,7 @@ function cleanTrayJsContent(content) {
     content = content.replace(/\n\s*\/\* --- TRAY TRANSLATION START --- \*\/[\s\S]*?\/\* --- TRAY TRANSLATION END --- \*\//g, '');
     content = content.replace(/\n\s*\/\* --- TRAY DOUBLE CLICK START --- \*\/[\s\S]*?\/\* --- TRAY DOUBLE CLICK END --- \*\//g, '');
     content = content.replace(/\n\s*\/\* --- TRAY INSERT TRANSLATION START --- \*\/[\s\S]*?\/\* --- TRAY INSERT TRANSLATION END --- \*\//g, '');
+    content = content.replace(/\/\* --- TRAY COUNT START:([A-Za-z0-9+/=]+) --- \*\/[\s\S]*?\/\* --- TRAY COUNT END --- \*\//g, (_m, b64) => Buffer.from(b64, 'base64').toString('utf8'));
     return content;
 }
 
@@ -53,7 +54,7 @@ function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
             const fsMod = typeof fs !== 'undefined' && fs && typeof fs.readFileSync === 'function' ? fs : require('fs');
             const preloadSrc = fsMod.readFileSync(preloadFile, 'utf8');
             const sIdx = preloadSrc.indexOf(${JSON.stringify(signatureStart)});
-            const eIdx = preloadSrc.indexOf(${JSON.stringify(signatureEnd)});
+            const eIdx = sIdx !== -1 ? preloadSrc.indexOf(${JSON.stringify(signatureEnd)}, sIdx + ${signatureStart.length}) : -1;
             if (sIdx !== -1 && eIdx !== -1 && sIdx < eIdx) {
                 const extracted = preloadSrc.slice(sIdx, eIdx + ${signatureEnd.length});
                 globalThis[cacheKey] = extracted;
@@ -130,7 +131,7 @@ function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
 function patchPreloadJs(content, translationJs, signatureStart, signatureEnd) {
     console.log(`[修改] 正在向 preload.js 注入汉化代码...`);
     const cleanedContent = cleanJsContent(content, signatureStart, signatureEnd);
-    const newContent = cleanedContent + "\n" + translationJs;
+    const newContent = cleanedContent + "\n;\n" + translationJs;
     console.log(`[修改] 注入成功！`);
     return newContent;
 }
@@ -320,31 +321,31 @@ function patchMenuJs(menuContent, useTw) {
 function patchTrayJs(trayContent, useTw) {
     console.log(`[修改] 正在向 tray.js 注入任务栏菜单汉化...`);
     let trayCleaned = cleanTrayJsContent(trayContent);
-
-    const targetCreate = /function\s+createTray\s*\(([^)]*)\)\s*\{/;
-    const replacementCreate = (match, args) => `function createTray(${args}) {
-    /* --- TRAY TRANSLATION START --- */
-    const translations = ${useTw ? `{
+    const trayTranslationsJson = JSON.stringify(useTw ? {
         'No agents running': '無執行中的代理',
         'Open Antigravity': '開啟 Antigravity',
         'Connect to WSL': '連線至 WSL',
         'Reopen Locally': '在本機重新開啟',
         'Quit': '結束'
-    }` : `{
+    } : {
         'No agents running': '无运行中的智能体',
         'Open Antigravity': '打开 Antigravity',
         'Connect to WSL': '连接到 WSL',
         'Reopen Locally': '在本地重新打开',
         'Quit': '退出'
-    }`};
+    });
+    const openPrefix = useTw ? '開啟 ' : '打开 ';
+
+    const targetCreate = /function\s+createTray\s*\(([^)]*)\)\s*\{/;
+    const replacementCreate = (match, args) => `function createTray(${args}) {
+    /* --- TRAY TRANSLATION START --- */
+    const translations = ${trayTranslationsJson};
     for (const item of actions) {
         if (!item || !item.label) continue;
         if (translations[item.label]) {
             item.label = translations[item.label];
         } else if (item.label.startsWith('Open ')) {
-            item.label = (${useTw ? "true" : "false"} ? '開啟 ' : '打开 ') + item.label.slice(5);
-        } else if (item.label === 'Quit') {
-            item.label = ${useTw ? "true" : "false"} ? '結束' : '退出';
+            item.label = ${JSON.stringify(openPrefix)} + item.label.slice(5);
         }
     }
     /* --- TRAY TRANSLATION END --- */`;
@@ -370,33 +371,23 @@ function patchTrayJs(trayContent, useTw) {
     /* --- TRAY DOUBLE CLICK END --- */`;
     trayPatched = trayPatched.replace(dblClickTarget, dblClickReplacement);
 
-    const countRegex = /countItem\.label\s*=\s*\([\s\S]*?' running';/g;
+    const countRegex = /countItem\.label\s*=\s*\([^;]{0,300}' running';/g;
     const replacementCount = useTw
         ? "countItem.label = count > 0 ? `${count} 個代理執行中` : '無執行中的代理';"
         : "countItem.label = count > 0 ? `${count} 个智能体运行中` : '无运行中的智能体';";
-    trayPatched = trayPatched.replace(countRegex, replacementCount);
+    trayPatched = trayPatched.replace(countRegex, (match) =>
+        `/* --- TRAY COUNT START:${Buffer.from(match, 'utf8').toString('base64')} --- */ ${replacementCount} /* --- TRAY COUNT END --- */`
+    );
 
     const targetInsert = /function\s+insertTrayMenuItem\s*\(\s*position\s*,\s*options\s*\)\s*\{/;
     const replacementInsert = `function insertTrayMenuItem(position, options) {
     /* --- TRAY INSERT TRANSLATION START --- */
-    const insertTranslations = ${useTw ? `{
-        'No agents running': '無執行中的代理',
-        'Open Antigravity': '開啟 Antigravity',
-        'Connect to WSL': '連線至 WSL',
-        'Reopen Locally': '在本機重新開啟',
-        'Quit': '結束'
-    }` : `{
-        'No agents running': '无运行中的智能体',
-        'Open Antigravity': '打开 Antigravity',
-        'Connect to WSL': '连接到 WSL',
-        'Reopen Locally': '在本地重新打开',
-        'Quit': '退出'
-    }`};
+    const insertTranslations = ${trayTranslationsJson};
     if (options && options.label) {
         if (insertTranslations[options.label]) {
             options = { ...options, label: insertTranslations[options.label] };
         } else if (options.label.startsWith('Open ')) {
-            options = { ...options, label: (${useTw ? "true" : "false"} ? '開啟 ' : '打开 ') + options.label.slice(5) };
+            options = { ...options, label: ${JSON.stringify(openPrefix)} + options.label.slice(5) };
         }
     }
     /* --- TRAY INSERT TRANSLATION END --- */`;

@@ -15,58 +15,70 @@ const path = require('path');
 const https = require('https');
 const child_process = require('child_process');
 
-function getLanguageServerInfo() {
+function getLanguageServerCandidates() {
+    const candidates = [];
     try {
         if (process.platform === 'win32') {
             const out = child_process.execSync(
                 'powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"Name=\'language_server.exe\'\\" | Select-Object ProcessId, CommandLine | ConvertTo-Json"',
                 { encoding: 'utf-8', stdio: 'pipe' }
             );
-            if (!out || !out.trim()) return null;
-            let proc = JSON.parse(out.trim());
-            if (Array.isArray(proc)) proc = proc[0];
-            if (!proc || !proc.ProcessId) return null;
+            if (!out || !out.trim()) return candidates;
+            let procs = JSON.parse(out.trim());
+            if (!Array.isArray(procs)) procs = [procs];
 
-            const pid = proc.ProcessId;
-            const cmd = proc.CommandLine || '';
-            const csrfMatch = cmd.match(/--csrf_token\s+([a-f0-9-]+)/i);
-            const csrfToken = csrfMatch ? csrfMatch[1] : '';
-
-            const netOut = child_process.execSync(
-                `powershell -NoProfile -Command "Get-NetTCPConnection -OwningProcess ${pid} -State Listen | Select-Object -ExpandProperty LocalPort"`,
-                { encoding: 'utf-8', stdio: 'pipe' }
-            );
-            const ports = netOut.trim().split(/\r?\n/).map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p));
-
-            return { pid, csrfToken, ports, cmd };
+            for (const proc of procs) {
+                if (!proc || !proc.ProcessId) continue;
+                const pid = proc.ProcessId;
+                const cmd = proc.CommandLine || '';
+                const csrfMatch = cmd.match(/--csrf_token\s+([a-f0-9-]+)/i);
+                const csrfToken = csrfMatch ? csrfMatch[1] : '';
+                let ports = [];
+                try {
+                    const netOut = child_process.execSync(
+                        `powershell -NoProfile -Command "Get-NetTCPConnection -OwningProcess ${pid} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort"`,
+                        { encoding: 'utf-8', stdio: 'pipe' }
+                    );
+                    ports = netOut.trim().split(/\r?\n/).map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p));
+                } catch (portErr) {
+                    console.warn(`[!] 查询进程 ${pid} 监听端口失败: ${portErr.message}`);
+                }
+                candidates.push({ pid, csrfToken, ports, cmd });
+            }
         } else {
             const psOut = child_process.execSync('ps -ax -o pid=,command=', { encoding: 'utf-8', stdio: 'pipe' });
-            const line = psOut.split(/\r?\n/).find(l => l.includes('language_server') && l.includes('--csrf_token'));
-            if (!line) return null;
-            const m = line.trim().match(/^(\d+)\s+(.+)$/);
-            if (!m) return null;
-            const pid = parseInt(m[1], 10);
-            const cmd = m[2];
-            const csrfMatch = cmd.match(/--csrf_token\s+([a-f0-9-]+)/i);
-            const csrfToken = csrfMatch ? csrfMatch[1] : '';
-
-            const lsofOut = child_process.execSync(`lsof -nP -iTCP -sTCP:LISTEN -a -p ${pid}`, { encoding: 'utf-8', stdio: 'pipe' });
-            const ports = [];
-            for (const pm of lsofOut.matchAll(/:(\d+)\s+\(LISTEN\)/g)) {
-                const portNum = parseInt(pm[1], 10);
-                if (!isNaN(portNum) && !ports.includes(portNum)) ports.push(portNum);
+            const lines = psOut.split(/\r?\n/).filter(l => l.includes('language_server') && l.includes('--csrf_token'));
+            for (const line of lines) {
+                const m = line.trim().match(/^(\d+)\s+(.+)$/);
+                if (!m) continue;
+                const pid = parseInt(m[1], 10);
+                const cmd = m[2];
+                const csrfMatch = cmd.match(/--csrf_token\s+([a-f0-9-]+)/i);
+                const csrfToken = csrfMatch ? csrfMatch[1] : '';
+                const ports = [];
+                try {
+                    const lsofOut = child_process.execSync(`lsof -nP -iTCP -sTCP:LISTEN -a -p ${pid}`, { encoding: 'utf-8', stdio: 'pipe' });
+                    for (const pm of lsofOut.matchAll(/:(\d+)\s+\(LISTEN\)/g)) {
+                        const portNum = parseInt(pm[1], 10);
+                        if (!isNaN(portNum) && !ports.includes(portNum)) ports.push(portNum);
+                    }
+                } catch (portErr) {
+                    console.warn(`[!] 查询进程 ${pid} 监听端口失败: ${portErr.message}`);
+                }
+                candidates.push({ pid, csrfToken, ports, cmd });
             }
-            return { pid, csrfToken, ports, cmd };
         }
     } catch (e) {
-        return null;
+        console.warn(`[!] 枚举 language_server 进程失败: ${e.message}`);
     }
+    return candidates;
 }
 
 async function findHttpsPort(ports) {
     for (const port of ports) {
         const ok = await new Promise(resolve => {
             const req = https.get(`https://127.0.0.1:${port}/main.js`, { rejectUnauthorized: false, timeout: 1500 }, res => {
+                res.resume();
                 resolve(res.statusCode === 200);
             });
             req.on('error', () => resolve(false));
@@ -77,52 +89,103 @@ async function findHttpsPort(ports) {
     return null;
 }
 
-function fetchUrl(url) {
+async function findActiveLanguageServer() {
+    const candidates = getLanguageServerCandidates();
+    if (candidates.length === 0) return null;
+    for (const info of candidates) {
+        const httpsPort = await findHttpsPort(info.ports);
+        if (httpsPort) return { info, httpsPort };
+    }
+    return { info: candidates[0], httpsPort: null };
+}
+
+function fetchUrl(url, timeoutMs = 15000) {
     return new Promise((resolve, reject) => {
-        https.get(url, { rejectUnauthorized: false }, res => {
+        const req = https.get(url, { rejectUnauthorized: false, timeout: timeoutMs }, res => {
             if (res.statusCode !== 200) {
-                return reject(new Error(`HTTP ${res.statusCode}`));
+                res.resume();
+                return reject(new Error(`HTTP ${res.statusCode} (${url})`));
             }
             const chunks = [];
             res.on('data', c => chunks.push(c));
             res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-        }).on('error', reject);
+        });
+        req.on('timeout', () => req.destroy(new Error(`请求超时 (${timeoutMs}ms): ${url}`)));
+        req.on('error', reject);
+    });
+}
+
+function postJsonRpc(url, csrfToken, payload, timeoutMs = 8000) {
+    const reqBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    return new Promise((resolve, reject) => {
+        const req = https.request(url, {
+            method: 'POST',
+            rejectUnauthorized: false,
+            timeout: timeoutMs,
+            headers: {
+                'content-type': 'application/json',
+                'x-codeium-csrf-token': csrfToken
+            }
+        }, res => {
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => {
+                const raw = Buffer.concat(chunks).toString('utf-8');
+                if (res.statusCode !== 200) {
+                    return reject(new Error(`RPC 返回 HTTP ${res.statusCode}: ${raw}`));
+                }
+                try {
+                    resolve(JSON.parse(raw));
+                } catch (e) {
+                    reject(new Error(`RPC 响应 JSON 解析失败: ${e.message}`));
+                }
+            });
+        });
+        req.on('timeout', () => req.destroy(new Error(`RPC 请求超时 (${timeoutMs}ms): ${url}`)));
+        req.on('error', reject);
+        req.write(reqBody);
+        req.end();
     });
 }
 
 async function cmdPort() {
-    const info = getLanguageServerInfo();
-    if (!info) {
+    const active = await findActiveLanguageServer();
+    if (!active) {
         console.error('[!] 未检测到正在运行的 language_server.exe 进程。');
+        process.exitCode = 1;
         return;
     }
+    const { info, httpsPort } = active;
     console.log(`[+] 检测到 language_server.exe (PID: ${info.pid})`);
     console.log(`[+] 监听端口列表: ${info.ports.join(', ')}`);
     console.log(`[+] CSRF 令牌: ${info.csrfToken || '未找到'}`);
 
-    const httpsPort = await findHttpsPort(info.ports);
     if (httpsPort) {
         console.log(`[+] Live Web/SPA 端口: https://127.0.0.1:${httpsPort}`);
     } else {
         console.log(`[-] 未能连接至任何 HTTPS Web 端口`);
+        process.exitCode = 1;
     }
 }
 
 async function cmdSearch(keyword, contextLen = 300) {
     if (!keyword) {
         console.error('用法: node scripts/dev_tool.js search <keyword> [contextLen]');
+        process.exitCode = 1;
         return;
     }
-    const info = getLanguageServerInfo();
-    if (!info) {
+    const active = await findActiveLanguageServer();
+    if (!active) {
         console.error('[!] 未检测到正在运行的 language_server.exe。');
+        process.exitCode = 1;
         return;
     }
-    const httpsPort = await findHttpsPort(info.ports);
-    if (!httpsPort) {
+    if (!active.httpsPort) {
         console.error('[!] 无法探测到 language_server 的 HTTPS 端口。');
+        process.exitCode = 1;
         return;
     }
+    const { httpsPort } = active;
 
     console.log(`[*] 正在从 https://127.0.0.1:${httpsPort}/main.js 下载并搜索: "${keyword}"...`);
     const js = await fetchUrl(`https://127.0.0.1:${httpsPort}/main.js`);
@@ -148,64 +211,60 @@ async function cmdSlice(startPos, length = 500) {
     const len = parseInt(length, 10) || 500;
     if (isNaN(start)) {
         console.error('用法: node scripts/dev_tool.js slice <startPos> [length]');
+        process.exitCode = 1;
         return;
     }
-    const info = getLanguageServerInfo();
-    if (!info) return console.error('[!] language_server 未运行');
-    const httpsPort = await findHttpsPort(info.ports);
-    if (!httpsPort) return console.error('[!] 无法连接 HTTPS 端口');
+    const active = await findActiveLanguageServer();
+    if (!active) {
+        console.error('[!] language_server 未运行');
+        process.exitCode = 1;
+        return;
+    }
+    if (!active.httpsPort) {
+        console.error('[!] 无法连接 HTTPS 端口');
+        process.exitCode = 1;
+        return;
+    }
 
-    const js = await fetchUrl(`https://127.0.0.1:${httpsPort}/main.js`);
+    const js = await fetchUrl(`https://127.0.0.1:${active.httpsPort}/main.js`);
     console.log(js.slice(start, start + len));
 }
 
 async function cmdDumpMcp(args = []) {
-    const info = getLanguageServerInfo();
-    if (!info) return console.error('[!] language_server 未运行');
-    const httpsPort = await findHttpsPort(info.ports);
-    if (!httpsPort) return console.error('[!] 无法连接 HTTPS 端口');
-    if (!info.csrfToken) return console.error('[!] 未能解析 CSRF Token');
+    const active = await findActiveLanguageServer();
+    if (!active) {
+        console.error('[!] language_server 未运行');
+        process.exitCode = 1;
+        return;
+    }
+    const { info, httpsPort } = active;
+    if (!httpsPort) {
+        console.error('[!] 无法连接 HTTPS 端口');
+        process.exitCode = 1;
+        return;
+    }
+    if (!info.csrfToken) {
+        console.error('[!] 未能解析 CSRF Token');
+        process.exitCode = 1;
+        return;
+    }
 
     console.log(`[*] 正在通过 Connect-Web RPC 向 https://127.0.0.1:${httpsPort} 请求 MCP 目录...`);
-    const reqBody = JSON.stringify({ os: process.platform === 'win32' ? 'windows' : (process.platform === 'darwin' ? 'darwin' : 'linux'), searchQuery: '' });
-
-    const plugins = await new Promise((resolve, reject) => {
-        const req = https.request(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetAvailableCascadePlugins`, {
-            method: 'POST',
-            rejectUnauthorized: false,
-            headers: {
-                'content-type': 'application/json',
-                'x-codeium-csrf-token': info.csrfToken
-            }
-        }, res => {
-            const chunks = [];
-            res.on('data', c => chunks.push(c));
-            res.on('end', () => {
-                if (res.statusCode !== 200) {
-                    return reject(new Error(`RPC 返回 HTTP ${res.statusCode}: ${Buffer.concat(chunks).toString('utf-8')}`));
-                }
-                try {
-                    const data = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-                    resolve(data.plugins || []);
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        });
-        req.on('error', reject);
-        req.write(reqBody);
-        req.end();
-    });
+    const data = await postJsonRpc(
+        `https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetAvailableCascadePlugins`,
+        info.csrfToken,
+        { os: process.platform === 'win32' ? 'windows' : (process.platform === 'darwin' ? 'darwin' : 'linux'), searchQuery: '' }
+    );
+    const plugins = data.plugins || [];
 
     console.log(`[√] 成功从客户端拉取到 ${plugins.length} 个官方 MCP 服务器！`);
 
     // 1. 写入本地 scratch 缓存
     const scratchDir = path.join(__dirname, '..', 'scratch');
-    if (fs.existsSync(scratchDir)) {
-        const outPath = path.join(scratchDir, 'mcp_catalog_official_raw.json');
-        fs.writeFileSync(outPath, JSON.stringify(plugins, null, 2), 'utf-8');
-        console.log(`[√] 本地抓包缓存已更新: ${outPath}`);
-    }
+    fs.mkdirSync(scratchDir, { recursive: true });
+    const outPath = path.join(scratchDir, 'mcp_catalog_official_raw.json');
+    fs.writeFileSync(outPath, JSON.stringify(plugins, null, 2), 'utf-8');
+    console.log(`[√] 本地抓包缓存已更新: ${outPath}`);
 
     // 2. 与 Git 追踪的基准文件 (scripts/mcp_catalog_baseline.json) 进行增量差分对比
     const baselinePath = path.join(__dirname, 'mcp_catalog_baseline.json');
@@ -236,30 +295,48 @@ async function cmdDumpMcp(args = []) {
                         console.log(`    - [${item.id}] ${item.title}`);
                     }
                 }
+                const diffOutPath = path.join(scratchDir, 'mcp_catalog_diff.json');
+                fs.writeFileSync(diffOutPath, JSON.stringify({
+                    updatedAt: new Date().toISOString().slice(0, 10),
+                    baselineCount: baseline.length,
+                    currentCount: plugins.length,
+                    added,
+                    removed
+                }, null, 2), 'utf-8');
+                console.log(`[√] 增量差异清单已输出至: ${diffOutPath}`);
             }
         } catch (e) {
             console.warn('[!] 读取基准文件对比失败:', e.message);
+            process.exitCode = 1;
         }
     } else {
         console.log('[i] 未找到基准文件 scripts/mcp_catalog_baseline.json');
     }
 
-    // 3. 词典覆盖率检查
-    const dictPath = path.join(__dirname, '..', 'dicts', 'page_mcp_knowledge.json');
-    if (fs.existsSync(dictPath)) {
-        try {
-            const dict = JSON.parse(fs.readFileSync(dictPath, 'utf8'));
-            const missing = plugins.filter(p => !dict[p.description]);
-            console.log('\n------------------ 词典汉化覆盖率检查 ------------------');
-            if (missing.length === 0) {
-                console.log(`[√] 完美！当前全量 ${plugins.length} 个 MCP 描述均已全部收录在中文词典中！`);
-            } else {
-                console.log(`[!] 注意: 发现 ${missing.length} 项 MCP 描述尚未在词典中找到翻译:`);
-                for (const m of missing) {
-                    console.log(`    * [${m.id}] ${m.title}`);
+    // 3. 词典覆盖率检查（加载全部 dicts/*.json 并做归一化匹配）
+    const dictsDir = path.join(__dirname, '..', 'dicts');
+    if (fs.existsSync(dictsDir)) {
+        const dictNormSet = new Set();
+        for (const f of fs.readdirSync(dictsDir).filter(x => x.endsWith('.json'))) {
+            try {
+                const data = JSON.parse(fs.readFileSync(path.join(dictsDir, f), 'utf8'));
+                for (const k of Object.keys(data)) {
+                    dictNormSet.add(normalizeUiText(k));
                 }
+            } catch (e) {
+                console.warn(`[!] 读取词典 ${f} 失败: ${e.message}`);
             }
-        } catch (e) {}
+        }
+        const missing = plugins.filter(p => p.description && !dictNormSet.has(normalizeUiText(p.description)));
+        console.log('\n------------------ 词典汉化覆盖率检查 ------------------');
+        if (missing.length === 0) {
+            console.log(`[√] 完美！当前全量 ${plugins.length} 个 MCP 描述均已全部收录在中文词典中！`);
+        } else {
+            console.log(`[!] 注意: 发现 ${missing.length} 项 MCP 描述尚未在词典中找到翻译:`);
+            for (const m of missing) {
+                console.log(`    * [${m.id}] ${m.title}`);
+            }
+        }
     }
 
     // 4. 更新基准文件
@@ -373,10 +450,18 @@ function extractUiStringsFromBundle(js) {
 }
 
 async function cmdScanUi(args = []) {
-    const info = getLanguageServerInfo();
-    if (!info) return console.error('[!] 未检测到正在运行的 language_server.exe。请先打开 Antigravity 客户端！');
-    const httpsPort = await findHttpsPort(info.ports);
-    if (!httpsPort) return console.error('[!] 无法连接 language_server HTTPS 端口');
+    const active = await findActiveLanguageServer();
+    if (!active) {
+        console.error('[!] 未检测到正在运行的 language_server.exe。请先打开 Antigravity 客户端！');
+        process.exitCode = 1;
+        return;
+    }
+    const { info, httpsPort } = active;
+    if (!httpsPort) {
+        console.error('[!] 无法连接 language_server HTTPS 端口');
+        process.exitCode = 1;
+        return;
+    }
 
     let appVersion = 'unknown';
     try {
@@ -560,6 +645,15 @@ async function main() {
     }
 }
 
-main().catch(err => {
-    console.error('[错误]', err.message);
-});
+if (require.main === module) {
+    main().catch(err => {
+        console.error('[错误]', err.message);
+        process.exitCode = 1;
+    });
+}
+
+module.exports = {
+    normalizeUiText,
+    isNaturalUiString,
+    extractUiStringsFromBundle
+};
