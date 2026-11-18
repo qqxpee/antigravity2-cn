@@ -356,5 +356,15 @@
   "Payments, CRM, accounting, data, identity, customer support, marketing, and workflow automation.": "涵蓋跨境支付、CRM 客戶管理、財務會計、資料治理、身分驗證、客戶支援、數位行銷與工作流程自動化。",
   "Ask anything, @ to mention": "提問任何問題，使用 @ 提及",
   "Message subagent, @ to mention, / for actions": "向子代理傳送訊息，使用 @ 提及，/ 執行操作",
-  "Message subagent, @ to mention": "向子代理傳送訊息，使用 @ 提及"
+  "Message subagent, @ to mention": "向子代理傳送訊息，使用 @ 提及",
+  "Compact the conversation now (summarize history to free up the context window).": "立即壓縮目前對話（摘要歷史記錄以釋放上下文視窗）。",
+  "Plan carefully before executing a task.": "在執行任務前仔細擬定計畫。",
+  "Run until the specified goal is completely finished.": "持續執行，直到指定的目標完全完成。",
+  "Run an instruction on a recurring schedule or as a one-time timer.": "按週期計劃或作為一次性定時器執行指令。",
+  "Invoke a browser agent for web tasks.": "呼叫瀏覽器代理執行網頁任務。",
+  "Interview me to align on a plan.": "透過訪談與我對齊方案。",
+  "Invoke a team of agents to autonomously tackle large projects.": "呼叫代理團隊自主應對大型專案。",
+  "Migrates the user's MCP servers, skills, slash commands, subagents, and instruction files from other coding agents (Claude Code, Codex, Cursor, Gemini CLI) into one new Antigravity plugin. Use when the user wants to bring over, import, or migrate their setup or config from another agent or tool. Don't use for installing Marketplace plugins or authoring a new plugin from scratch (use the plugin skill).": "將使用者在其他程式設計助手（Claude Code、Codex、Cursor、Gemini CLI）中的 MCP 伺服器、技能、斜線指令、子代理與指令檔案遷移為一個新的 Antigravity 外掛程式。當您需要匯入或遷移其他工具的設定時使用。",
+  "How to write and run a dynamic workflow script with the `run_workflow` tool: a Python script that orchestrates many agents with `agent`, `parallel`, `pipeline`, and `phase`. Use when a task splits into many independent or staged pieces of agent work (fan out over files, modules, bugs, or review angles, then aggregate), or when the user asks for a workflow. Don't use for a single delegated task (use a subagent) or for legacy workflow files (see migrate-workflows).": "如何使用 `run_workflow` 工具編寫並執行動態工作流程指令碼：透過 `agent`、`parallel`、`pipeline` 與 `phase` 編排多代理協作的 Python 指令碼。適用於可細分為多階段或多路並行的複雜任務。",
+  "(Preview & Quota Heavy) Run a swarm: several agents working in parallel on one task, each in its own conversation, collaborating through a shared message board. Use when the work splits into pieces that can be done at the same time, or when a second pair of eyes should check the first pair's work.": "（預覽版 · 較高配額消耗）啟動 Swarm 協作群：多個代理在各自對話中並行處理同一任務，並透過共用訊息看板協作。適用於可並行細分的任務或需要交叉複核的情境。"
 }

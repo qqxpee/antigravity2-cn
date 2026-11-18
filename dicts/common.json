@@ -356,5 +356,15 @@
   "Payments, CRM, accounting, data, identity, customer support, marketing, and workflow automation.": "涵盖跨境支付、CRM 客户管理、财务会计、数据治理、身份鉴权、客户支持、数字营销与业务流自动化。",
   "Ask anything, @ to mention": "提问任何问题，使用 @ 提及",
   "Message subagent, @ to mention, / for actions": "向子代理发送消息，使用 @ 提及，/ 执行操作",
-  "Message subagent, @ to mention": "向子代理发送消息，使用 @ 提及"
+  "Message subagent, @ to mention": "向子代理发送消息，使用 @ 提及",
+  "Compact the conversation now (summarize history to free up the context window).": "立即压缩当前对话（总结历史记录以释放上下文窗口）。",
+  "Plan carefully before executing a task.": "在执行任务前仔细制定计划。",
+  "Run until the specified goal is completely finished.": "持续运行，直到指定的目标完全完成。",
+  "Run an instruction on a recurring schedule or as a one-time timer.": "按周期计划或作为一次性定时器运行指令。",
+  "Invoke a browser agent for web tasks.": "调用浏览器代理执行网页任务。",
+  "Interview me to align on a plan.": "通过访谈与我对齐方案。",
+  "Invoke a team of agents to autonomously tackle large projects.": "调用智能体团队自主应对大型项目。",
+  "Migrates the user's MCP servers, skills, slash commands, subagents, and instruction files from other coding agents (Claude Code, Codex, Cursor, Gemini CLI) into one new Antigravity plugin. Use when the user wants to bring over, import, or migrate their setup or config from another agent or tool. Don't use for installing Marketplace plugins or authoring a new plugin from scratch (use the plugin skill).": "将用户在其他编程助手（Claude Code、Codex、Cursor、Gemini CLI）中的 MCP 服务器、技能、斜杠命令、子代理与指令文件迁移为一个新的 Antigravity 插件。当您需要导入或迁移其他工具的配置时使用。",
+  "How to write and run a dynamic workflow script with the `run_workflow` tool: a Python script that orchestrates many agents with `agent`, `parallel`, `pipeline`, and `phase`. Use when a task splits into many independent or staged pieces of agent work (fan out over files, modules, bugs, or review angles, then aggregate), or when the user asks for a workflow. Don't use for a single delegated task (use a subagent) or for legacy workflow files (see migrate-workflows).": "如何使用 `run_workflow` 工具编写并运行动态工作流脚本：通过 `agent`、`parallel`、`pipeline` 与 `phase` 编排多智能体协作的 Python 脚本。适用于可拆分为多阶段或多路并行的复杂任务。",
+  "(Preview & Quota Heavy) Run a swarm: several agents working in parallel on one task, each in its own conversation, collaborating through a shared message board. Use when the work splits into pieces that can be done at the same time, or when a second pair of eyes should check the first pair's work.": "（预览版 · 较高配额消耗）启动 Swarm 协作群：多个智能体在各自会话中并行处理同一任务，并通过共享消息看板协作。适用于可并行拆分的任务或需要交叉复核的场景。"
 }

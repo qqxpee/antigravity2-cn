@@ -585,6 +585,29 @@ async function cmdScanUi(args = []) {
                 }
             }
         } catch (e) {}
+
+        // 同步通过 GetSlashCommands RPC 提取内置 `/` 斜杠命令与内置技能描述（位于 language_server 二进制内）
+        try {
+            const us = await postJsonRpc(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetUserStatus`, info.csrfToken, {});
+            const defaultModel = us?.userStatus?.cascadeModelConfigData?.defaultOverrideModelConfig?.modelOrAlias;
+            const scData = await postJsonRpc(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetSlashCommands`, info.csrfToken, {
+                cascadeConfig: {
+                    plannerConfig: {
+                        planModel: defaultModel?.model || 'MODEL_PLACEHOLDER_M26',
+                        requestedModel: defaultModel || { model: 'MODEL_PLACEHOLDER_M26' }
+                    }
+                }
+            });
+            for (const cmd of (scData.commands || [])) {
+                const defPath = cmd.info?.definitionPath || '';
+                if (defPath && !/[\\/]\.gemini[\\/]antigravity[\\/]builtin[\\/]/i.test(defPath)) continue;
+                const s = normalizeUiText(cmd.description || '');
+                if (isNaturalUiString(s)) {
+                    if (!extracted.has(s)) extracted.set(s, new Set());
+                    extracted.get(s).add('rpc:slashCommand');
+                }
+            }
+        } catch (e) {}
     }
 
     const allStrings = [...extracted.keys()].sort();

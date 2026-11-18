@@ -600,6 +600,8 @@ test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best
         <span id="auto-created">Created automation "Daily Sync".</span>
         <button id="unfold-btn" title="Unfold lines 10-25">Unfold lines 10-25</button>
         <select><option id="mic-opt" value="">System default (Built-in Mic)</option></select>
+        <div id="slash-compact"><span>compact</span><span>Compact the conversation now (summarize history to free up the context window).</span></div>
+        <div id="slash-plan"><span>plan</span><span>Plan carefully before executing a task.</span></div>
       </div>
     `;
     const w = await fixture(t, html);
@@ -616,6 +618,10 @@ test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best
     assert.equal(w.document.getElementById('auto-created').textContent, '已创建自动化任务“Daily Sync”。');
     assert.equal(w.document.getElementById('unfold-btn').getAttribute('title'), '展开第 10-25 行');
     assert.equal(w.document.getElementById('mic-opt').textContent, '系统默认 (Built-in Mic)');
+    assert.equal(w.document.getElementById('slash-compact').children[0].textContent, 'compact');
+    assert.equal(w.document.getElementById('slash-compact').children[1].textContent, '立即压缩当前对话（总结历史记录以释放上下文窗口）。');
+    assert.equal(w.document.getElementById('slash-plan').children[0].textContent, 'plan');
+    assert.equal(w.document.getElementById('slash-plan').children[1].textContent, '在执行任务前仔细制定计划。');
 
     const domTw = createDom(html);
     t.after(() => domTw.window.close());
@@ -625,4 +631,6 @@ test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best
     assert.equal(domTw.window.document.getElementById('mic-split').textContent, '麥克風已被封鎖。請在以下位置允許存取：隱私權設定。');
     assert.equal(domTw.window.document.getElementById('partner-plugins').textContent, '以 Google 外掛程式建構');
     assert.equal(domTw.window.document.getElementById('unfold-btn').getAttribute('title'), '展開第 10-25 行');
+    assert.equal(domTw.window.document.getElementById('slash-compact').children[1].textContent, '立即壓縮目前對話（摘要歷史記錄以釋放上下文視窗）。');
+    assert.equal(domTw.window.document.getElementById('slash-plan').children[1].textContent, '在執行任務前仔細擬定計畫。');
 });
