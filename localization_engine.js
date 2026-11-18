@@ -804,6 +804,104 @@ function restoreProxyIfNeeded(installDir) {
     }
 }
 
+function isAsarLocalized(asarPath) {
+    if (!fs.existsSync(asarPath)) return false;
+    try {
+        return fs.readFileSync(asarPath).indexOf(Buffer.from(SIGNATURE_START, "utf8")) !== -1;
+    } catch (e) {
+        return false;
+    }
+}
+
+function launchAntigravityApp(installDir, appArgs = []) {
+    const macAppBundle = process.platform === 'darwin' ? resolveMacAppBundle(installDir) : null;
+    const canRestartApp = process.platform === 'win32'
+        ? fs.existsSync(path.join(installDir, 'Antigravity.exe'))
+        : Boolean(macAppBundle);
+    if (!canRestartApp) return false;
+    try {
+        if (process.platform === 'win32') {
+            const exePath = path.join(installDir, 'Antigravity.exe');
+            const child = child_process.spawn(exePath, appArgs, {
+                cwd: installDir,
+                detached: true,
+                stdio: 'ignore'
+            });
+            child.unref();
+            console.log("[启动] 客户端启动成功！");
+            return true;
+        } else if (process.platform === 'darwin') {
+            const openArgs = [macAppBundle, ...(appArgs.length ? ['--args', ...appArgs] : [])];
+            const openRes = (process.env.SUDO_USER && process.env.SUDO_USER !== 'root')
+                ? spawnCommandSync('sudo', ['-u', process.env.SUDO_USER, 'open', ...openArgs])
+                : spawnCommandSync('open', openArgs);
+            if (openRes.success) {
+                console.log("[启动] 客户端启动成功！");
+                return true;
+            }
+            console.warn(`[警告] 客户端启动失败: ${openRes.stderr || openRes.stdout}`);
+        }
+    } catch (e) {
+        console.warn(`[警告] 客户端启动失败: ${e.message}`);
+    }
+    return false;
+}
+
+function createLaunchShortcut(installDir) {
+    if (process.platform !== 'win32') return false;
+    const vbsPath = path.join(__dirname, 'scripts', 'launch_silent.vbs');
+    const exePath = path.join(installDir, 'Antigravity.exe');
+    if (!fs.existsSync(vbsPath) || !fs.existsSync(exePath)) {
+        console.warn('[警告] 未找到启动脚本或 Antigravity.exe，跳过创建快捷方式。');
+        return false;
+    }
+    const extraArgs = [];
+    if (USE_TW) extraArgs.push('--tw');
+    if (BRAND_TITLE_MODE && BRAND_TITLE_MODE !== 'english') {
+        extraArgs.push('--brand-title', BRAND_TITLE_MODE);
+    }
+    const argTail = extraArgs.length ? ' ' + extraArgs.join(' ') : '';
+    const lnkName = USE_TW ? 'Antigravity (繁體中文).lnk' : 'Antigravity (中文).lnk';
+    const esc = v => String(v).replace(/'/g, "''");
+    const psCmd = [
+        "$sh = New-Object -ComObject WScript.Shell;",
+        `$lnkPath = Join-Path ([Environment]::GetFolderPath('Desktop')) '${esc(lnkName)}';`,
+        "$lnk = $sh.CreateShortcut($lnkPath);",
+        "$lnk.TargetPath = Join-Path $env:WINDIR 'System32\\wscript.exe';",
+        `$lnk.Arguments = '//B //NoLogo "${esc(vbsPath)}"${esc(argTail)}';`,
+        `$lnk.WorkingDirectory = '${esc(installDir)}';`,
+        `$lnk.IconLocation = '${esc(exePath)},0';`,
+        "$lnk.Save();"
+    ].join(' ');
+    const res = spawnCommandSync('powershell', ['-NoProfile', '-Command', psCmd]);
+    if (res.success) {
+        console.log(`[快捷方式] 已在桌面创建启动图标：${lnkName}`);
+        return true;
+    }
+    console.warn(`[警告] 创建桌面快捷方式失败: ${res.stderr || res.stdout}`);
+    return false;
+}
+function removeLaunchShortcut() {
+    if (process.platform !== 'win32') return;
+    const psCmd = [
+        "$desktop = [Environment]::GetFolderPath('Desktop');",
+        "$sh = New-Object -ComObject WScript.Shell;",
+        "foreach ($name in @('Antigravity (中文).lnk', 'Antigravity (繁體中文).lnk')) {",
+        "  $p = Join-Path $desktop $name;",
+        "  if (Test-Path $p) {",
+        "    $lnk = $sh.CreateShortcut($p);",
+        "    if ($lnk.Arguments -like '*launch_silent.vbs*') {",
+        "      Remove-Item -Force $p;",
+        "      Write-Output $name;",
+        "    }",
+        "  }",
+        "}"
+    ].join(' ');
+    const res = spawnCommandSync('powershell', ['-NoProfile', '-Command', psCmd]);
+    if (res.success && res.stdout && res.stdout.trim()) {
+        console.log(`[快捷方式] 已清理桌面自动汉化启动图标：${res.stdout.trim().replace(/\r?\n/g, ', ')}`);
+    }
+}
 // ==========================================
 // 入口
 // ==========================================
@@ -812,13 +910,23 @@ function main() {
         return;
     }
     let huifu = false;
+    let launch = false;
+    let createShortcut = false;
     let manualDir = "";
     let noKill = false;
+    let appArgs = [];
 
     const args = process.argv.slice(2);
     for (let i = 0; i < args.length; i++) {
-        if (args[i] === '--huifu') {
+        if (args[i] === '--') {
+            appArgs = args.slice(i + 1);
+            break;
+        } else if (args[i] === '--huifu') {
             huifu = true;
+        } else if (args[i] === '--launch') {
+            launch = true;
+        } else if (args[i] === '--create-shortcut') {
+            createShortcut = true;
         } else if (args[i] === '--install-dir') {
             if (i + 1 >= args.length || !args[i + 1] || args[i + 1].startsWith('--')) {
                 console.error('[错误] --install-dir 缺少有效的路径参数！');
@@ -851,15 +959,7 @@ function main() {
     // 1. 探测路径
     const installDir = detectInstallationDir(manualDir);
 
-    // 2. 检测客户端是否正在运行，并根据参数决定是否关闭以解除文件锁定
-    wasAppRunning = checkIfAppIsRunning();
-    if (noKill) {
-        console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
-    } else if (wasAppRunning) {
-        closeAntigravityProcesses();
-    }
-
-    // 3. 找到 resources 资源目录
+    // 2. 找到 resources 资源目录
     let resourcesDir = "";
     if (fs.existsSync(path.join(installDir, "resources"))) {
         resourcesDir = path.join(installDir, "resources");
@@ -880,6 +980,33 @@ function main() {
         process.exit(1);
     }
 
+    // --launch 模式：已汉化或客户端正在运行时直接启动，否则先静默补丁再启动
+    if (launch && !huifu) {
+        const asarPath = path.join(resourcesDir, "app.asar");
+        if (!isAsarLocalized(asarPath)) {
+            if (checkIfAppIsRunning()) {
+                console.log("[跳过] 客户端正在运行，跳过本次补丁以免打断当前会话。");
+            } else if (ensureWritePermission(resourcesDir)) {
+                console.log("====== 检测到未汉化，正在自动注入中文汉化 ======");
+                if (install20(resourcesDir, true)) {
+                    injectProxyIfNeeded(installDir);
+                } else {
+                    console.warn("[警告] 自动汉化失败，继续启动原版客户端。");
+                }
+            }
+        }
+        launchAntigravityApp(installDir, appArgs);
+        return;
+    }
+
+    // 3. 检测客户端是否正在运行，并根据参数决定是否关闭以解除文件锁定
+    wasAppRunning = checkIfAppIsRunning();
+    if (noKill) {
+        console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
+    } else if (wasAppRunning) {
+        closeAntigravityProcesses();
+    }
+
     if (!ensureWritePermission(resourcesDir)) {
         console.error("[错误] 当前用户对目标目录缺少写入权限，请使用管理员权限运行脚本。");
         process.exit(1);
@@ -890,6 +1017,7 @@ function main() {
 
     if (huifu) {
         console.log("====== 正在卸载中文汉化，恢复官方原版 ======");
+        removeLaunchShortcut();
         success = restore20(resourcesDir, noKill);
         if (success) {
             restoreProxyIfNeeded(installDir);
@@ -899,38 +1027,16 @@ function main() {
         success = install20(resourcesDir, noKill);
         if (success) {
             injectProxyIfNeeded(installDir);
+            if (createShortcut) {
+                createLaunchShortcut(installDir);
+            }
         }
     }
 
     // 5. 校验通过且原来客户端在运行，则自动重新启动客户端（仅当目标为有效客户端包/可执行程序时触发，避免自定义目录误弹 Finder）
-    const macAppBundle = process.platform === 'darwin' ? resolveMacAppBundle(installDir) : null;
-    const canRestartApp = process.platform === 'win32'
-        ? fs.existsSync(path.join(installDir, 'Antigravity.exe'))
-        : Boolean(macAppBundle);
-    if (success && wasAppRunning && !noKill && canRestartApp) {
+    if (success && wasAppRunning && !noKill) {
         console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
-        try {
-            if (process.platform === 'win32') {
-                const exePath = path.join(installDir, 'Antigravity.exe');
-                const child = child_process.spawn(exePath, [], {
-                    detached: true,
-                    stdio: 'ignore'
-                });
-                child.unref();
-                console.log("[启动] 客户端启动成功！");
-            } else if (process.platform === 'darwin') {
-                const openRes = (process.env.SUDO_USER && process.env.SUDO_USER !== 'root')
-                    ? spawnCommandSync('sudo', ['-u', process.env.SUDO_USER, 'open', macAppBundle])
-                    : spawnCommandSync('open', [macAppBundle]);
-                if (openRes.success) {
-                    console.log("[启动] 客户端启动成功！");
-                } else {
-                    console.warn(`[警告] 客户端启动失败: ${openRes.stderr || openRes.stdout}`);
-                }
-            }
-        } catch (e) {
-            console.warn(`[警告] 客户端启动失败: ${e.message}`);
-        }
+        launchAntigravityApp(installDir);
     }
 
     if (!success) {
@@ -939,7 +1045,7 @@ function main() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { generateJs };
+    module.exports = { generateJs, isAsarLocalized };
 }
 
 main();

@@ -353,3 +353,21 @@ test('patchTrayJs and patchUtilsJs guard missing actions and missing win variabl
     });
     assert.doesNotThrow(() => hubEvents['did-frame-finish-load']({}, false, 1, 2));
 });
+
+test('isAsarLocalized distinguishes unpatched and patched app.asar archives', t => {
+    const { isAsarLocalized } = require('../localization_engine');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-launch-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const asarPath = path.join(root, 'app.asar');
+    assert.equal(isAsarLocalized(asarPath), false);
+
+    writeArchive(asarPath, { 'dist/preload.js': { body: '// original' } });
+    assert.equal(isAsarLocalized(asarPath), false);
+
+    const patchedPath = path.join(root, 'app-patched.asar');
+    patchAsarArchive(asarPath, patchedPath, new Map([
+        ['dist/preload.js', orig => `${orig}\n${signature}`],
+    ]));
+    assert.equal(isAsarLocalized(patchedPath), true);
+});

@@ -3,6 +3,7 @@ setlocal EnableDelayedExpansion
 title Antigravity 繁體中文安裝工具
 
 set "BRAND_ARG="
+set "SHORTCUT_ARG="
 set "CLI_ARGS=%*"
 set "HAS_BRAND=0"
 if defined CLI_ARGS (
@@ -19,11 +20,15 @@ if "!HAS_BRAND!"=="0" (
     set "BRAND_ARG=--brand-title english"
     if "!CHOICE_VAL!"=="2" set "BRAND_ARG=--brand-title hidden"
     if "!CHOICE_VAL!"=="3" set "BRAND_ARG=--brand-title translated"
+    echo.
+    set "SHORTCUT_VAL=N"
+    set /p "SHORTCUT_VAL=是否在桌面建立自動漢化啟動圖示？更新後開啟可自動補丁 [y/N]（預設 N）："
+    if /i "!SHORTCUT_VAL!"=="y" set "SHORTCUT_ARG=--create-shortcut"
 )
 
 echo.
 echo [1/2] 正在注入繁體中文化...
-node "%~dp0localization_engine.js" --tw !BRAND_ARG! %*
+node "%~dp0localization_engine.js" --tw !BRAND_ARG! !SHORTCUT_ARG! %*
 
 if %errorlevel% neq 0 (
     echo.
