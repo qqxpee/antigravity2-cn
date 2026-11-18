@@ -601,6 +601,42 @@
         [/^No MCP servers found for\s+"(.+)"$/i, (m, q) => USE_TW ? ('找不到與「' + q + '」相關的 MCP 伺服器') : ('未找到与“' + q + '”相关的 MCP 服务器')],
         [/^Agents created by\s+(.+?)\s+can apply across workspaces,\s*while project agents apply to\s+(.+?)\.?$/i, (m, a, b) => USE_TW ? ("由 " + a + " 建立的代理可跨工作區套用，而專案代理僅套用至 " + b + "。") : ("由 " + a + " 创建的智能体可跨工作区生效，而项目智能体仅作用于 " + b + "。")],
         [/^An?\s+(automation|scheduled task)\s+with this name already exists\.\s*Choose a different name\.?$/i, (m, kind) => USE_TW ? ("已存在同名的" + (/automation/i.test(kind) ? "自動化任務" : "排程任務") + "，請選擇其他名稱。") : ("已存在同名的" + (/automation/i.test(kind) ? "自动化任务" : "定时任务") + "，请选择其他名称。")],
+        [/^Choose\s+(.+?)'s\s+Voice$/i, (m, app) => USE_TW ? ("選擇 " + app + " 的聲音") : ("选择 " + app + " 的声音")],
+        [/^Microphone blocked\.\s*Allow in\s+(.+?)\.?$/i, (m, place) => USE_TW ? ("麥克風已遭封鎖。請在 " + place + " 中允許。") : ("麦克风已被阻止。请在 " + place + " 中允许。")],
+        [/^Microphone access for\s+(.+?)\s+was denied\.\s*Quit and reopen the app to be asked again\.?$/i, (m, host) => USE_TW ? (host + " 的麥克風存取權限已被拒絕。請結束並重新開啟應用程式以再次詢問。") : (host + " 的麦克风访问权限已被拒绝。请退出并重新打开应用以再次询问。")],
+        [/^Microphone access for\s+(.+?)\s+wasn['’]t allowed\.?$/i, (m, host) => USE_TW ? ("尚未允許 " + host + " 存取麥克風。") : ("尚未允许 " + host + " 访问麦克风。")],
+        [/^Agent needs permission to act on\s+(.+)$/i, (m, target) => USE_TW ? ("代理需要權限才能對 " + target + " 執行操作") : ("智能体需要权限才能对 " + target + " 执行操作")],
+        [/^The browser blocked the download of\s+(.+?):\s*the agent browser does not download this file type(.*)$/i, (m, file, rest) => USE_TW ? ("瀏覽器已封鎖下載 " + file + "：代理瀏覽器不支援下載此檔案類型" + rest) : ("浏览器已阻止下载 " + file + "：智能体浏览器不支持下载此文件类型" + rest)],
+        [/^Blocked external popup navigation to\s+"(.+)"$/i, (m, url) => (USE_TW ? "已封鎖導向外部彈出視窗：「" : "已阻止外部弹窗导航：“") + url + (USE_TW ? "」" : "”")],
+        [/^Blocked navigation to\s+"(.+)"$/i, (m, url) => (USE_TW ? "已封鎖導向：「" : "已阻止导航至：“") + url + (USE_TW ? "」" : "”")],
+        [/^Blocked popup to\s+"(.+)"$/i, (m, url) => (USE_TW ? "已封鎖彈出視窗：「" : "已阻止弹窗：“") + url + (USE_TW ? "」" : "”")],
+        [/^Blocked cross-origin subframe\s+"(.+)"$/i, (m, url) => (USE_TW ? "已封鎖跨來源子框架：「" : "已阻止跨源子框架：“") + url + (USE_TW ? "」" : "”")],
+        [/^Build with\s+(.+?)\s+Plugins$/i, (m, partner) => USE_TW ? ("以 " + partner + " 外掛程式建構") : ("基于 " + partner + " 插件构建")],
+        [/^Open the\s+(.+?)\s+plugin$/i, (m, name) => USE_TW ? ("開啟 " + name + " 外掛程式") : ("打开 " + name + " 插件")],
+        [/^Managed by the\s+(.+?)\s+plugin$/i, (m, name) => USE_TW ? ("由 " + name + " 外掛程式管理") : ("由 " + name + " 插件管理")],
+        [/^Open\s+(.+?)\s+skill$/i, (m, name) => USE_TW ? ("開啟 " + name + " 技能") : ("打开 " + name + " 技能")],
+        [/^The\s+(.+?)\s+MCP server requires configuration parameters before it can be started\.?$/i, (m, srv) => USE_TW ? (srv + " MCP 伺服器需要設定參數後才能啟動。") : (srv + " MCP 服务器需要配置参数后才能启动。")],
+        [/^Cannot add folder:\s*"(.+?)"\s+is not a valid folder location\.?$/i, (m, loc) => USE_TW ? ("無法新增資料夾：「" + loc + "」不是有效的資料夾位置。") : ("无法添加文件夹：“" + loc + "”不是有效的文件夹位置。")],
+        [/^The folder\s+[“"](.+?)[”"]\s+does not exist\.\s*Would you like to create it\?$/i, (m, name) => USE_TW ? ("資料夾「" + name + "」不存在，是否要建立？") : ("文件夹“" + name + "”不存在，是否要创建？")],
+        [/^[“"](.+?)[”"]\s+isn['’]t a valid folder name\.?$/i, (m, name) => USE_TW ? ("「" + name + "」不是有效的資料夾名稱。") : ("“" + name + "”不是有效的文件夹名称。")],
+        [/^A file already exists at\s+(.+?)\.?$/i, (m, p) => USE_TW ? ("在 " + p + " 已存在同名檔案。") : ("在 " + p + " 已存在同名文件。")],
+        [/^(Created automation|Enabled|Deleted|Started|Restarted|Failed to delete|Failed to start)\s+"(.+?)"\.?$/i, (m, verb, name) => {
+            const vMap = USE_TW
+                ? { 'created automation': '已建立自動化任務', 'enabled': '已啟用', 'deleted': '已刪除', 'started': '已啟動', 'restarted': '已重新啟動', 'failed to delete': '刪除失敗', 'failed to start': '啟動失敗' }
+                : { 'created automation': '已创建自动化任务', 'enabled': '已启用', 'deleted': '已删除', 'started': '已启动', 'restarted': '已重启', 'failed to delete': '删除失败', 'failed to start': '启动失败' };
+            return (vMap[verb.toLowerCase()] || verb) + (USE_TW ? "「" : "“") + name + (USE_TW ? "」。" : "”。");
+        }],
+        [/^(Unfold|Fold)\s+lines\s+(\d+)-(\d+)$/i, (m, act, a, b) => (/^unfold$/i.test(act) ? (USE_TW ? "展開第 " : "展开第 ") : (USE_TW ? "摺疊第 " : "折叠第 ")) + a + "-" + b + " 行"],
+        [/^Failed to save cloud permission settings:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存雲端權限設定失敗：" : "保存云端权限设置失败：") + err],
+        [/^System default\s*\((.+)\)$/i, (m, dev) => (USE_TW ? "系統預設 (" : "系统默认 (") + dev + ")"],
+        [/^Zoom\s+(\d+)%,\s*reset to fit$/i, (m, pct) => (USE_TW ? "縮放 " : "缩放 ") + pct + (USE_TW ? "%，重設為符合視窗大小" : "%，重置为适应窗口")],
+        [/^Recording shortcut for\s+(.+?)\.\s*Press keys to bind,\s*Enter to save,\s*Escape to cancel\.?$/i, (m, name) => USE_TW ? ("正在錄製 " + name + " 的快速鍵。請按下按鍵組合綁定，按 Enter 儲存，按 Escape 取消。") : ("正在录制 " + name + " 的快捷键。请按下按键组合绑定，按 Enter 保存，按 Escape 取消。")],
+        [/^This window's agents,\s*files,\s*and terminals are on\s+(.+?)\.?$/i, (m, host) => USE_TW ? ("此視窗的代理、檔案與終端機位於 " + host + "。") : ("此窗口的智能体、文件和终端位于 " + host + "。")],
+        [/^When toggled on,\s*(.+?)\s+collects usage data to help Google enhance performance and features\.?$/i, (m, app) => USE_TW ? ("開啟後，" + app + " 會收集使用資料以協助 Google 改善效能與功能。") : ("开启后，" + app + " 会收集使用数据以帮助 Google 改进性能和功能。")],
+        [/^When toggled on,\s*(.+?)\s+will use your AI credits to fulfill model requests once you're out of model quota\.\s*(.+?)\s+will always use your model quota first before using AI credits\.?$/i, (m, a1, a2) => USE_TW ? ("開啟後，當您的模型配額用盡時，" + a1 + " 將使用您的 AI 點數處理模型請求。" + a2 + " 永遠會優先使用模型配額，再使用 AI 點數。") : ("开启后，当您的模型配额用尽时，" + a1 + " 将使用您的 AI 积分处理模型请求。" + a2 + " 始终会优先使用模型配额，再使用 AI 积分。")],
+        [/^Receive product updates,\s*tips,\s*and promotions from Google\s+(.+?)\s+via email\.?$/i, (m, app) => USE_TW ? ("透過電子郵件接收來自 Google " + app + " 的產品更新、技巧與優惠資訊。") : ("通过电子邮件接收来自 Google " + app + " 的产品更新、技巧和促销信息。")],
+        [/^Agents created by this\s+(.+?)\s+run in a dedicated\s+(.+?)\s+with its own permissions\.\s*You can change the permissions in the\s+(.+?)\s+settings page\.?$/i, (m, kind, scope, scope2) => USE_TW ? ("此 " + kind + " 建立的代理會在具有獨立權限的專屬 " + scope + " 中執行。您可以在 " + scope2 + " 設定頁面變更權限。") : ("此 " + kind + " 创建的智能体会在具有独立权限的专用 " + scope + " 中运行。您可以在 " + scope2 + " 设置页面更改权限。")],
+        [/^Stop\s+(\d+)\s+agents?\?$/i, (m, count) => USE_TW ? ("要停止 " + count + " 個代理嗎？") : ("要停止 " + count + " 个智能体吗？")],
         [/^(?:(Exploring|Explored|Editing|Edited|Running|Ran)\s+)?(\d+)\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?)(?:,\s*(?:(Exploring|Explored|Editing|Edited|Running|Ran)\s+)?(\d+)\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?))*$/i, (m) => {
             const verbMap = USE_TW
                 ? { exploring: '正在探索', explored: '已探索', editing: '正在編輯', edited: '已編輯', running: '正在執行', ran: '已執行' }
@@ -952,6 +988,9 @@
         if (pText.includes('Type one above') || pText.includes('请在上方直接输入') || pText.includes('請在上方直接輸入')) {
             if (valNorm === 'No hosts in') return '在 ';
             if (valNorm === 'yet. Type one above.') return USE_TW ? ' 中尚無主機，請在上方直接輸入。' : ' 中暂未配置主机，请在上方直接输入。';
+        }
+        if (pText.includes('Microphone blocked. Allow in') || pText.includes('麦克风已被阻止。请在') || pText.includes('麥克風已被封鎖。請在')) {
+            if (valNorm === '.') return '。';
         }
         if (valNorm === "Couldn't connect to" && typeof p.closest === 'function' && p.closest('[data-testid="ssh-connect-error"]')) {
             return USE_TW ? '無法連線至 ' : '无法连接到 ';

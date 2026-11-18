@@ -11,7 +11,9 @@ const {
     patchMenuJs,
     patchTrayJs,
     patchLoadingOverlayJs,
-    patchUpdaterJs
+    patchUpdaterJs,
+    patchMainProcessModule,
+    MAIN_PROCESS_PATCH_TARGETS
 } = require('./src/main_patches');
 
 // macOS 环境下自动补全 PATH，确保 codesign 等工具能被顺利找到
@@ -383,7 +385,7 @@ function spawnCommandSync(cmd, args) {
 }
 
 function cleanElectronCache() {
-    let appSupportDir = "";
+    let baseAppSupportDir = "";
     if (process.platform === 'darwin') {
         let userHome = os.homedir();
         if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
@@ -392,27 +394,46 @@ function cleanElectronCache() {
                 userHome = sudoHome;
             }
         }
-        appSupportDir = path.join(userHome, 'Library', 'Application Support', 'Antigravity');
+        baseAppSupportDir = path.join(userHome, 'Library', 'Application Support');
     } else if (process.platform === 'win32') {
-        const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-        appSupportDir = path.join(appData, 'Antigravity');
+        baseAppSupportDir = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
     } else {
-        appSupportDir = path.join(os.homedir(), '.config', 'Antigravity');
+        baseAppSupportDir = path.join(os.homedir(), '.config');
     }
 
-    if (!fs.existsSync(appSupportDir)) return;
-
-    const cacheDirs = ['Cache', 'Code Cache', 'GPUCache', 'DawnWebGPUCache', 'DawnGraphiteCache'];
+    const cacheDirNames = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnWebGPUCache', 'DawnGraphiteCache']);
+    const maxWalkDepth = 4;
     let cleanedCount = 0;
-    for (const c of cacheDirs) {
-        const p = path.join(appSupportDir, c);
-        if (fs.existsSync(p)) {
-            try {
-                fs.rmSync(p, { recursive: true, force: true });
-                cleanedCount++;
-            } catch (e) {}
+
+    function walkCacheDirs(dir, depth) {
+        if (depth > maxWalkDepth || !fs.existsSync(dir)) return;
+        let entries;
+        try {
+            entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch (e) {
+            return;
+        }
+        for (const entry of entries) {
+            if (!entry.isDirectory()) continue;
+            const fullPath = path.join(dir, entry.name);
+            if (cacheDirNames.has(entry.name)) {
+                try {
+                    fs.rmSync(fullPath, { recursive: true, force: true });
+                    cleanedCount++;
+                } catch (e) {}
+            } else if (
+                depth < maxWalkDepth &&
+                (entry.name === 'Partitions' || entry.name.startsWith('hub-browser-') || entry.name === 'Service Worker' || entry.name === 'CacheStorage')
+            ) {
+                walkCacheDirs(fullPath, depth + 1);
+            }
         }
     }
+
+    for (const appDirName of ['Antigravity', 'Antigravity IDE']) {
+        walkCacheDirs(path.join(baseAppSupportDir, appDirName), 0);
+    }
+
     if (cleanedCount > 0) {
         console.log(`[缓存] 已自动清理 ${cleanedCount} 个应用缓存目录，避免新旧版本字节码冲突。`);
     }
@@ -573,7 +594,8 @@ function install20(resourcesDir, noKill = false) {
             ['dist/menu.js', content => patchMenuJs(content, USE_TW)],
             ['dist/tray.js', content => patchTrayJs(content, USE_TW)],
             ['dist/loadingOverlay.js', content => patchLoadingOverlayJs(content, USE_TW)],
-            ['dist/updater.js', content => patchUpdaterJs(content, USE_TW)]
+            ['dist/updater.js', content => patchUpdaterJs(content, USE_TW)],
+            ...MAIN_PROCESS_PATCH_TARGETS.map(relPath => [relPath, content => patchMainProcessModule(relPath, content, USE_TW)])
         ]);
 
         console.log(`[打包] 正在使用原生引擎生成并校验汉化候选包...`);

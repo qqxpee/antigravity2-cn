@@ -3552,5 +3552,7 @@
   "macOS Permissions Ready": "macOS 权限已就绪",
   "✓ macOS permissions granted": "✓ macOS 权限已授予",
   "managed by your organization": "由您的组织管理",
-  "Messaging subagents isn't supported in remote conversations yet.": "远程会话暂不支持向子智能体发送消息。"
+  "Messaging subagents isn't supported in remote conversations yet.": "远程会话暂不支持向子智能体发送消息。",
+  "Give each Best of N fork a full clone of your workspace, including its local commit history. Choosing a winner then gives your workspace that fork's state, so the commits it made are kept. Forks take longer to create than the default CitC clone.": "为每个 Best of N 分支提供工作区的完整克隆（包含本地提交历史）。选出最佳方案后，工作区将直接采用该分支状态并保留其提交记录。创建分支比默认的 CitC 克隆耗时更长。",
+  "Give each Best of N fork its own clone of your Git repository instead of a copy-on-write overlay. Each fork is then a real repository, so commits it makes are kept when you choose it as the winner. Forks take longer to create, and the wait grows with the size of your repository.": "为每个 Best of N 分支提供独立的 Git 仓库克隆，而非写时复制 (Copy-on-Write) 叠加层。这样每个分支都是真实的独立仓库，当您选定其作为胜出方案时，它所做的提交会被完整保留。创建分支耗时更长，等待时间随仓库体积增加。"
 }

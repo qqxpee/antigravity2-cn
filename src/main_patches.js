@@ -435,11 +435,127 @@ function patchUpdaterJs(updaterContent, useTw) {
     return out;
 }
 
+const MAIN_PROCESS_TEXT_TABLES = {
+    'dist/main.js': [
+        ["buttons: ['Cancel', 'Quit'],", "buttons: ['取消', '退出'],", "buttons: ['取消', '結束'],"],
+        ["title: 'Confirm Quit',", "title: '确认退出',", "title: '確認結束',"],
+        ["message: 'Are you sure you want to quit?',", "message: '确定要退出吗？',", "message: '確定要結束嗎？',"],
+        ["detail: 'There may be agents or background tasks running.',", "detail: '当前可能有智能体或后台任务正在运行。',", "detail: '目前可能有代理或背景任務正在執行。',"],
+        ["label: 'New Window',", "label: '新建窗口',", "label: '開新視窗',"],
+        ["showErrorBox('Binary not found', msg)", "showErrorBox('未找到可执行文件', msg)", "showErrorBox('找不到可執行檔', msg)"],
+        ["showErrorBox('WSL setup failed', msg)", "showErrorBox('WSL 初始化失败', msg)", "showErrorBox('WSL 設定失敗', msg)"],
+        ["showErrorBox('Startup failed', msg)", "showErrorBox('启动失败', msg)", "showErrorBox('啟動失敗', msg)"],
+        ["title: 'WSL distro not found',", "title: '未找到 WSL 发行版',", "title: '找不到 WSL 發行版',"],
+        ['message: `The WSL distro "${WSL_DISTRO}" is no longer installed.`,', 'message: `WSL 发行版 "${WSL_DISTRO}" 已不再安装。`,', 'message: `WSL 發行版 "${WSL_DISTRO}" 已未安裝。`,'],
+        ["detail: 'Antigravity opened on Windows instead.',", "detail: 'Antigravity 已改为在 Windows 上打开。',", "detail: 'Antigravity 已改為在 Windows 上開啟。',"]
+    ],
+    'dist/ipcHandlers.js': [
+        ["showErrorBox('Cannot open folder', t.error)", "showErrorBox('无法打开文件夹', t.error)", "showErrorBox('無法開啟資料夾', t.error)"],
+        ["message: 'Folder is on the Windows filesystem',", "message: '文件夹位于 Windows 文件系统中',", "message: '資料夾位於 Windows 檔案系統中',"],
+        ["title: 'Open workspace',", "title: '打开工作区',", "title: '開啟工作區',"],
+        ["title: 'Open workspaces',", "title: '打开工作区',", "title: '開啟工作區',"],
+        ["title: 'Select Download Folder',", "title: '选择下载文件夹',", "title: '選取下載資料夾',"]
+    ],
+    'dist/remote/remoteManager.js': [
+        ["title: 'Choose an SSH config file',", "title: '选择 SSH 配置文件',", "title: '選取 SSH 設定檔',"],
+        ["buttons: ['Stop Server', 'Cancel'],", "buttons: ['停止服务', '取消'],", "buttons: ['停止伺服器', '取消'],"],
+        ["title: 'Stop SSH server',", "title: '停止 SSH 服务器',", "title: '停止 SSH 伺服器',"],
+        ["message: `Stop the Antigravity server on ${entry.label}?`,", "message: `停止 ${entry.label} 上的 Antigravity 服务？`,", "message: `要停止 ${entry.label} 上的 Antigravity 伺服器嗎？`,"],
+        ["'Agents running on this host will stop and its window will close. '", "'此主机上运行的智能体将停止，其窗口也将关闭。'", "'此主機上執行的代理將會停止，視窗也會關閉。'"],
+        ["'The server starts again the next time you connect.'", "'下次连接时将重新启动服务。'", "'下次連線時會重新啟動伺服器。'"],
+        ["message: `Not connected to ${label}`,", "message: `尚未连接到 ${label}`,", "message: `尚未連線至 ${label}`,"],
+        ["detail: 'Reconnect first, then stop its server.',", "detail: '请先重新连接，然后再停止其服务。',", "detail: '請先重新連線，再停止其伺服器。',"],
+        ["title: 'SSH connection failed',", "title: 'SSH 连接失败',", "title: 'SSH 連線失敗',"],
+        ["buttons: ['Sign In', 'Cancel'],", "buttons: ['登录', '取消'],", "buttons: ['登入', '取消'],"],
+        ["title: 'Sign in',", "title: '登录',", "title: '登入',"],
+        ["message: `Sign in to your organization for ${entry.label}?`,", "message: `是否登录 ${entry.label} 所在的组织？`,", "message: `是否登入 ${entry.label} 的組織？`,"],
+        ["'Continue only if you just chose to sign in with your organization '", "'仅当您刚才主动选择通过组织登录时才继续。'", "'僅在您剛才選擇透過組織登入時才繼續。'"],
+        ["`in this window. ${entry.label} will get access to your `", "`继续后，${entry.label} 将获得访问权限，可访问您的`", "`繼續後，${entry.label} 將取得權限，可存取您的`"],
+        ['"organization\'s Google Cloud account.\\n"', '"所属组织的 Google Cloud 账户。\\n"', '"所屬組織的 Google Cloud 帳戶。\\n"'],
+        ["`Workforce pool: ${names[1]}  Provider: ${names[2]}`", "`Workforce 池：${names[1]}  提供方：${names[2]}`", "`Workforce 集區：${names[1]}  提供者：${names[2]}`"],
+        ["`Identity provider: ${provider}`", "`身份提供方：${provider}`", "`身分提供者：${provider}`"]
+    ],
+    'dist/remote/sshPrompts.js': [
+        ["message: confirm ? `${label} asks:` : 'Touch your security key',", "message: confirm ? `${label} 询问：` : '请轻触您的安全密钥',", "message: confirm ? `${label} 詢問：` : '請輕觸您的安全金鑰',"],
+        ["buttons: confirm ? ['Yes', 'No'] : ['Cancel'],", "buttons: confirm ? ['是', '否'] : ['取消'],", "buttons: confirm ? ['是', '否'] : ['取消'],"],
+        [">Asked again: your last answer may not have worked.<", ">再次询问：您上次的回答可能未生效。<", ">再次詢問：您上次的回答可能無效。<"],
+        [">That's too long.<", ">输入内容过长。<", ">輸入內容過長。<"],
+        ['>Cancel</button><button id="continue">Continue</button>', '>取消</button><button id="continue">继续</button>', '>取消</button><button id="continue">繼續</button>']
+    ],
+    'dist/deviceChooser.js': [
+        ["hid: 'HID device',", "hid: 'HID 设备',", "hid: 'HID 裝置',"],
+        ["usb: 'USB device',", "usb: 'USB 设备',", "usb: 'USB 裝置',"],
+        ["serial: 'serial port',", "serial: '串口设备',", "serial: '序列埠裝置',"],
+        ["'Unknown device'", "'未知设备'", "'未知裝置'"],
+        ["title: 'Connect a device',", "title: '连接设备',", "title: '連線裝置',"],
+        ["message: `${origin} wants to connect to a ${KIND_NOUNS[kind]}`,", "message: `${origin} 请求连接到 ${KIND_NOUNS[kind]}`,", "message: `${origin} 想要連線至 ${KIND_NOUNS[kind]}`,"],
+        ["? 'Select a device:'", "? '请选择设备：'", "? '請選取裝置：'"],
+        [": 'No compatible devices found.',", ": '未找到兼容设备。',", ": '找不到相容的裝置。',"],
+        ["buttons: [...snapshot.map(({ label }) => label), 'Cancel'],", "buttons: [...snapshot.map(({ label }) => label), '取消'],", "buttons: [...snapshot.map(({ label }) => label), '取消'],"]
+    ],
+    'dist/webauthn.js': [
+        ["details.relyingPartyId || 'this site'", "details.relyingPartyId || '当前站点'", "details.relyingPartyId || '目前網站'"],
+        ["title: 'Choose a Passkey',", "title: '选择通行密钥 (Passkey)',", "title: '選擇通行金鑰 (Passkey)',"],
+        ["message: `Sign in to ${rpLabel}`,", "message: `登录 ${rpLabel}`,", "message: `登入 ${rpLabel}`,"],
+        ["detail: 'Select a passkey account to continue:',", "detail: '请选择一个通行密钥账户以继续：',", "detail: '請選取通行金鑰帳戶以繼續：',"],
+        ["buttons: [...accountLabels, 'Cancel'],", "buttons: [...accountLabels, '取消'],", "buttons: [...accountLabels, '取消'],"]
+    ],
+    'dist/webviewPopupSecurity.js': [
+        ["insecure: 'Not secure',", "insecure: '不安全',", "insecure: '不安全',"],
+        ["dangerous: '⚠ Not secure',", "dangerous: '⚠ 不安全',", "dangerous: '⚠ 不安全',"],
+        ["'Your connection to this site is not secure',", "'您与此网站的连接不安全',", "'您與此網站的連線不安全',"],
+        ["'You should not enter any sensitive information on this site (for '", "'请勿在此网站输入任何敏感信息（例如'", "'請勿在此網站輸入任何機密資訊（例如'"],
+        ["'example, passwords or credit cards), because it could be stolen by '", "'密码或信用卡信息），因为这些信息可能会被'", "'密碼或信用卡號碼），因為這些資訊可能會遭'"],
+        ["'attackers.',", "'攻击者窃取。',", "'攻擊者竊取。',"],
+        ["'Connection is secure',", "'连接安全',", "'連線安全',"],
+        ["'Your information (for example, passwords or credit card numbers) is '", "'您的信息（例如密码或信用卡号）在发送至此网站时'", "'您的資訊（例如密碼或信用卡號碼）傳送至此網站時'"],
+        ["'private when it is sent to this site.',", "'会受到私密保护。',", "'均為私密傳輸。',"],
+        ["['Connection security information is not available for this page']", "['无法获取此页面的连接安全信息']", "['無法取得此頁面的連線安全資訊']"],
+        [": 'unknown'", ": '未知'", ": '未知'"],
+        ["'Certificate is valid' : 'Certificate details'", "'证书有效' : '证书详情'", "'憑證有效' : '憑證詳細資料'"],
+        ["`Error: ${state.certificateError}`", "`错误：${state.certificateError}`", "`錯誤：${state.certificateError}`"],
+        ["`Issued to: ${certificate.subjectName}`", "`颁发给：${certificate.subjectName}`", "`核發給：${certificate.subjectName}`"],
+        ["`Issued by: ${certificate.issuer}`", "`颁发者：${certificate.issuer}`", "`核發者：${certificate.issuer}`"],
+        ["`Valid from: ${formatDate(certificate.validFromMs)}`", "`生效时间：${formatDate(certificate.validFromMs)}`", "`有效起始日期：${formatDate(certificate.validFromMs)}`"],
+        ["`Valid until: ${formatDate(certificate.validToMs)}`", "`过期时间：${formatDate(certificate.validToMs)}`", "`有效截止日期：${formatDate(certificate.validToMs)}`"],
+        ["`Protocol: ${certificate.protocol}`", "`协议：${certificate.protocol}`", "`通訊協定：${certificate.protocol}`"],
+        ["(state.url || 'This page')", "(state.url || '当前页面')", "(state.url || '目前頁面')"],
+        ["label: 'Connection info…',", "label: '连接信息…',", "label: '連線資訊…',"],
+        ["title: 'Connection info',", "title: '连接信息',", "title: '連線資訊',"],
+        ["buttons: ['OK'],", "buttons: ['确定'],", "buttons: ['確定'],"]
+    ],
+    'dist/provisionSplash.js': [
+        ["<div>Setting up WSL: ${escapeHtml(distro)}</div>", "<div>正在初始化 WSL：${escapeHtml(distro)}</div>", "<div>正在設定 WSL：${escapeHtml(distro)}</div>"]
+    ]
+};
+
+const MAIN_PROCESS_PATCH_TARGETS = Object.keys(MAIN_PROCESS_TEXT_TABLES);
+
+function patchMainProcessModule(relPath, content, useTw) {
+    const pairs = MAIN_PROCESS_TEXT_TABLES[relPath];
+    if (!pairs) return content;
+    let out = content;
+    let hitCount = 0;
+    for (const [needle, sc, tc] of pairs) {
+        const replacement = useTw ? tc : sc;
+        if (out.includes(needle)) {
+            out = out.split(needle).join(replacement);
+            hitCount++;
+        }
+    }
+    if (hitCount > 0) {
+        console.log(`[修改] 已向 ${relPath} 注入原生弹窗/界面汉化（${hitCount} 处）`);
+    }
+    return out;
+}
+
 module.exports = {
     patchPreloadJs,
     patchUtilsJs,
     patchMenuJs,
     patchTrayJs,
     patchLoadingOverlayJs,
-    patchUpdaterJs
+    patchUpdaterJs,
+    patchMainProcessModule,
+    MAIN_PROCESS_PATCH_TARGETS
 };

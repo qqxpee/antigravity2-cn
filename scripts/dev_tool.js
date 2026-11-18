@@ -371,13 +371,52 @@ function isNaturalUiString(s) {
     if (!t.includes(' ')) {
         if (!/^[A-Z][a-z]{2,20}[.…!?:]?$/.test(t)) return false;
     } else {
-        if (/[{}[\]<>$\\|=+;`~^]/.test(t) && !/^\[(Dev Mode|Beta|Experimental)\]/i.test(t)) return false;
-        if (/\b(function|return|const|var|let|import|export|typeof|undefined|null|true|false|Promise|Error|Object|Array|String|Number)\b/.test(t)) return false;
-        if (/\b(flex|items-center|justify-|bg-|text-|border-|px-|py-|mt-|mb-|w-|h-|rounded|hidden|block|inline|relative|absolute|shrink-0|truncate|select-none|cursor-pointer|outline-none)\b/.test(t)) return false;
-        const words = t.split(/\s+/);
+        const withoutPlaceholders = t.replace(/\{\d+\}/g, 'X');
+        if (/[{}[\]<>$\\|=+;`~^]/.test(withoutPlaceholders) && !/^\[(Dev Mode|Beta|Experimental)\]/i.test(t)) return false;
+        if (/\b(function|return|const|var|let|import|export|typeof|undefined|null|true|false|Promise|Error|Object|Array|String|Number)\b/.test(withoutPlaceholders)) return false;
+        if (/\b(flex|items-center|justify-|bg-|text-|border-|px-|py-|mt-|mb-|w-|h-|rounded|hidden|block|inline|relative|absolute|shrink-0|truncate|select-none|cursor-pointer|outline-none)\b/.test(withoutPlaceholders)) return false;
+        const words = withoutPlaceholders.split(/\s+/);
         if (words.some(w => w.length > 40)) return false;
     }
     return true;
+}
+
+function normalizeTemplateLiteral(raw) {
+    let out = '';
+    let idx = 0;
+    let slot = 0;
+    while (idx < raw.length) {
+        if (raw[idx] === '\\' && idx + 1 < raw.length) {
+            out += raw.slice(idx, idx + 2);
+            idx += 2;
+            continue;
+        }
+        if (raw[idx] === '$' && raw[idx + 1] === '{') {
+            let depth = 1;
+            let j = idx + 2;
+            while (j < raw.length && depth > 0) {
+                if (raw[j] === '\\') { j += 2; continue; }
+                if (raw[j] === '"' || raw[j] === "'" || raw[j] === '`') {
+                    const q = raw[j++];
+                    while (j < raw.length && raw[j] !== q) {
+                        if (raw[j] === '\\') j += 2;
+                        else j++;
+                    }
+                } else if (raw[j] === '{') {
+                    depth++;
+                } else if (raw[j] === '}') {
+                    depth--;
+                }
+                j++;
+            }
+            if (depth !== 0) return null;
+            out += `{${slot++}}`;
+            idx = j;
+            continue;
+        }
+        out += raw[idx++];
+    }
+    return out;
 }
 
 function extractUiStringsFromBundle(js) {
@@ -444,6 +483,23 @@ function extractUiStringsFromBundle(js) {
     while ((m = condPropSingleRegex.exec(js)) !== null) {
         const prop = m[1] || m[2];
         addCandidate(m[3] ?? m[4], `condProp:${prop}`);
+    }
+
+    // 6. 反引号模板字面量（属性与 createElement 直接子节点）
+    const templatePropRegex = /(?:(?:"(aria-label|data-tooltip-content)")|\b(label|sublabel|title|placeholder|description|shortDescription|tooltip|tooltipText|tooltipContent|ariaLabel|emptyMessage|emptyText|errorMessage|helperText|confirmText|cancelText|buttonText|heading|subheading|subtitle|header|content|message|detail))\s*:\s*`((?:[^`\\]|\\.)*)`/g;
+    while ((m = templatePropRegex.exec(js)) !== null) {
+        const tpl = normalizeTemplateLiteral(m[3]);
+        if (tpl && tpl.length <= 600 && !tpl.trimStart().startsWith('<')) {
+            addCandidate(tpl, `tplProp:${m[1] || m[2]}`);
+        }
+    }
+
+    const templateCeRegex = /createElement\(\s*(?:[A-Za-z0-9_$.]+|"[a-z0-9-]+")\s*,\s*(?:null|void 0|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|[A-Za-z0-9_$.]+)\s*,\s*`((?:[^`\\]|\\.)*)`/g;
+    while ((m = templateCeRegex.exec(js)) !== null) {
+        const tpl = normalizeTemplateLiteral(m[1]);
+        if (tpl && tpl.length <= 600 && !tpl.trimStart().startsWith('<')) {
+            addCandidate(tpl, 'tpl:jsx');
+        }
     }
 
     return extracted;

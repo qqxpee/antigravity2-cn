@@ -5,7 +5,8 @@ const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
-const { patchPreloadJs, patchUtilsJs, patchTrayJs } = require('../src/main_patches');
+const { patchPreloadJs, patchUtilsJs, patchTrayJs, patchMainProcessModule } = require('../src/main_patches');
+const { loadEngine } = require('./helpers/runtime-loader.cjs');
 
 const signature = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
 const signatureEnd = '/* --- ANTIGRAVITY CHINESE LOCALIZATION END --- */';
@@ -242,4 +243,49 @@ test('patchTrayJs count replacement is bounded and cleanTrayJsContent restores o
 
     const scAgain = patchTrayJs(tc, false);
     assert.equal(scAgain, sc);
+});
+
+test('validateAsarCandidate allows newly patched main-process dialog modules and cleanElectronCache clears Partitions caches', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-main-dialog-test-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const src = path.join(root, 'app.asar');
+    const dst = path.join(root, 'app.asar.tmp');
+    writeArchive(src, {
+        'dist/preload.js': { body: '// original preload' },
+        'dist/main.js': { body: "const opts = { buttons: ['Cancel', 'Quit'], title: 'Confirm Quit', message: 'Are you sure you want to quit?' };" },
+        'dist/provisionSplash.js': { body: 'const h = `<div>Setting up WSL: ${escapeHtml(distro)}</div>`;' },
+        'package.json': { body: '{"version":"2.32.2"}' },
+    });
+
+    patchAsarArchive(src, dst, new Map([
+        ['dist/preload.js', orig => `${orig}\n${signature}`],
+        ['dist/main.js', orig => patchMainProcessModule('dist/main.js', orig, false)],
+        ['dist/provisionSplash.js', orig => patchMainProcessModule('dist/provisionSplash.js', orig, true)],
+    ]));
+    validateAsarCandidate(src, dst, signature);
+
+    const layout = readAsarLayout(dst);
+    assert.match(layout.files.get('dist/main.js').body.toString('utf8'), /确认退出/);
+    assert.match(layout.files.get('dist/provisionSplash.js').body.toString('utf8'), /正在設定 WSL：/);
+
+    if (process.platform === 'win32') {
+        const fakeAppData = path.join(root, 'AppData', 'Roaming');
+        const topCache = path.join(fakeAppData, 'Antigravity', 'Code Cache');
+        const partCache = path.join(fakeAppData, 'Antigravity', 'Partitions', 'hub-browser-123', 'Code Cache');
+        const ideCache = path.join(fakeAppData, 'Antigravity IDE', 'Partitions', 'hub-browser-abc', 'Cache');
+        const keepData = path.join(fakeAppData, 'Antigravity', 'Partitions', 'hub-browser-123', 'Local Storage');
+        for (const dir of [topCache, partCache, ideCache, keepData]) {
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, 'dummy.bin'), 'x');
+        }
+        const prevAppData = process.env.APPDATA;
+        process.env.APPDATA = fakeAppData;
+        t.after(() => { process.env.APPDATA = prevAppData; });
+        loadEngine().cleanElectronCache();
+        assert.equal(fs.existsSync(topCache), false);
+        assert.equal(fs.existsSync(partCache), false);
+        assert.equal(fs.existsSync(ideCache), false);
+        assert.equal(fs.existsSync(keepData), true);
+    }
 });

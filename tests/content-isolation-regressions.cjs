@@ -583,3 +583,46 @@ test('protected containers isolate attributes and scripts while contextual sibli
     assert.equal(w.document.getElementById('dur-mo').textContent, '已思考 5mo');
     assert.equal(w.document.getElementById('dur-m').textContent, '已思考 5 分钟');
 });
+
+test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best of N external descriptions translate in SC and TC', async t => {
+    const html = `
+      <div>
+        <h2 id="voice-title">Choose Antigravity's Voice</h2>
+        <span id="mic-inline">Microphone blocked. Allow in System Settings.</span>
+        <p id="mic-split">Microphone blocked. Allow in <a href="#">Privacy Settings</a>.</p>
+        <p id="perm-act">Agent needs permission to act on /tmp/demo</p>
+        <p id="dl-block">The browser blocked the download of report.pdf: the agent browser does not download this file type (text/html)</p>
+        <span id="nav-block">Blocked navigation to "https://example.invalid"</span>
+        <span id="partner-plugins">Build with Google Plugins</span>
+        <span id="open-plugin">Open the figma plugin</span>
+        <span id="open-skill">Open my-skill skill</span>
+        <span id="mcp-cfg">The github MCP server requires configuration parameters before it can be started.</span>
+        <span id="auto-created">Created automation "Daily Sync".</span>
+        <button id="unfold-btn" title="Unfold lines 10-25">Unfold lines 10-25</button>
+        <select><option id="mic-opt" value="">System default (Built-in Mic)</option></select>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('voice-title').textContent, '选择 Antigravity 的声音');
+    assert.equal(w.document.getElementById('mic-inline').textContent, '麦克风已被阻止。请在 System Settings 中允许。');
+    assert.equal(w.document.getElementById('mic-split').textContent, '麦克风已被阻止。请在以下位置允许访问：隐私设置。');
+    assert.equal(w.document.getElementById('perm-act').textContent, '智能体需要权限才能对 /tmp/demo 执行操作');
+    assert.equal(w.document.getElementById('dl-block').textContent, '浏览器已阻止下载 report.pdf：智能体浏览器不支持下载此文件类型 (text/html)');
+    assert.equal(w.document.getElementById('nav-block').textContent, '已阻止导航至：“https://example.invalid”');
+    assert.equal(w.document.getElementById('partner-plugins').textContent, '基于 Google 插件构建');
+    assert.equal(w.document.getElementById('open-plugin').textContent, '打开 figma 插件');
+    assert.equal(w.document.getElementById('open-skill').textContent, '打开 my-skill 技能');
+    assert.equal(w.document.getElementById('mcp-cfg').textContent, 'github MCP 服务器需要配置参数后才能启动。');
+    assert.equal(w.document.getElementById('auto-created').textContent, '已创建自动化任务“Daily Sync”。');
+    assert.equal(w.document.getElementById('unfold-btn').getAttribute('title'), '展开第 10-25 行');
+    assert.equal(w.document.getElementById('mic-opt').textContent, '系统默认 (Built-in Mic)');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('voice-title').textContent, '選擇 Antigravity 的聲音');
+    assert.equal(domTw.window.document.getElementById('mic-split').textContent, '麥克風已被封鎖。請在以下位置允許存取：隱私權設定。');
+    assert.equal(domTw.window.document.getElementById('partner-plugins').textContent, '以 Google 外掛程式建構');
+    assert.equal(domTw.window.document.getElementById('unfold-btn').getAttribute('title'), '展開第 10-25 行');
+});
