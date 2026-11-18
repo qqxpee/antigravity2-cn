@@ -182,7 +182,7 @@ function patchMenuJs(menuContent, useTw) {
         'Split': '分割',
         'Split Right': '向右分割',
         'Split Down': '向下分割',
-        'Replace With New': '替換為新對話',
+        'Replace With New': '取代為新對話',
         'Show in File Explorer': '在檔案總管中顯示',
         'Reveal in Finder': '在 Finder 中顯示',
         'Find in conversation': '在對話中尋找',

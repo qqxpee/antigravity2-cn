@@ -529,7 +529,7 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     assert.equal(domTw.window.document.getElementById('color-rg').getAttribute('aria-label'), '顏色');
     assert.equal(domTw.window.document.getElementById('draft-btn').getAttribute('aria-label'), '恢復 2 則評論草稿');
     assert.equal(domTw.window.document.getElementById('draft-btn').textContent, '2 則草稿');
-    assert.equal(domTw.window.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登入資訊會隨您的帳戶保存在雲端。其他憑證保留在本機上。憑證僅會傳送至所列出的網域。');
+    assert.equal(domTw.window.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登入資訊會隨您的帳戶儲存在雲端。其他憑證保留在本機上。憑證僅會傳送至所列出的網域。');
     assert.equal(domTw.window.document.getElementById('sandbox-warn-two').textContent, '預設 (Default) 與 自動 (Auto) 需要終端機沙箱，但此主機無法使用。');
     assert.equal(domTw.window.document.getElementById('sandbox-warn-one').textContent, '預設 (Default) 需要終端機沙箱，但此主機無法使用。');
     assert.equal(domTw.window.document.getElementById('org-managed').textContent, '由您的組織管理');
