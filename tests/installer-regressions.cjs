@@ -289,3 +289,14 @@ test('validateAsarCandidate allows newly patched main-process dialog modules and
         assert.equal(fs.existsSync(keepData), true);
     }
 });
+
+test('requiring localization_engine from node -e does not invoke main() or kill Antigravity', () => {
+    const childProcess = require('node:child_process');
+    const engineDir = path.resolve(__dirname, '..');
+    const out = childProcess.execFileSync(
+        process.execPath,
+        ['-e', "const eng = require('./localization_engine'); console.log(typeof eng.generateJs);"],
+        { cwd: engineDir, encoding: 'utf8' }
+    ).trim();
+    assert.equal(out, 'function');
+});

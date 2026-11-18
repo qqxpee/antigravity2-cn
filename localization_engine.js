@@ -752,7 +752,7 @@ function restoreProxyIfNeeded(installDir) {
 // 入口
 // ==========================================
 function main() {
-    if (typeof require === 'function' && typeof module !== 'undefined' && require.main && require.main !== module) {
+    if (typeof require === 'function' && typeof module !== 'undefined' && require.main !== module) {
         return;
     }
     let huifu = false;
