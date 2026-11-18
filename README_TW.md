@@ -3,11 +3,11 @@
 👉 **[簡體中文版說明文件 (Simplified Chinese README)](README.md)**
 
 > **支援系統**：Windows & macOS (均已內建一鍵指令碼)  
-> **匹配版本**：Antigravity v2.31.0+  
+> **匹配版本**：Antigravity v2.32.2+  
 
 > **核心引擎**：Node.js (無需安裝 Python，零依賴，極速極穩)  
-> **中文化範圍**：包括軟體介面、滑鼠懸浮提示 (Tooltip)、頂部系統功能表、工作列與原生系統右鍵選單 (Context Menu)、內建瀏覽器設定、載入動畫、設定面板、外掛與自訂項、新手引導及登入頁。  
-> **注入原理**：透過 ASAR 還原與打包，安全注入 `preload.js` 動態翻譯機制，絕不修改核心二進位檔案，一鍵安裝與完美還原。
+> **中文化範圍**：包括軟體介面、滑鼠懸浮提示 (Tooltip)、Sidecar 伴生面板（含 Swarm 面板與 `plugin://` 子框架）、頂部系統功能表、工作列與原生系統右鍵選單 (Context Menu)、主進程原生彈出視窗（結束確認、WSL/SSH 提示、裝置與 Passkey 選取等）、更新彈出視窗、載入動畫、設定面板、外掛程式與自訂項目、新手引導及登入頁。  
+> **注入原理**：透過純 Node.js 原生解析並校驗重新封裝 `app.asar`，安全注入前端 `preload.js` 動態隔離引擎與主進程補丁，絕不修改核心二進位檔案，一鍵安裝與無損還原。
 
 ## 📸 中文化效果展示
 
@@ -25,11 +25,16 @@
 ---
 
 ## 📂 專案檔案結構
-- **`双击安装繁体中文.bat`** / **`.command`**：Windows / macOS 一鍵繁體中文化執行入口。
+- **`双击安装繁体中文.bat`** / **`.command`**：Windows / macOS 一鍵繁體中文化執行入口（另有對應簡體中文版指令碼）。
 - **`双击卸载还原官方英文.bat`** / **`.command`**：Windows / macOS 一鍵完美恢復原版入口。
-- **`localization_engine.js`**：核心中文化邏輯，負責 app.asar 的解包、程式碼注入、重新打包以及 macOS 下的自動深度重新簽名。
-- **`dicts_tw/`**：中文化字典資料夾，內含按模組分類的 JSON 對照翻譯字典。
-- **`scripts/`**：工程與自動化工具集，包含簡繁詞典對齊校驗器 (`compare_dicts.js`)、版本升級全量介面/懸浮詞條自動 Diff 掃描器 (`dev_tool.js scan-ui`) 及 MCP 基準清冊 (`dev_tool.js dump-mcp`)。
+- **`localization_engine.js`**：核心中文化排程引擎，負責環境偵測、進程鎖釋放、詞典編譯、快取清除及 macOS `Info.plist` 校驗與自動重新簽名。
+- **`src/`**：模組化核心原始碼：
+  - `preload_runtime.js`：前端 DOM 動態隔離與表驅動正規表達式引擎（含內容隔離、Shadow DOM 穿透與原生右鍵選單掛鉤）。
+  - `main_patches.js`：主進程補丁集（`preload.js`、`utils.js` Sidecar 注入、`menu.js`、`tray.js`、`loadingOverlay.js`、`updater.js` 及 `main.js` 等原生彈出視窗模組）。
+  - `asar_patcher.js`：零依賴純 Node.js 二進位 ASAR 讀取、補丁寫入與候選封裝完整性校驗器。
+- **`dicts/`** / **`dicts_tw/`**：簡繁雙語對照詞典資料夾（各 6 個分模組 JSON 檔案）。
+- **`scripts/`**：工程與自動化工具集，包含簡繁詞典對齊與禁用詞校驗器 (`compare_dicts.js`)、版本升級全量介面/懸浮/範本文字自動 Diff 掃描器 (`dev_tool.js scan-ui`) 及 MCP 基準清冊 (`dev_tool.js dump-mcp`)。
+- **`tests/`**：基於 Node 原生 test runner 與 `jsdom` 的自動化回歸測試套件。
 
 ---
 
@@ -45,10 +50,10 @@
 * **方法 B：透過 Git 命令列複製（開發者推薦 💻）**
   如果您本機安裝了 Git，可以直接在終端機執行複製命令：
   ```bash
-  # 如果您在國內，推薦使用下方代理加速複製地址：
+  # 如果您在受限網路環境且鏡像可用，可透過代理加速複製（如鏡像失效請更換其他可用代理）：
   git clone https://mirror.ghproxy.com/https://github.com/qqxpee/antigravity2-cn.git
   
-  # 如果您配置了全域代理，可直接使用官方地址：
+  # 如果您已設定全域代理，可直接使用官方位址：
   git clone https://github.com/qqxpee/antigravity2-cn.git
   ```
 
@@ -112,14 +117,14 @@ node localization_engine.js --tw --brand-title translated
 
 ## 🛠️ 中文化原理說明
 
-本引擎採用 **ASAR 包注入模式**，專為 **Antigravity 2.0+** 的 Electron 架構量身定制：
-1. **自動釋放鎖**：指令碼執行前會自動偵測並安全關閉 Antigravity 執行進程，防止檔案佔用鎖定。
-2. **安全備份**：首次執行時，會在軟體目錄自動建立原始 `app.asar.bak` 檔案，確保隨時可無損還原。
+本引擎採用 **零依賴原生 ASAR 校驗重包模式**，專為 **Antigravity 2.0+** 的 Electron 架構量身打造：
+1. **自動釋放鎖與多級快取清除**：指令碼執行前會自動偵測並安全關閉 Antigravity 執行進程；注入完成後自動遞迴清除 `Antigravity` / `Antigravity IDE` 頂層及 `Partitions/hub-browser-*` 等分區下的 `Cache`、`Code Cache`、`GPUCache` 位元組碼快取。
+2. **安全備份與交易保護**：首次執行時在軟體目錄建立原始 `app.asar.bak` 備份；建置候選封裝並逐檔通過 `node --check` 與完整性校驗後才原子替換，支援隨時無損還原。
 3. **精準注入**：
-   - 注入 `preload.js`：採用 WeakSet 記錄與 Shadow DOM 穿透，啟動高效的 `MutationObserver` 引擎，動態監測並將渲染層文字翻譯為繁體中文。
-   - 注入 `menu.js`：深度補丁系統級標題列選單。
-   - 注入 `tray.js`：中文化系統匣與右鍵通知狀態選單。
-   - 注入 `loadingOverlay.js`：注入極具極客風格的趣味載入語：「反重力引擎已啟動，正在努力擺脫地心引力...」。
+   - `preload.js`：採用 `WeakMap` / `WeakSet` 與 Shadow DOM 穿透，啟動微任務合批的 `MutationObserver` 引擎，在嚴格隔離程式碼編輯器、終端機與訊息正文的前提下動態中文化介面，並攔截原生右鍵選單 IPC。
+   - `utils.js`：在主視窗載入並校驗目標來源後，向 Sidecar 伴生面板子框架（`http(s)://` 與 `plugin://`）注入動態中文化執行時。
+   - `menu.js` / `tray.js` / `updater.js` / `loadingOverlay.js`：中文化系統級標題列選單、系統匣選單、更新檢查彈出視窗以及啟動載入頁（`正在載入 Antigravity…`）。
+   - 主進程原生彈出視窗與內建頁面（`main.js`、`ipcHandlers.js`、`remoteManager.js`、`sshPrompts.js`、`deviceChooser.js`、`webauthn.js`、`webviewPopupSecurity.js`、`provisionSplash.js`）：涵蓋結束確認視窗、macOS Dock 選單、WSL 初始化與錯誤提示、SSH 安全金鑰提示、裝置/Passkey 選取與彈出視窗連線安全資訊。
 
 ---
 
@@ -136,7 +141,7 @@ node localization_engine.js --tw --brand-title translated
 > 2. **免開專案做法（提示詞中需指定中文化目錄）**：
 >    如果您當前正在開發別的專案，沒有把中文化目錄作為專案開啟，那麼您在對 AI 發起中文化命令時，**必須在提示詞裡明確告訴 AI 您的中文化包所在路徑**，否則 AI 無法得知要修改您電腦上的哪個資料夾。
 >    * **提示詞範例**：
->      > **“我的中文化包目錄在 `C:\Users\您的電腦使用者名稱\Downloads\antigravity_chinese`（請替換為您本機的實際路徑），請幫我把下面這張截圖裡漏譯的內容補全到詞典裡。”**
+>      > **“我的中文化包目錄在 `C:\Users\您的電腦使用者名稱\Downloads\antigravity2-cn`（請替換為您本機的實際路徑），請幫我把下面這張截圖裡漏譯的內容補全到詞典裡。”**
 
 ### 📋 常用提示詞（Prompt）模板
 
@@ -160,32 +165,42 @@ node localization_engine.js --tw --brand-title translated
 
 ---
 
-## 🧩 MCP 官方伺服器中文化與自助更新指南 (歡迎社群共建)
+## 🧩 版本升級差異掃描與 MCP 清單自動對齊 (歡迎社群共建)
 
-Antigravity 2.x 的「**新增 MCP 伺服器 (Add MCP Server)**」市場目錄是由 Google 雲端透過 RPC 動態即時下發的。官方經常在各個小版本更新中新增、下線或變更 MCP 伺服器描述。
+Antigravity 2.x 的前端 SPA 與「**新增 MCP 伺服器 (Add MCP Server)**」市場目錄均由用戶端內建 `language_server` 與雲端 RPC 動態提供。版本升級時無需手動逐頁截圖，專案已內建直連用戶端的自動化掃描工具 [`scripts/dev_tool.js`](scripts/dev_tool.js)：
 
-由於專案維護者平時主要關注核心介面互動，不一定會時刻緊盯官方雲端 MCP 市場的變動，**任何關心 MCP 中文化的使用者或開發者，均可透過內建的自動化探針隨時自助擷取並提交 PR，無需等待作者手動同步！**
+### 📌 極簡同步流程（AI 助手 / 開發者適用 💻）
+1. 先啟動並開啟最新版 Antigravity 用戶端（確保背景 `language_server` 進程正在執行）。
+2. 在專案根目錄執行以下指令掃描版本升級差異：
+   ```bash
+   # 1. 掃描全量介面、懸浮提示與範本文字差異（結果輸出至 scratch/untranslated_ui_diff.json）
+   node scripts/dev_tool.js scan-ui
 
-### 📌 極簡更新流程（新手/普通使用者首選 🖱️）
-1. 在 Antigravity 中點擊開啟 **「新增 MCP 伺服器 (Add MCP Server)」** 彈窗。
-2. 中文化引擎已內建**自動化探針**，待資料載入完成後，搜尋框下方會自動彈出綠色徽章：
-   > `✓ 已自動捕獲 XX 個 MCP 伺服器（點擊複製 JSON）`
-3. 滑鼠點擊該徽章，即可將官方全量未截斷的 MCP 元資料 JSON 複製到剪貼簿。
-4. 將複製出的 JSON 傳送給您的 AI 助手（Antigravity），附帶以下指令：
-   > **「這是從最新版 Antigravity 匯出的官方 MCP 清單，請幫我檢查並把所有新增或未中文化的描述補全到 `dicts/page_mcp_knowledge.json` 和 `dicts_tw/page_mcp_knowledge.json` 中。」**
-5. AI 完成翻譯後，在終端機執行 `node scripts/compare_dicts.js` 確保簡繁 100% 對齊。
-6. 重新執行安裝指令碼即可立即生效；歡迎將更新提交 Pull Request，共同維護最新的中文 MCP 詞庫！
+   # 2. 拉取最新官方 MCP 目錄並與基準清冊對比（發現變更時輸出至 scratch/mcp_catalog_diff.json）
+   node scripts/dev_tool.js dump-mcp
+   ```
+3. 將產生的 `scratch/` 增量檔案交給 AI 助手，依規範補充翻譯至 `dicts/` 與 `dicts_tw/`（或調整 `src/preload_runtime.js` 動態規則）。
+4. 執行校驗並更新基準：
+   ```bash
+   node scripts/compare_dicts.js
+   node scripts/dev_tool.js scan-ui --update-baseline
+   node scripts/dev_tool.js dump-mcp --update-baseline
+   ```
+5. 清除 `scratch/` 後重新執行安裝指令碼即可立即生效；歡迎提交 Pull Request 共同維護！
 
-> 💡 **提示**：進階開發者如需透過命令列直接與用戶端 RPC 互動或執行基準 Diff 診斷，可直接查閱 [`scripts/dev_tool.js`](scripts/dev_tool.js) 頂部的命令說明。
+> 💡 **提示**：更多診斷指令（如 `port`、`search`、`slice`）可直接查閱 [`scripts/dev_tool.js`](scripts/dev_tool.js) 頂部的註解說明。
 
 ---
 
 ## 📝 詞典自訂指南 (供極客手動使用)
 
-如果您想手動修改翻譯，可以直接開啟 `dicts_tw/` 目錄下的 JSON 檔案：
+如果您想手動修改翻譯，可以直接開啟 `dicts/`（簡體）或 `dicts_tw/`（繁體）目錄下的 6 個 JSON 檔案：
 - **`common.json`**：公共基礎詞彙、側邊欄概覽、登入頁、常用按鈕等。
-- **`page_settings.json`**：包含極其豐富的詳細設定面板、權限二級選單對照。
 - **`menu_nav.json`**：系統及選單列翻譯。
+- **`page_main.json`**：主對話區、編輯器、工作區及核心互動文字。
+- **`page_agents.json`**：代理 / 子代理 / Swarm 協作相關文字。
+- **`page_settings.json`**：詳細設定面板與權限二級選單對照。
+- **`page_mcp_knowledge.json`**：官方 MCP 伺服器及知識庫說明翻譯。
 
 在 JSON 中新增一行，格式如下即可（注意英文逗號）：
 ```json
@@ -209,6 +224,9 @@ Antigravity 2.x 的「**新增 MCP 伺服器 (Add MCP Server)**」市場目錄�
 ### 3）軟體官方更新後，中文化失效了怎麼辦？
 * 軟體升級時，官方會覆蓋 `app.asar` 檔案。您無需擔心，直接完全退出軟體，重新雙擊執行 **`双击安装繁体中文.bat`**（macOS 使用者執行 **`双击安装繁体中文.command`**）重新注入一次即可完美恢復繁體中文。
 
+### 4）在簡體中文 Windows 上執行繁體版指令碼提示亂碼怎麼辦？
+* 為相容繁體中文 Windows（字碼頁 `CP950`），`双击安装繁体中文.bat` 依 Big5 編碼儲存；在簡體中文 Windows（預設 `CP936`）直接雙擊時終端機提示會顯示亂碼。可在 CMD 中先切換字碼頁再執行：`chcp 950 && 双击安装繁体中文.bat`，或直接執行 `node localization_engine.js --tw --brand-title english`。
+
 ---
 
 ## 回歸測試
@@ -219,10 +237,13 @@ Antigravity 2.x 的「**新增 MCP 伺服器 (Add MCP Server)**」市場目錄�
 npm ci
 npm test
 node --check localization_engine.js
+node --check src/preload_runtime.js
+node --check src/main_patches.js
+node --check src/asar_patcher.js
 node scripts/compare_dicts.js
 ```
 
-測試從目前原始碼產生翻譯指令碼，在 jsdom 與暫存資料夾中驗證內容隔離、表單值、Shadow DOM、MCP 目錄擷取及安裝還原行為，不啟動或修改本機 Antigravity。GitHub Actions 會在 Windows 和 Linux 上執行這些檢查。
+測試從目前原始碼產生翻譯指令碼，在 jsdom 與暫存資料夾中驗證內容隔離、表單值、Shadow DOM、Swarm/Sidecar 閘道、主進程彈出視窗 ASAR 校驗、多級快取清除及範本動態規則行為，不啟動或修改本機 Antigravity。GitHub Actions 會在 Windows 和 Linux 上執行這些檢查。
 
 ---
 
