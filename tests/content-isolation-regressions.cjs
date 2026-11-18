@@ -634,3 +634,37 @@ test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best
     assert.equal(domTw.window.document.getElementById('slash-compact').children[1].textContent, '立即壓縮目前對話（摘要歷史記錄以釋放上下文視窗）。');
     assert.equal(domTw.window.document.getElementById('slash-plan').children[1].textContent, '在執行任務前仔細擬定計畫。');
 });
+
+test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and handles See all & mixed Show more', async t => {
+    const vm = require('node:vm');
+    assert.doesNotThrow(() => {
+        vm.runInNewContext(loadRuntime(), { setTimeout, clearTimeout, console });
+    });
+
+    const w = await fixture(t, `
+        <span id="icon" class="google-symbols">restore_page</span>
+        <button id="mixed-show"><span id="badge">Show 5</span> more...</button>
+        <button id="see-all">See all (5)</button>
+    `);
+    const icon = w.document.getElementById('icon');
+    const textNodes = Array.from(icon.childNodes).filter(n => n.nodeType === w.Node.TEXT_NODE);
+    assert.equal(textNodes.length, 1);
+    assert.equal(textNodes[0].nodeValue, '');
+    assert.equal(icon.querySelectorAll('svg[data-ag-restore-icon="1"]').length, 1);
+
+    textNodes[0].nodeValue = 'restore_page';
+    w.__agCnRuntimeStart();
+    await settle();
+    assert.equal(icon.querySelectorAll('svg[data-ag-restore-icon="1"]').length, 1);
+    assert.equal(textNodes[0].nodeValue, '');
+
+    assert.equal(w.document.getElementById('badge').textContent, 'Show 5');
+    assert.equal(w.document.getElementById('mixed-show').lastChild.nodeValue, ' 个...');
+    assert.equal(w.document.getElementById('see-all').textContent, '显示全部 (5)');
+
+    const domTw = createDom('<button id="see-all">See all (5)</button>');
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('see-all').textContent, '顯示全部 (5)');
+});

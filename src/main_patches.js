@@ -89,7 +89,8 @@ function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
     };
     const injectSidecarSubframe = (frame) => {
         try {
-            if (!frame || frame.isDestroyed?.() || win.isDestroyed?.() || hubContents.isDestroyed?.()) return;
+            const winDestroyed = typeof win !== 'undefined' && win && win.isDestroyed?.();
+            if (!frame || frame.isDestroyed?.() || winDestroyed || hubContents.isDestroyed?.()) return;
             const mainFrame = hubContents.mainFrame;
             if (!mainFrame || frame === mainFrame || frame.parent !== mainFrame) return;
             const frameUrl = String(frame.url || '');
@@ -102,10 +103,13 @@ function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
             Promise.resolve(mainFrame.executeJavaScript(checkExpr))
                 .then((isSidecar) => {
                     if (!isSidecar) return;
-                    if (frame.isDestroyed?.() || win.isDestroyed?.() || hubContents.isDestroyed?.()) return;
+                    const winDestroyedLater = typeof win !== 'undefined' && win && win.isDestroyed?.();
+                    if (frame.isDestroyed?.() || winDestroyedLater || hubContents.isDestroyed?.()) return;
                     return frame.executeJavaScript(script);
                 })
-                .catch(() => undefined);
+                .catch((err) => {
+                    console.warn('[汉化] Sidecar 注入失败:', err && err.message ? err.message : err);
+                });
         } catch (_err) {}
     };
     const onSidecarFrameNavigate = (event, _url, _httpResponseCode, _httpStatusText, isMainFrame, frameProcessId, frameRoutingId) => {
@@ -118,10 +122,12 @@ function patchUtilsJs(utilsContent, signatureStart, signatureEnd) {
     };
     hubContents.on('did-frame-navigate', onSidecarFrameNavigate);
     hubContents.on('did-frame-finish-load', onSidecarFrameFinishLoad);
-    win.on('closed', () => {
-        hubContents.off?.('did-frame-navigate', onSidecarFrameNavigate);
-        hubContents.off?.('did-frame-finish-load', onSidecarFrameFinishLoad);
-    });
+    if (typeof win !== 'undefined' && win && typeof win.on === 'function') {
+        win.on('closed', () => {
+            hubContents.off?.('did-frame-navigate', onSidecarFrameNavigate);
+            hubContents.off?.('did-frame-finish-load', onSidecarFrameFinishLoad);
+        });
+    }
     /* --- SIDECAR TRANSLATION END --- */`;
 
     console.log(`[修改] 伴生面板 (Sidecar) 汉化钩子注入成功！`);
@@ -340,44 +346,56 @@ function patchTrayJs(trayContent, useTw) {
     const replacementCreate = (match, args) => `function createTray(${args}) {
     /* --- TRAY TRANSLATION START --- */
     const translations = ${trayTranslationsJson};
-    for (const item of actions) {
-        if (!item || !item.label) continue;
-        if (translations[item.label]) {
-            item.label = translations[item.label];
-        } else if (item.label.startsWith('Open ')) {
-            item.label = ${JSON.stringify(openPrefix)} + item.label.slice(5);
+    if (typeof actions !== 'undefined' && Array.isArray(actions)) {
+        for (const item of actions) {
+            if (!item || !item.label) continue;
+            if (translations[item.label]) {
+                item.label = translations[item.label];
+            } else if (item.label.startsWith('Open ')) {
+                item.label = ${JSON.stringify(openPrefix)} + item.label.slice(5);
+            }
         }
     }
     /* --- TRAY TRANSLATION END --- */`;
 
-    let trayPatched = trayCleaned.replace(targetCreate, replacementCreate);
-    if (trayPatched === trayCleaned) {
+    let hitCount = 0;
+    let trayPatched = trayCleaned.replace(targetCreate, (...m) => {
+        hitCount++;
+        return replacementCreate(...m);
+    });
+    if (hitCount === 0) {
         console.warn(`[警告] 未能在 tray.js 中找到 createTray 函数插入点。`);
     }
 
     const dblClickTarget = /tray\.setContextMenu\(contextMenu\);/;
     const dblClickReplacement = `tray.setContextMenu(contextMenu);
     /* --- TRAY DOUBLE CLICK START --- */
-    const openAction = actions.find(item => item && typeof item.click === 'function' && !['Quit', '退出', '結束'].includes(item.label));
-    if (openAction) {
-        tray.on('double-click', () => {
-            const wins = electron_1.BrowserWindow.getAllWindows();
-            if (wins.length > 0 && wins[0].isMinimized()) {
-                wins[0].restore();
-            }
-            openAction.click();
-        });
+    if (typeof actions !== 'undefined' && Array.isArray(actions) && typeof tray !== 'undefined' && tray && typeof tray.on === 'function') {
+        const openAction = actions.find(item => item && typeof item.click === 'function' && !['Quit', '退出', '結束'].includes(item.label));
+        if (openAction) {
+            tray.on('double-click', () => {
+                const wins = electron_1.BrowserWindow.getAllWindows();
+                if (wins.length > 0 && wins[0].isMinimized()) {
+                    wins[0].restore();
+                }
+                openAction.click();
+            });
+        }
     }
     /* --- TRAY DOUBLE CLICK END --- */`;
-    trayPatched = trayPatched.replace(dblClickTarget, dblClickReplacement);
+    trayPatched = trayPatched.replace(dblClickTarget, () => {
+        hitCount++;
+        return dblClickReplacement;
+    });
 
     const countRegex = /countItem\.label\s*=\s*\([^;]{0,300}' running';/g;
     const replacementCount = useTw
         ? "countItem.label = count > 0 ? `${count} 個代理執行中` : '無執行中的代理';"
         : "countItem.label = count > 0 ? `${count} 个智能体运行中` : '无运行中的智能体';";
-    trayPatched = trayPatched.replace(countRegex, (match) =>
-        `/* --- TRAY COUNT START:${Buffer.from(match, 'utf8').toString('base64')} --- */ ${replacementCount} /* --- TRAY COUNT END --- */`
-    );
+    trayPatched = trayPatched.replace(countRegex, (match) => {
+        hitCount++;
+        return `/* --- TRAY COUNT START:${Buffer.from(match, 'utf8').toString('base64')} --- */ ${replacementCount} /* --- TRAY COUNT END --- */`;
+    });
 
     const targetInsert = /function\s+insertTrayMenuItem\s*\(\s*position\s*,\s*options\s*\)\s*\{/;
     const replacementInsert = `function insertTrayMenuItem(position, options) {
@@ -391,9 +409,16 @@ function patchTrayJs(trayContent, useTw) {
         }
     }
     /* --- TRAY INSERT TRANSLATION END --- */`;
-    trayPatched = trayPatched.replace(targetInsert, replacementInsert);
+    trayPatched = trayPatched.replace(targetInsert, () => {
+        hitCount++;
+        return replacementInsert;
+    });
 
-    console.log(`[修改] 任务栏菜单汉化注入成功！`);
+    if (hitCount > 0) {
+        console.log(`[修改] 任务栏菜单汉化注入成功（${hitCount} 处）！`);
+    } else {
+        console.warn(`[警告] 未能在 tray.js 中命中任何任务栏注入点。`);
+    }
     return trayPatched;
 }
 
@@ -408,7 +433,11 @@ function patchLoadingOverlayJs(loadingContent, useTw) {
         .replace('<div class="text">反重力引擎已啟動，正在努力擺脫地心引力...</div>', replacementText)
         .replace('<div class="text">反重力引擎已启动，正在努力摆脱地心引力...</div>', replacementText);
 
-    console.log(`[修改] 加载页汉化注入成功！`);
+    if (out !== loadingContent) {
+        console.log(`[修改] 加载页汉化注入成功！`);
+    } else {
+        console.warn(`[警告] 未能在 loadingOverlay.js 中找到加载页文本插入点。`);
+    }
     return out;
 }
 
@@ -431,7 +460,11 @@ function patchUpdaterJs(updaterContent, useTw) {
         .replace('MenuUpdateStep["CheckingForUpdates"] = "Checking for Updates...";', `MenuUpdateStep["CheckingForUpdates"] = ${useTw ? '"正在檢查更新..."' : '"正在检查更新..."'};`)
         .replace('MenuUpdateStep["DownloadingUpdate"] = "Downloading Update...";', `MenuUpdateStep["DownloadingUpdate"] = ${useTw ? '"正在下載更新..."' : '"正在下载更新..."'};`)
         .replace('MenuUpdateStep["RestartToUpdate"] = "Restart to Update";', `MenuUpdateStep["RestartToUpdate"] = ${useTw ? '"重新啟動以更新"' : '"重启以更新"'};`);
-    console.log(`[修改] 更新弹窗汉化注入成功！`);
+    if (out !== updaterContent) {
+        console.log(`[修改] 更新弹窗汉化注入成功！`);
+    } else {
+        console.warn(`[警告] 未能在 updater.js 中找到更新弹窗插入点。`);
+    }
     return out;
 }
 

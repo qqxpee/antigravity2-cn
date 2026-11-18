@@ -1,5 +1,6 @@
 const fs = require('fs');
 const crypto = require('crypto');
+const { MAIN_PROCESS_PATCH_TARGETS } = require('./main_patches');
 
 const BLOCK_SIZE = 4 * 1024 * 1024;
 
@@ -25,8 +26,9 @@ function parseAsarArchive(archivePath) {
     const data = fs.readFileSync(archivePath);
     if (data.length < 16 || data.readUInt32LE(0) !== 4) throw new Error('Invalid ASAR header');
     const headerSize = data.readUInt32LE(4);
+    const headerSize2 = data.readUInt32LE(8);
     const jsonSize = data.readUInt32LE(12);
-    if (headerSize < 8 || jsonSize > headerSize - 8 || 8 + headerSize > data.length) {
+    if (headerSize < 8 || headerSize2 !== headerSize - 4 || jsonSize > headerSize2 - 4 || 8 + headerSize > data.length) {
         throw new Error('Truncated ASAR header');
     }
     const payloadStart = 8 + headerSize;
@@ -34,34 +36,43 @@ function parseAsarArchive(archivePath) {
     return { data, payloadStart, header };
 }
 
+function walkAsarEntries(node, prefix, inheritedUnpacked, data, payloadStart, onFile) {
+    if (!node.files || typeof node.files !== 'object') throw new Error('Invalid ASAR directory');
+    for (const [name, entry] of Object.entries(node.files)) {
+        if (!name || name === '.' || name === '..' || /[\\/]/.test(name)) throw new Error('Unsafe ASAR path');
+        const relative = prefix ? `${prefix}/${name}` : name;
+        const unpacked = Boolean(inheritedUnpacked || entry.unpacked);
+        if (entry.files) {
+            walkAsarEntries(entry, relative, unpacked, data, payloadStart, onFile);
+            continue;
+        }
+        if (entry.link !== undefined) {
+            onFile({ relative, entry, unpacked, isLink: true, body: null });
+            continue;
+        }
+        if (!Number.isSafeInteger(entry.size) || entry.size < 0) throw new Error('Invalid ASAR file size');
+        let body = null;
+        if (!unpacked) {
+            const offset = Number(entry.offset);
+            if (!/^\d+$/.test(String(entry.offset)) || !Number.isSafeInteger(offset) || offset + entry.size > data.length - payloadStart) {
+                throw new Error(`Invalid ASAR file offset: ${relative}`);
+            }
+            body = data.subarray(payloadStart + offset, payloadStart + offset + entry.size);
+        }
+        onFile({ relative, entry, unpacked, isLink: false, body });
+    }
+}
+
 function readAsarLayout(archivePath) {
     const { data, payloadStart, header } = parseAsarArchive(archivePath);
     const files = new Map();
-    function visit(node, prefix, inheritedUnpacked) {
-        if (!node.files || typeof node.files !== 'object') throw new Error('Invalid ASAR directory');
-        for (const [name, entry] of Object.entries(node.files)) {
-            if (!name || name === '.' || name === '..' || /[\\/]/.test(name)) throw new Error('Unsafe ASAR path');
-            const relative = prefix ? `${prefix}/${name}` : name;
-            const unpacked = Boolean(inheritedUnpacked || entry.unpacked);
-            if (entry.files) {
-                visit(entry, relative, unpacked);
-            } else if (entry.link !== undefined) {
-                files.set(relative, { link: entry.link, unpacked });
-            } else {
-                if (!Number.isSafeInteger(entry.size) || entry.size < 0) throw new Error('Invalid ASAR file size');
-                let body;
-                if (!unpacked) {
-                    const offset = Number(entry.offset);
-                    if (!/^\d+$/.test(String(entry.offset)) || !Number.isSafeInteger(offset) || offset + entry.size > data.length - payloadStart) {
-                        throw new Error(`Invalid ASAR file offset: ${relative}`);
-                    }
-                    body = data.subarray(payloadStart + offset, payloadStart + offset + entry.size);
-                }
-                files.set(relative, { size: entry.size, unpacked, body });
-            }
+    walkAsarEntries(header, '', false, data, payloadStart, ({ relative, entry, unpacked, isLink, body }) => {
+        if (isLink) {
+            files.set(relative, { link: entry.link, unpacked });
+        } else {
+            files.set(relative, { size: entry.size, unpacked, body });
         }
-    }
-    visit(header, '', false);
+    });
     return { files };
 }
 
@@ -72,48 +83,21 @@ function patchAsarArchive(sourceAsarPath, destAsarPath, modifierMap) {
     let currentOffset = 0;
     const modifiedFiles = new Map();
 
-    function processNode(node, prefix, inheritedUnpacked) {
-        if (!node.files || typeof node.files !== 'object') {
-            throw new Error('Invalid ASAR directory');
+    walkAsarEntries(header, '', false, data, payloadStart, ({ relative, entry, unpacked, isLink, body }) => {
+        if (isLink || unpacked) return;
+        let fileBuf = body;
+        if (modifierMap.has(relative)) {
+            const origText = fileBuf.toString('utf8');
+            const newText = modifierMap.get(relative)(origText);
+            fileBuf = Buffer.from(newText, 'utf8');
+            entry.size = fileBuf.length;
+            entry.integrity = computeIntegrity(fileBuf);
+            modifiedFiles.set(relative, fileBuf);
         }
-        for (const [name, entry] of Object.entries(node.files)) {
-            if (!name || name === '.' || name === '..' || /[\\/]/.test(name)) {
-                throw new Error('Unsafe ASAR path');
-            }
-            const relPath = prefix ? `${prefix}/${name}` : name;
-            const unpacked = Boolean(inheritedUnpacked || entry.unpacked);
-            if (entry.files) {
-                processNode(entry, relPath, unpacked);
-            } else if (entry.link !== undefined) {
-                continue;
-            } else {
-                if (!Number.isSafeInteger(entry.size) || entry.size < 0) {
-                    throw new Error('Invalid ASAR file size');
-                }
-                if (unpacked) {
-                    continue;
-                }
-                const origOffset = Number(entry.offset);
-                if (!/^\d+$/.test(String(entry.offset)) || !Number.isSafeInteger(origOffset) || origOffset + entry.size > data.length - payloadStart) {
-                    throw new Error(`Invalid ASAR file offset: ${relPath}`);
-                }
-                let fileBuf = data.subarray(payloadStart + origOffset, payloadStart + origOffset + entry.size);
-                if (modifierMap.has(relPath)) {
-                    const origText = fileBuf.toString('utf8');
-                    const newText = modifierMap.get(relPath)(origText);
-                    fileBuf = Buffer.from(newText, 'utf8');
-                    entry.size = fileBuf.length;
-                    entry.integrity = computeIntegrity(fileBuf);
-                    modifiedFiles.set(relPath, fileBuf);
-                }
-                entry.offset = String(currentOffset);
-                bodyChunks.push(fileBuf);
-                currentOffset += fileBuf.length;
-            }
-        }
-    }
-
-    processNode(header, '', false);
+        entry.offset = String(currentOffset);
+        bodyChunks.push(fileBuf);
+        currentOffset += fileBuf.length;
+    });
 
     const newJsonBuf = Buffer.from(JSON.stringify(header), 'utf8');
     const newJsonSize = newJsonBuf.length;
@@ -143,14 +127,7 @@ function validateAsarCandidate(sourcePath, candidatePath, signatureStart) {
         'dist/tray.js',
         'dist/loadingOverlay.js',
         'dist/updater.js',
-        'dist/main.js',
-        'dist/ipcHandlers.js',
-        'dist/remote/remoteManager.js',
-        'dist/remote/sshPrompts.js',
-        'dist/deviceChooser.js',
-        'dist/webauthn.js',
-        'dist/webviewPopupSecurity.js',
-        'dist/provisionSplash.js'
+        ...MAIN_PROCESS_PATCH_TARGETS
     ]);
     if (before.files.size !== after.files.size) throw new Error('ASAR file list changed');
     for (const [name, original] of before.files) {

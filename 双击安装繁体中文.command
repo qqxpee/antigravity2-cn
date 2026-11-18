@@ -1,9 +1,20 @@
 #!/bin/bash
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")"
 
 # 補充 macOS 常見環境路徑 (相容 Intel 與 Apple Silicon M 系列晶片及 nvm/fnm/volta/asdf/mise 等版本管理器)
 REAL_USER="${SUDO_USER:-$USER}"
-REAL_HOME=$(eval echo "~$REAL_USER" 2>/dev/null || echo "$HOME")
+REAL_HOME=""
+if [ -n "$REAL_USER" ] && command -v dscl >/dev/null 2>&1; then
+    REAL_HOME=$(dscl . -read "/Users/$REAL_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+fi
+if [ -z "$REAL_HOME" ] || [ ! -d "$REAL_HOME" ]; then
+    if [ -n "$REAL_USER" ] && [ -d "/Users/$REAL_USER" ]; then
+        REAL_HOME="/Users/$REAL_USER"
+    else
+        REAL_HOME="$HOME"
+    fi
+fi
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/opt/local/bin:$PATH"
 for p in "$REAL_HOME/.volta/bin" "$REAL_HOME/.asdf/shims" "$REAL_HOME/.local/share/mise/shims" "$REAL_HOME/.local/bin" "$REAL_HOME/.fnm/current/bin" "$REAL_HOME/.local/share/fnm/aliases/default/bin" "$REAL_HOME/Library/Application Support/fnm/aliases/default/bin"; do
     [ -d "$p" ] && export PATH="$p:$PATH"
@@ -18,7 +29,7 @@ if [ "$EUID" -ne 0 ]; then
     echo " 提示：macOS 系統修改應用程式（/Applications）需要管理員權限"
     echo " 請在下方輸入您的電腦開機密碼（輸入時密碼不顯示，直接 Enter）："
     echo "======================================================"
-    exec sudo env "PATH=$PATH" "HTTP_PROXY=$HTTP_PROXY" "HTTPS_PROXY=$HTTPS_PROXY" "ALL_PROXY=$ALL_PROXY" "http_proxy=$http_proxy" "https_proxy=$https_proxy" "all_proxy=$all_proxy" "SUDO_USER=$USER" bash "$0" "$@"
+    exec sudo env "PATH=$PATH" "HTTP_PROXY=$HTTP_PROXY" "HTTPS_PROXY=$HTTPS_PROXY" "ALL_PROXY=$ALL_PROXY" "http_proxy=$http_proxy" "https_proxy=$https_proxy" "all_proxy=$all_proxy" "SUDO_USER=$USER" bash "$SCRIPT_PATH" "$@"
 fi
 
 # 檢查 Node.js 環境

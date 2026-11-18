@@ -73,7 +73,7 @@
 
     function translateWithShortcut(val) {
         if (!val) return null;
-        const match = val.match(/^(.+?)\s*\(((?:Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\+?[^)]*|Enter|Escape|Esc|Space|Tab|Backspace|Delete|⏎|←|→|↑|↓|Aa|ab|\.\*|-|0|[a-zA-Z0-9])\)$/i);
+        const match = val.match(/^(.+?)\s*\(((?:Ctrl|Cmd|Alt|Shift|⌘|⌥|⇧|⌃)\+?[^)]*|Enter|Escape|Esc|Space|Tab|Backspace|Delete|⏎|←|→|↑|↓|Aa|ab|\.\*|-|[a-zA-Z])\)$/i);
         if (match) {
             const prefix = match[1].trim();
             const normPref = norm(prefix);
@@ -181,21 +181,37 @@
         return /^[a-zA-Z]:[\\/]/.test(s) || /^[\\/~].*[\\/]/.test(s) || /[\\/]SKILL\.md/i.test(s) || /[\\/]\.gemini[\\/]/i.test(s) || /^file:\/\//i.test(s);
     }
 
+    const UNIT_MAP = {
+        s: ['秒', '秒'],
+        m: ['分钟', '分鐘'],
+        h: ['小时', '小時'],
+        d: ['天', '天'],
+        w: ['周', '週'],
+        mo: ['个月', '個月'],
+        yr: ['年', '年']
+    };
+
+    const UNIT_ALIAS_TO_KEY = {
+        year: 'yr', years: 'yr', yr: 'yr',
+        month: 'mo', months: 'mo', mo: 'mo',
+        week: 'w', weeks: 'w', w: 'w',
+        day: 'd', days: 'd', d: 'd',
+        hour: 'h', hours: 'h', h: 'h',
+        minute: 'm', minutes: 'm', min: 'm', m: 'm',
+        second: 's', seconds: 's', sec: 's', s: 's'
+    };
+
     function formatUsageDuration(value) {
         const text = value.trim();
         const tokens = /([0-9]+(?:\.[0-9]+)?)\s*(years?|yr|months?|mo|weeks?|w|days?|d|hours?|h|minutes?|min|m|seconds?|sec|s)(?![a-z])/gi;
         const parts = [];
         let end = 0;
+        const langIdx = USE_TW ? 1 : 0;
         for (const match of text.matchAll(tokens)) {
             const gap = text.slice(end, match.index);
             if (!/^[\s,]*$/.test(gap) && !(end === 0 && gap.trim() === '<')) return null;
-            const unit = match[2].toLowerCase();
-            const name = /^(year|yr)/.test(unit) ? '年'
-                : /^(month|mo)/.test(unit) ? (USE_TW ? '個月' : '个月')
-                : /^(week|w)/.test(unit) ? (USE_TW ? '週' : '周')
-                : /^(day|d)/.test(unit) ? '天'
-                : /^(hour|h)/.test(unit) ? (USE_TW ? '小時' : '小时')
-                : /^(minute|min|m)$/.test(unit) || /^minutes$/.test(unit) ? (USE_TW ? '分鐘' : '分钟') : '秒';
+            const unitKey = UNIT_ALIAS_TO_KEY[match[2].toLowerCase()] || 's';
+            const name = UNIT_MAP[unitKey][langIdx];
             parts.push((end === 0 && gap.trim() === '<' ? '<' : '') + match[1] + ' ' + name);
             end = match.index + match[0].length;
         }
@@ -245,22 +261,12 @@
     // ==========================================
     // 声明式动态正则规则表 (Table-Driven Dynamic Rules)
     // ==========================================
-    const UNIT_MAP = {
-        s: ['秒', '秒'],
-        m: ['分钟', '分鐘'],
-        h: ['小时', '小時'],
-        d: ['天', '天'],
-        w: ['周', '週'],
-        mo: ['个月', '個月'],
-        yr: ['年', '年']
-    };
-
     function formatCompactDuration(str) {
-        return String(str || '').trim()
-            .replace(/(\d+)\s*d\b/gi, '$1 天')
-            .replace(/(\d+)\s*h\b/gi, USE_TW ? '$1 小時' : '$1 小时')
-            .replace(/(\d+)\s*m\b/gi, USE_TW ? '$1 分鐘' : '$1 分钟')
-            .replace(/(\d+)\s*s\b/gi, '$1 秒');
+        const langIdx = USE_TW ? 1 : 0;
+        return String(str || '').trim().replace(/(\d+)\s*(d|h|m|s)\b/gi, (_, num, u) => {
+            const pair = UNIT_MAP[u.toLowerCase()];
+            return num + ' ' + (pair ? pair[langIdx] : u);
+        });
     }
 
     const SCOPED_SWARM_MAP = {
@@ -426,7 +432,7 @@
 
     const DYNAMIC_RULES = [
         // 列表展开 / 收起明细
-        [/^Show\s+(\d+)\s+more(\s+(results?|items?|commands?|options?))?(\.\.\.|…)?$/i, (m, num, p2, type) => {
+        [/^Show\s+(\d+)\s+more(\s+(results?|items?|commands?|options?))?(\.\.\.)?$/i, (m, num, p2, type) => {
             if (type) {
                 if (/result/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個結果...") : ("显示另外 " + num + " 个结果...");
                 if (/command/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個指令...") : ("显示另外 " + num + " 个命令...");
@@ -501,7 +507,6 @@
         [/^You have hit your weekly limit, the (\d+)-hour limit does not currently apply\. Your weekly limit will fully refresh in (.+?)\.$/i, (m, h, when) => USE_TW ? ("您已達到每週額度限制，" + h + " 小時限制目前不適用。您的每週額度限制將於 " + when + " 完全更新。") : ("您已达到每周额度限制，" + h + " 小时限制目前不适用。您的每周额度限制将于 " + when + " 完全刷新。")],
 
         // 预设、权限与工具 Token 预算
-        [/^Learn more about$/i, () => USE_TW ? "瞭解更多關於" : "了解更多关于"],
         [/^Learn more about (.+)$/i, (m, p) => {
             let translatedPreset = p;
             const pLow = p.toLowerCase();
@@ -518,7 +523,6 @@
         [/^Yes, allow (.+) in this conversation$/i, (m, target) => USE_TW ? ("是，在此對話中允許 " + target) : ("是，在此会话中允许 " + target)],
         [/^Yes, always allow (.+)$/i, (m, target) => USE_TW ? ("是，一律允許 " + target) : ("是，始终允许 " + target)],
         [/^(\d+) tools? enabled$/i, (m, num) => USE_TW ? (num + " 個工具已啟用") : (num + " 个工具已启用")],
-        [/^Hide\s+tools$/i, () => "收起工具"],
         [/^(\d+)\s+tools$/i, (m, num) => num + (USE_TW ? " 個工具" : " 个工具")],
         [/^(\d+)\s+tools?\s+excluded$/i, (m, num) => num + (USE_TW ? " 個工具已排除" : " 个工具已排除")],
         [/^Exceeded the rules token budget\.\s+Full rule content\s+\(([\d,]+)\s+tokens?\)\s+was replaced with a lightweight file-path pointer in context\.$/i, (m, num) => USE_TW ? ("已超出規則 Token 預算。完整規則內容 (" + num + " 個 Token) 已在上下文中取代為輕量級檔案路徑指標。") : ("已超出规则 Token 预算。完整规则内容 (" + num + " 个 Token) 已在上下文中替换为轻量级文件路径指针。")],
@@ -532,7 +536,6 @@
 
         // 版本、时间戳与超时报错
         [/^Version\s+([\d.]+)$/i, (m, v) => "版本 " + v],
-        [/^just now$/i, () => USE_TW ? "剛剛" : "刚刚"],
         [/^(\d+)(s|m|h|d|w|mo|yr)\s+ago$/i, (m, num, unit) => {
             const pair = UNIT_MAP[unit.toLowerCase()];
             return num + (pair ? pair[USE_TW ? 1 : 0] : unit) + "前";
@@ -816,10 +819,6 @@
         if ((valNorm === 'Use' || originalVal === 'Use ') && ((typeof p.closest === 'function' && p.closest('[data-testid="voice-picker-use"]')) || (p.getAttribute && p.getAttribute('data-testid') === 'voice-picker-use'))) {
             return "使用 ";
         }
-        if ((valNorm === 'Change' || valNorm === 'Change…' || valNorm === 'Change...') && ((typeof p.closest === 'function' && (p.closest('[data-testid="voice-settings-change"]') || p.closest('[data-testid="builtin-browser-download-dir-change"]'))) || (p.getAttribute && (p.getAttribute('data-testid') === 'voice-settings-change' || p.getAttribute('data-testid') === 'builtin-browser-download-dir-change')))) {
-            const hasEllipsis = valNorm.includes('…') || valNorm.includes('...');
-            return USE_TW ? (hasEllipsis ? "變更…" : "變更") : (hasEllipsis ? "更改…" : "更改");
-        }
         if ((typeof p.closest === 'function' && p.closest('[data-testid="voice-picker"]')) || (p.querySelector && p.querySelector('[data-testid="voice-picker-settings-link"]'))) {
             if (valNorm.startsWith('Powered by Gemini Live')) return USE_TW ? "由 Gemini Live 提供技術支援 · " : "由 Gemini Live 提供技术支持 · ";
             if (valNorm === 'You can change this in') return USE_TW ? "您稍後可在 " : "您稍后可在 ";
@@ -860,9 +859,6 @@
         }
         if (valNorm === '(excluding product analytics data)' && (pText.includes('Privacy Notice') || pText.includes('隐私声明') || pText.includes('隱私聲明') || pText.includes('隱私權聲明'))) {
             return USE_TW ? "（不含產品分析資料）" : "（不含产品分析数据）";
-        }
-        if (valNorm === 'Terms of Service' && pText.startsWith('Google ')) {
-            return USE_TW ? " 服務條款" : " 服务条款";
         }
         if (valNorm === 'Sign up for newsletters, informational emails, and special offers about') {
             return USE_TW ? "訂閱有關 " : "订阅有关 ";
@@ -1045,6 +1041,31 @@
         }
     }
 
+    function replaceWithBoundary(text, key, replacement) {
+        const needStartBoundary = /[A-Za-z0-9_]/.test(key[0]);
+        const needEndBoundary = /[A-Za-z0-9_]/.test(key[key.length - 1]);
+        let pos = 0;
+        let out = '';
+        let replaced = false;
+        while (pos <= text.length - key.length) {
+            const idx = text.indexOf(key, pos);
+            if (idx === -1) break;
+            const prevCh = idx > 0 ? text[idx - 1] : '';
+            const nextCh = idx + key.length < text.length ? text[idx + key.length] : '';
+            const startOk = !needStartBoundary || !/[A-Za-z0-9_]/.test(prevCh);
+            const endOk = !needEndBoundary || !/[A-Za-z0-9_]/.test(nextCh);
+            if (startOk && endOk) {
+                out += text.slice(pos, idx) + replacement;
+                pos = idx + key.length;
+                replaced = true;
+            } else {
+                out += text.slice(pos, idx + 1);
+                pos = idx + 1;
+            }
+        }
+        return replaced ? out + text.slice(pos) : null;
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
@@ -1081,7 +1102,7 @@
                                 translatedValues.set(tc, tc.nodeValue);
                             }
                         }
-                    } else if (textChildren.length === 1) {
+                    } else if (textChildren.length === 1 && node.childNodes.length === 1) {
                         const m = elText.match(/^Show\s+(\d+)\s+more(?:\.\.\.|…)?$/i);
                         if (m) {
                             textChildren[0].nodeValue = USE_TW ? ('顯示另外 ' + m[1] + ' 個...') : ('显示另外 ' + m[1] + ' 个...');
@@ -1220,12 +1241,35 @@
                 }
                 if (cachedValue === originalVal || unchangedTextValues.get(node) === originalVal) return;
 
-                // Material Symbol 字体缺失图标修复
+                // Material Symbol 字体缺失图标修复（保留 React TextNode 避免遍历失同步）
                 if (valNorm === 'restore_page' && node.parentElement && (
                     (typeof node.parentElement.classList?.contains === 'function' && node.parentElement.classList.contains('google-symbols')) ||
                     (typeof node.parentElement.className === 'string' && node.parentElement.className.includes('google-symbols'))
                 )) {
-                    node.parentElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0" style="display:inline-block;vertical-align:middle"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+                    const iconHost = node.parentElement;
+                    if (!iconHost.querySelector?.('svg[data-ag-restore-icon]') && typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+                        const svgNs = 'http://www.w3.org/2000/svg';
+                        const svg = document.createElementNS(svgNs, 'svg');
+                        svg.setAttribute('data-ag-restore-icon', '1');
+                        svg.setAttribute('width', '16');
+                        svg.setAttribute('height', '16');
+                        svg.setAttribute('viewBox', '0 0 24 24');
+                        svg.setAttribute('fill', 'none');
+                        svg.setAttribute('stroke', 'currentColor');
+                        svg.setAttribute('stroke-width', '2');
+                        svg.setAttribute('stroke-linecap', 'round');
+                        svg.setAttribute('stroke-linejoin', 'round');
+                        svg.setAttribute('class', 'shrink-0');
+                        svg.setAttribute('style', 'display:inline-block;vertical-align:middle');
+                        for (const d of ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5']) {
+                            const path = document.createElementNS(svgNs, 'path');
+                            path.setAttribute('d', d);
+                            svg.appendChild(path);
+                        }
+                        iconHost.insertBefore(svg, node);
+                    }
+                    translatedValues.set(node, '');
+                    node.nodeValue = '';
                     return;
                 }
 
@@ -1247,28 +1291,22 @@
                             newVal = swarmComp;
                         } else if (valNorm.length > 15 && valNorm.includes(' ') && longMissCache.get(node) !== valNorm) {
                             // 长句子串滑动替换与末尾截断智能匹配
-                            const isTruncated = (valNorm.endsWith('...') || valNorm.endsWith('…')) && valNorm.length >= 35;
-                            const cleanVal = isTruncated ? valNorm.replace(/(\.\.\.|…)$/, '').trim().toLowerCase() : '';
+                            const isTruncated = valNorm.endsWith('...') && valNorm.length >= 35;
+                            const cleanVal = isTruncated ? valNorm.slice(0, -3).trim().toLowerCase() : '';
                             let matchedLong = false;
                             for (const [key, translated, keyLower] of longEntries) {
                                 if (key.length <= valNorm.length) {
-                                    const idx = valNorm.indexOf(key);
-                                    if (idx !== -1) {
-                                        const prevCh = idx > 0 ? valNorm[idx - 1] : '';
-                                        const nextCh = idx + key.length < valNorm.length ? valNorm[idx + key.length] : '';
-                                        const startOk = !/[A-Za-z0-9_]/.test(key[0]) || !/[A-Za-z0-9_]/.test(prevCh);
-                                        const endOk = !/[A-Za-z0-9_]/.test(key[key.length - 1]) || !/[A-Za-z0-9_]/.test(nextCh);
-                                        if (startOk && endOk) {
-                                            if (newVal.includes(key)) {
-                                                newVal = newVal.split(key).join(translated);
-                                            } else {
-                                                const lead = originalVal.match(/^\s*/)[0];
-                                                const trail = originalVal.match(/\s*$/)[0];
-                                                newVal = lead + valNorm.split(key).join(translated) + trail;
-                                            }
-                                            matchedLong = true;
-                                            break;
+                                    const replaced = replaceWithBoundary(newVal.includes(key) ? newVal : valNorm, key, translated);
+                                    if (replaced !== null) {
+                                        if (newVal.includes(key)) {
+                                            newVal = replaced;
+                                        } else {
+                                            const lead = originalVal.match(/^\s*/)[0];
+                                            const trail = originalVal.match(/\s*$/)[0];
+                                            newVal = lead + replaced + trail;
                                         }
+                                        matchedLong = true;
+                                        break;
                                     }
                                 }
                                 if (isTruncated && cleanVal.length >= 30 && keyLower.startsWith(cleanVal)) {
@@ -1346,7 +1384,7 @@
         }
     }
 
-    const observer = new MutationObserver(mutations => {
+    const observer = typeof MutationObserver === 'function' ? new MutationObserver(mutations => {
         for (const m of mutations) {
             if (m.type === 'childList') {
                 if (m.removedNodes && m.removedNodes.length > 0) {
@@ -1377,18 +1415,19 @@
         if (pendingNodes.size > 0 || pendingAttrNodes.size > 0 || pendingMenuRefreshTargets.size > 0) {
             scheduleMutationFlush();
         }
-    });
+    }) : null;
 
     const obsOpts = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'aria-labelledby', 'role'] };
     const observedRoots = new WeakSet();
 
     function observeRoot(root) {
-        if (!root || observedRoots.has(root)) return;
+        if (!observer || !root || observedRoots.has(root)) return;
         observer.observe(root, obsOpts);
         observedRoots.add(root);
     }
 
     const startEngine = () => {
+        if (typeof document === 'undefined') return;
         const target = document.body || document.documentElement;
         if (target) {
             try {
@@ -1401,23 +1440,29 @@
         window.__agCnRuntimeStart = startEngine;
     }
 
-    const origAttachShadow = Element.prototype.attachShadow;
-    Element.prototype.attachShadow = function() {
-        const sr = origAttachShadow.apply(this, arguments);
-        try { observeRoot(sr); } catch (e) {}
-        return sr;
-    };
+    if (typeof Element !== 'undefined' && Element.prototype && typeof Element.prototype.attachShadow === 'function' && !Element.prototype.attachShadow._agCnHooked) {
+        const origAttachShadow = Element.prototype.attachShadow;
+        const hookedAttachShadow = function() {
+            const sr = origAttachShadow.apply(this, arguments);
+            try { observeRoot(sr); } catch (e) {}
+            return sr;
+        };
+        hookedAttachShadow._agCnHooked = true;
+        Element.prototype.attachShadow = hookedAttachShadow;
+    }
 
     // 强力多阶段触发绑定
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', startEngine);
-    } else {
-        startEngine();
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading' && typeof document.addEventListener === 'function') {
+            document.addEventListener('DOMContentLoaded', startEngine);
+        } else {
+            startEngine();
+        }
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            window.addEventListener('load', startEngine);
+        }
+        for (const delay of [100, 300, 1000, 3000, 6000]) {
+            setTimeout(startEngine, delay);
+        }
     }
-    window.addEventListener('load', startEngine);
-    setTimeout(startEngine, 100);
-    setTimeout(startEngine, 300);
-    setTimeout(startEngine, 1000);
-    setTimeout(startEngine, 3000);
-    setTimeout(startEngine, 6000);
 })();

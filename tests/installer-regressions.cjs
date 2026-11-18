@@ -300,3 +300,56 @@ test('requiring localization_engine from node -e does not invoke main() or kill 
     ).trim();
     assert.equal(out, 'function');
 });
+
+test('readAsarLayout rejects invalid headerSize2 framing and compareDicts rejects non-object JSON', t => {
+    const { compareDicts } = require('../scripts/compare_dicts');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-guard-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const badAsar = path.join(root, 'bad.asar');
+    writeArchive(badAsar, { 'dist/preload.js': { body: 'x' } });
+    const raw = fs.readFileSync(badAsar);
+    raw.writeUInt32LE(2, 8);
+    fs.writeFileSync(badAsar, raw);
+    assert.throws(() => readAsarLayout(badAsar), /Truncated ASAR header/);
+
+    const tmpSc = path.join(root, 'dicts');
+    const tmpTw = path.join(root, 'dicts_tw');
+    fs.mkdirSync(tmpSc, { recursive: true });
+    fs.mkdirSync(tmpTw, { recursive: true });
+    fs.writeFileSync(path.join(tmpSc, 'test.json'), '["not-an-object"]', 'utf8');
+    fs.writeFileSync(path.join(tmpTw, 'test.json'), '{}', 'utf8');
+    assert.equal(compareDicts(tmpSc, tmpTw), false);
+});
+
+test('patchTrayJs and patchUtilsJs guard missing actions and missing win variables at runtime', () => {
+    const traySample = 'function createTray(actions) { const contextMenu = actions || []; tray.setContextMenu(contextMenu); return contextMenu; } function emptyTray() { const contextMenu = []; tray.setContextMenu(contextMenu); }';
+    const trayPatched = patchTrayJs(traySample, false);
+    assert.match(trayPatched, /TRAY TRANSLATION START/);
+    assert.match(trayPatched, /TRAY DOUBLE CLICK START/);
+    const fakeTray = { setContextMenu() {}, on() {} };
+    const builtMenu = vm.runInNewContext(`${trayPatched}; createTray([{ label: "Quit" }]);`, { tray: fakeTray });
+    assert.equal(builtMenu[0].label, '退出');
+
+    const trayWithoutActionsSample = 'function createTray() { const contextMenu = []; tray.setContextMenu(contextMenu); }';
+    const trayWithoutActionsPatched = patchTrayJs(trayWithoutActionsSample, false);
+    assert.doesNotThrow(() => {
+        vm.runInNewContext(`${trayWithoutActionsPatched}; createTray();`, { tray: fakeTray });
+    });
+
+    const utilsSample = "function attach(hubContents, guardExternalNavigation) { hubContents.on('will-navigate', guardExternalNavigation); }";
+    const utilsPatched = patchUtilsJs(utilsSample, signature, signatureEnd);
+    assert.match(utilsPatched, /SIDECAR TRANSLATION START/);
+    const hubEvents = {};
+    const fakeHub = {
+        isDestroyed: () => false,
+        mainFrame: { executeJavaScript: () => Promise.resolve(false) },
+        on: (ev, cb) => { hubEvents[ev] = cb; }
+    };
+    vm.runInNewContext(`${utilsPatched}; attach(hubContents, () => {});`, {
+        hubContents: fakeHub,
+        electron_1: { webFrameMain: { fromId: () => null } },
+        console
+    });
+    assert.doesNotThrow(() => hubEvents['did-frame-finish-load']({}, false, 1, 2));
+});

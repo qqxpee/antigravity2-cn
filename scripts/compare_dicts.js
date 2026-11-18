@@ -43,16 +43,16 @@ function normalizeText(text) {
                .replace(/…/g, '...');
 }
 
-function compareDicts() {
+function compareDicts(targetDictsDir = dictsDir, targetDictsTwDir = dictsTwDir) {
     let hasError = false;
     
-    if (!fs.existsSync(dictsDir) || !fs.existsSync(dictsTwDir)) {
+    if (!fs.existsSync(targetDictsDir) || !fs.existsSync(targetDictsTwDir)) {
         console.error('Error: dicts or dicts_tw directory does not exist.');
         return false;
     }
     
-    const scFiles = fs.readdirSync(dictsDir).filter(f => f.endsWith('.json'));
-    const tcFiles = fs.readdirSync(dictsTwDir).filter(f => f.endsWith('.json'));
+    const scFiles = fs.readdirSync(targetDictsDir).filter(f => f.endsWith('.json'));
+    const tcFiles = fs.readdirSync(targetDictsTwDir).filter(f => f.endsWith('.json'));
     
     // Check if the set of files is identical
     const allFiles = Array.from(new Set([...scFiles, ...tcFiles])).sort();
@@ -60,8 +60,8 @@ function compareDicts() {
     const seenNormalizedAcrossFiles = new Map();
     
     for (const file of allFiles) {
-        const scFilePath = path.join(dictsDir, file);
-        const tcFilePath = path.join(dictsTwDir, file);
+        const scFilePath = path.join(targetDictsDir, file);
+        const tcFilePath = path.join(targetDictsTwDir, file);
         
         if (!fs.existsSync(scFilePath)) {
             console.error(`Error: File ${file} exists in dicts_tw but is missing in dicts.`);
@@ -77,6 +77,17 @@ function compareDicts() {
         try {
             const scData = JSON.parse(fs.readFileSync(scFilePath, 'utf8'));
             const tcData = JSON.parse(fs.readFileSync(tcFilePath, 'utf8'));
+
+            if (!scData || typeof scData !== 'object' || Array.isArray(scData)) {
+                console.error(`Error in dicts/${file}: Root JSON value must be a plain object.`);
+                hasError = true;
+                continue;
+            }
+            if (!tcData || typeof tcData !== 'object' || Array.isArray(tcData)) {
+                console.error(`Error in dicts_tw/${file}: Root JSON value must be a plain object.`);
+                hasError = true;
+                continue;
+            }
             
             const scKeys = Object.keys(scData);
             const tcKeys = Object.keys(tcData);
@@ -124,9 +135,9 @@ function compareDicts() {
                     console.error(`Error in dicts_tw/${file}: Key "${key}" has empty or non-string value.`);
                     hasError = true;
                 } else {
-                    if (STRICT_SC_CHARS_REGEX.test(tcVal)) {
-                        const m = tcVal.match(STRICT_SC_CHARS_REGEX);
-                        console.error(`Error in dicts_tw/${file}: Key "${key}" contains Simplified Chinese character "${m[0]}" in value: ${tcVal}`);
+                    const scMatch = tcVal.match(STRICT_SC_CHARS_REGEX);
+                    if (scMatch) {
+                        console.error(`Error in dicts_tw/${file}: Key "${key}" contains Simplified Chinese character "${scMatch[0]}" in value: ${tcVal}`);
                         hasError = true;
                     }
                     for (const term of FORBIDDEN_TC_TERMS) {
@@ -163,5 +174,6 @@ module.exports = {
     compareDicts,
     normalizeText,
     STRICT_SC_CHARS_REGEX,
-    FORBIDDEN_TC_TERMS
+    FORBIDDEN_TC_TERMS,
+    FORBIDDEN_TC_REGEXES
 };
