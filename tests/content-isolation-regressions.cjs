@@ -668,3 +668,89 @@ test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and han
     await settle();
     assert.equal(domTw.window.document.getElementById('see-all').textContent, '顯示全部 (5)');
 });
+
+test('v2.33.0 browsing data, keybinding scheme, bundles, side questions, coordinator icon/color pickers and permissions translate without single-word pollution', async t => {
+    const html = `
+      <div>
+        <div id="kb-title">Keybinding Scheme</div>
+        <div id="kb-style">Antigravity (AGY) Style</div>
+        <div id="kb-vs">VS Code Default</div>
+        <div id="kb-managed">Managed by application menu</div>
+        <span id="kb-split">Inspect live bindings or record custom key chords filtered to <code>antigravity.</code> commands.</span>
+        <div id="bd-title">Clear Browsing Data?</div>
+        <div id="bd-cookies">Cookies and other site data</div>
+        <div id="bd-visited">Visited URLs and autocomplete suggestions.</div>
+        <button id="bd-del" aria-label="Delete cookies for example.com"></button>
+        <div id="bd-err">Couldn't delete cookies for example.com</div>
+        <button id="bd-add">Add bundle</button>
+        <button id="bd-rm">Remove bundle</button>
+        <span id="bd-sep">Installed separately</span>
+        <button id="sq-ins">Insert into main conversation</button>
+        <button id="sq-unarch">Unarchive the main conversation to insert</button>
+        <button id="sq-del" aria-label="Delete side question: Why did CI fail?"></button>
+        <button id="vm-btn" aria-label="Toggle Virtual Machine">Toggle Virtual Machine</button>
+        <button id="ico-robot" data-testid="coordinator-icon-option-smart_toy" role="radio" aria-label="Robot"></button>
+        <button id="ico-code" data-testid="coordinator-icon-option-code_blocks" role="radio" aria-label="Code"></button>
+        <button id="ico-flask" data-testid="coordinator-icon-option-science" role="radio" aria-label="Flask"></button>
+        <button id="col-blue" data-testid="coordinator-color-option-blue" role="radio" aria-label="Blue"></button>
+        <button id="col-amber" data-testid="coordinator-color-option-amber" role="radio" aria-label="Amber"></button>
+        <button id="perm-q1">Allow browser downloads from this site?</button>
+        <button id="perm-q2">Save rule to always allow running this command outside the sandbox?</button>
+        <span id="loc-btn" aria-label="Where the agent runs, current: This computer"></span>
+        <ol id="plan-ol" aria-label="Plan, 2 of 5 steps done"></ol>
+        <button id="plan-go">Proceed with implementation plan and 3 comments</button>
+        <div id="preview-hide">Hidden by the preview policy.</div>
+        <span id="plain-code">Code</span>
+        <span id="plain-robot">Robot</span>
+        <span id="plain-flask">Flask</span>
+        <button id="plain-radio" role="radio" aria-label="Code"></button>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('kb-title').textContent, '键位方案');
+    assert.equal(w.document.getElementById('kb-style').textContent, 'Antigravity (AGY) 风格');
+    assert.equal(w.document.getElementById('kb-vs').textContent, 'VS Code 默认');
+    assert.equal(w.document.getElementById('kb-managed').textContent, '由应用菜单管理');
+    assert.equal(w.document.getElementById('kb-split').textContent, '查看实时绑定或录制自定义组合键，筛选范围：antigravity. 命令。');
+    assert.equal(w.document.getElementById('bd-title').textContent, '清除浏览数据？');
+    assert.equal(w.document.getElementById('bd-cookies').textContent, 'Cookie 和其他网站数据');
+    assert.equal(w.document.getElementById('bd-visited').textContent, '访问过的网址和自动补全建议。');
+    assert.equal(w.document.getElementById('bd-del').getAttribute('aria-label'), '删除 example.com 的 Cookie');
+    assert.equal(w.document.getElementById('bd-err').textContent, '无法删除以下网站的 Cookie：example.com');
+    assert.equal(w.document.getElementById('bd-add').textContent, '添加插件套件');
+    assert.equal(w.document.getElementById('bd-rm').textContent, '移除插件套件');
+    assert.equal(w.document.getElementById('bd-sep').textContent, '已单独安装');
+    assert.equal(w.document.getElementById('sq-ins').textContent, '插入到主会话');
+    assert.equal(w.document.getElementById('sq-unarch').textContent, '请先取消归档主会话再插入');
+    assert.equal(w.document.getElementById('sq-del').getAttribute('aria-label'), '删除侧边提问：Why did CI fail?');
+    assert.equal(w.document.getElementById('vm-btn').getAttribute('aria-label'), '切换虚拟机');
+    assert.equal(w.document.getElementById('ico-robot').getAttribute('aria-label'), '机器人');
+    assert.equal(w.document.getElementById('ico-code').getAttribute('aria-label'), '代码');
+    assert.equal(w.document.getElementById('ico-flask').getAttribute('aria-label'), '烧瓶');
+    assert.equal(w.document.getElementById('col-blue').getAttribute('aria-label'), '蓝色');
+    assert.equal(w.document.getElementById('col-amber').getAttribute('aria-label'), '琥珀色');
+    assert.equal(w.document.getElementById('perm-q1').textContent, '是否允许从此网站进行浏览器下载？');
+    assert.equal(w.document.getElementById('perm-q2').textContent, '是否保存规则以始终允许在沙箱外运行此命令？');
+    assert.equal(w.document.getElementById('loc-btn').getAttribute('aria-label'), '智能体运行位置，当前：此电脑');
+    assert.equal(w.document.getElementById('plan-ol').getAttribute('aria-label'), '计划，已完成 2 / 5 步');
+    assert.equal(w.document.getElementById('plan-go').textContent, '按实施计划并附带 3 条评论继续执行');
+    assert.equal(w.document.getElementById('preview-hide').textContent, '已按预览策略隐藏。');
+    assert.equal(w.document.getElementById('plain-code').textContent, 'Code');
+    assert.equal(w.document.getElementById('plain-robot').textContent, 'Robot');
+    assert.equal(w.document.getElementById('plain-flask').textContent, 'Flask');
+    assert.equal(w.document.getElementById('plain-radio').getAttribute('aria-label'), 'Code');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('kb-title').textContent, '按鍵綁定方案');
+    assert.equal(domTw.window.document.getElementById('kb-split').textContent, '檢視即時綁定或錄製自訂組合鍵，篩選範圍：antigravity. 指令。');
+    assert.equal(domTw.window.document.getElementById('bd-add').textContent, '新增外掛程式套件');
+    assert.equal(domTw.window.document.getElementById('ico-code').getAttribute('aria-label'), '程式碼');
+    assert.equal(domTw.window.document.getElementById('col-blue').getAttribute('aria-label'), '藍色');
+    assert.equal(domTw.window.document.getElementById('perm-q1').textContent, '是否允許從此網站進行瀏覽器下載？');
+    assert.equal(domTw.window.document.getElementById('loc-btn').getAttribute('aria-label'), '代理執行位置，目前：此電腦');
+    assert.equal(domTw.window.document.getElementById('plain-code').textContent, 'Code');
+});
+

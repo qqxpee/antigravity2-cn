@@ -747,6 +747,122 @@
             return (USE_TW ? "已傳送訊息給 " : "已向 ") + rZh + (USE_TW ? "" : " 发送消息");
         }],
         [/^Failed to save project settings:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存專案設定失敗：" : "保存项目设置失败：") + err],
+
+        // v2.33.0 新增动态规则：浏览器站点数据、键位方案、侧边提问、插件套件、引用与执行位置
+        [/^Delete cookies for\s+(.+)$/i, (m, site) => USE_TW ? ("刪除 " + site + " 的 Cookie") : ("删除 " + site + " 的 Cookie")],
+        [/^(?:Could not clear site data|Couldn't delete cookies|Clearing cookies and site data|Site data cleared) for\s+(.+)$/i, (m, site) => {
+            if (/^Could not clear/i.test(m)) return (USE_TW ? "無法清除以下網站的資料：" : "无法清除以下网站的网站数据：") + site;
+            if (/^Couldn't delete/i.test(m)) return (USE_TW ? "無法刪除以下網站的 Cookie：" : "无法删除以下网站的 Cookie：") + site;
+            if (/^Clearing/i.test(m)) return (USE_TW ? "正在清除以下網站的 Cookie 與網站資料：" : "正在清除以下站点的 Cookie 和网站数据：") + site;
+            return (USE_TW ? "已清除以下網站的網站資料：" : "已清除以下网站的网站数据：") + site;
+        }],
+        [/^Account this MCP server uses:\s*(.+)$/i, (m, acc) => (USE_TW ? "此 MCP 伺服器使用的帳戶：" : "此 MCP 服务器使用的账户：") + acc],
+        [/^Authorization code for\s+(.+)$/i, (m, name) => (USE_TW ? name + " 的授權碼" : name + " 的授权码")],
+        [/^(?:New secret|Secret) for a new\s+(.+?)\s+account$/i, (m, p) => USE_TW ? ("新 " + p + " 帳戶的密鑰") : ("新 " + p + " 账户的密钥")],
+        [/^New secret for\s+(.+)$/i, (m, p) => (USE_TW ? p + " 的新密鑰" : p + " 的新密钥")],
+        [/^Secret for\s+(.+)$/i, (m, p) => (USE_TW ? p + " 的密鑰" : p + " 的密钥")],
+        [/^Make\s+(.+?)\s+the default\s+(.+?)\s+account$/i, (m, acc, prov) => USE_TW ? ("將 " + acc + " 設為預設 " + prov + " 帳戶") : ("将 " + acc + " 设为默认 " + prov + " 账户")],
+        [/^You're signing in on\s+(.+?)\.\s*Your sign-in stays on that machine\.?$/i, (m, host) => USE_TW ? ("您正在 " + host + " 上登入，登入狀態將保留在該機器上。") : ("您正在 " + host + " 上登录，登录状态将保留在该机器上。")],
+        [/^Sign in to\s+(.+?)\s+remotely$/i, (m, host) => USE_TW ? ("遠端登入至 " + host) : ("远程登录到 " + host)],
+        [/^Add shortcut for\s+(.+)$/i, (m, cmd) => (USE_TW ? "為 " : "为 ") + (map.get(cmd) || cmd) + (USE_TW ? " 新增快速鍵" : " 添加快捷键")],
+        [/^Remove shortcut\s+(.+?)\s+for\s+(.+)$/i, (m, key, cmd) => (USE_TW ? "移除 " : "移除 ") + (map.get(cmd) || cmd) + (USE_TW ? " 的快速鍵 " : " 的快捷键 ") + key],
+        [/^Shortcut\s+(.+?)\s+for\s+(.+)$/i, (m, key, cmd) => (map.get(cmd) || cmd) + (USE_TW ? " 的快速鍵 " : " 的快捷键 ") + key],
+        [/^Reset\s+(.+?)\s+to default$/i, (m, cmd) => (USE_TW ? "將 " : "将 ") + (map.get(cmd) || cmd) + (USE_TW ? " 重設為預設值" : " 重置为默认值")],
+        [/^(?:Delete|Edit) side question(?:\s+title)?:\s*(.+)$/i, (m, title) => (/^Delete/i.test(m) ? (USE_TW ? "刪除側邊提問：" : "删除侧边提问：") : (USE_TW ? "編輯側邊提問標題：" : "编辑侧边提问标题：")) + title],
+        [/^Edit comment:\s*(.+)$/i, (m, c) => (USE_TW ? "編輯評論：" : "编辑评论：") + c],
+        [/^Filter skills and rules:\s*(.+)$/i, (m, f) => (USE_TW ? "篩選技能與規則：" : "筛选技能和规则：") + (map.get(f) || f)],
+        [/^Fix with Agent:\s*(.+)$/i, (m, s) => (USE_TW ? "使用代理修復：" : "使用智能体修复：") + s],
+        [/^Install folder\s+"(.+?)"\s+is already in use$/i, (m, d) => USE_TW ? ("安裝資料夾「" + d + "」已被使用") : ("安装文件夹“" + d + "”已被占用")],
+        [/^Open Subagent:\s*(.+)$/i, (m, s) => (USE_TW ? "開啟子代理：" : "打开子代理：") + s],
+        [/^Open URL in system browser:\s*(.+)$/i, (m, u) => (USE_TW ? "在系統瀏覽器中開啟網址：" : "在系统浏览器中打开网址：") + u],
+        [/^Opens external link:\s*(.+)$/i, (m, u) => (USE_TW ? "開啟外部連結：" : "打开外部链接：") + u],
+        [/^Plan,\s*(\d+)\s+of\s+(\d+)\s+steps?\s+done$/i, (m, a, b) => USE_TW ? ("計畫，已完成 " + a + " / " + b + " 步") : ("计划，已完成 " + a + " / " + b + " 步")],
+        [/^(Question|Turn)\s+(\d+)\s+of\s+(\d+)$/i, (m, kind, a, b) => (/^Question/i.test(kind) ? (USE_TW ? "第 " + a + " / " + b + " 個問題" : "第 " + a + " / " + b + " 个问题") : (USE_TW ? "第 " + a + " / " + b + " 輪" : "第 " + a + " / " + b + " 轮"))],
+        [/^Go to turn\s+(\d+)\s+of\s+(\d+)$/i, (m, a, b) => USE_TW ? ("前往第 " + a + " / " + b + " 輪") : ("跳转到第 " + a + " / " + b + " 轮")],
+        [/^Go to (page|slide)\s+(\d+)$/i, (m, kind, n) => (/^page/i.test(kind) ? (USE_TW ? "前往第 " + n + " 頁" : "跳转到第 " + n + " 页") : (USE_TW ? "前往第 " + n + " 張投影片" : "跳转到第 " + n + " 张幻灯片"))],
+        [/^Page\s+(\d+)\s+failed to load$/i, (m, n) => USE_TW ? ("第 " + n + " 頁載入失敗") : ("第 " + n + " 页加载失败")],
+        [/^(Bounding box|Comment|Search match) on page\s+(\d+)$/i, (m, kind, n) => {
+            const kZh = /^Bounding/i.test(kind) ? (USE_TW ? "邊界框" : "边界框") : (/^Comment/i.test(kind) ? (USE_TW ? "評論" : "评论") : (USE_TW ? "搜尋結果" : "搜索匹配项"));
+            return (USE_TW ? "第 " + n + " 頁上的" : "第 " + n + " 页上的") + kZh;
+        }],
+        [/^Scroll to:\s*(.+?)\s+on page\s+(\d+)$/i, (m, t, n) => USE_TW ? ("捲動至：第 " + n + " 頁的 " + t) : ("滚动到：第 " + n + " 页的 " + t)],
+        [/^Playback speed\s+([0-9.]+)x$/i, (m, spd) => (USE_TW ? "播放速度 " : "播放速度 ") + spd + "x"],
+        [/^Plugins in\s+(.+)$/i, (m, cat) => (map.get(cat) || cat) + (USE_TW ? " 中的外掛程式" : " 中的插件")],
+        [/^(?:This plugin|These plugins) in\s+(.+?)\s+may have looser code review\.\s+Review (?:its|their) contents before adding the bundle\.?$/i, (m, src) => {
+            const isPlural = /^These/i.test(m);
+            return USE_TW
+                ? (src + (isPlural ? " 中的這些外掛程式程式碼審查可能較寬鬆，新增外掛程式套件前請先檢視其內容。" : " 中的此外掛程式程式碼審查可能較寬鬆，新增外掛程式套件前請先檢視其內容。"))
+                : (src + (isPlural ? " 中的这些插件代码审查可能较宽松，添加插件套件前请先查看其内容。" : " 中的此插件代码审查可能较宽松，添加插件套件前请先查看其内容。"));
+        }],
+        [/^(.+?)\.\s+Disabling or removing the bundle applies only to the ones it installed\.?$/i, (m, prefix) => prefix + (USE_TW ? "。停用或移除此外掛程式套件僅會影響由它安裝的項目。" : "。停用或移除此插件套件仅会影响由它安装的项目。")],
+        [/^Remove context from\s+(.+)$/i, (m, name) => (USE_TW ? "移除 " : "移除 ") + name + (USE_TW ? " 的上下文" : " 的上下文")],
+        [/^Remove\s+(.+?)\s+from (Recent|list)$/i, (m, name, where) => (/^Recent/i.test(where) ? (USE_TW ? "從最近清單中移除 " : "从最近列表中移除 ") : (USE_TW ? "從清單中移除 " : "从列表中移除 ")) + name],
+        [/^Review\s+(.+?)\s+before installing$/i, (m, name) => (USE_TW ? "安裝前先檢視 " : "安装前先查看 ") + name],
+        [/^Run\s+(.+?)\s+now$/i, (m, name) => (USE_TW ? "立即執行 " : "立即运行 ") + name],
+        [/^Search Google for\s+"(.+)"$/i, (m, q) => USE_TW ? ("在 Google 上搜尋「" + q + "」") : ("在 Google 上搜索“" + q + "”")],
+        [/^Show\s+(.+?)\s+in folder$/i, (m, name) => (USE_TW ? "在資料夾中顯示 " : "在文件夹中显示 ") + name],
+        [/^Switch environment\s*\((.+)\)$/i, (m, env) => (USE_TW ? "切換環境 (" : "切换环境 (") + env + ")"],
+        [/^Using default\s+(.+?)\s+name$/i, (m, kind) => (USE_TW ? "已使用預設 " : "已使用默认 ") + kind + (USE_TW ? " 名稱" : " 名称")],
+        [/^View Diff for\s+(.+)$/i, (m, f) => (USE_TW ? "檢視 " : "查看 ") + f + (USE_TW ? " 的差異" : " 的差异")],
+        [/^Cost summary:\s*(.+)$/i, (m, c) => (USE_TW ? "費用摘要：" : "费用摘要：") + c],
+        [/^App view for\s+(.+)$/i, (m, t) => t + (USE_TW ? " 的應用程式檢視" : " 的应用视图")],
+        [/^Where the agent runs,\s*current:\s*(.+)$/i, (m, rest) => {
+            const r = rest.replace(/^Remote$/i, USE_TW ? '遠端' : '远程').replace(/^This computer$/i, USE_TW ? '此電腦' : '此电脑');
+            return (USE_TW ? "代理執行位置，目前：" : "智能体运行位置，当前：") + r;
+        }],
+        [/^Agent permissions preset selector,\s*current:\s*(.+)$/i, (m, p) => (USE_TW ? "代理權限預設選擇器，目前：" : "智能体权限预设选择器，当前：") + (map.get(p) || p)],
+        [/^Agent permissions preset:\s*(.+?),\s*(.+)$/i, (m, p, s) => (USE_TW ? "代理權限預設：" : "智能体权限预设：") + (map.get(p) || p) + "，" + (map.get(s) || s)],
+        [/^(Save rule to always allow|Allow)\s+(.+?)\?$/i, (m, verb, act) => {
+            const isSave = /^Save/i.test(verb);
+            const actTrim = act.trim();
+            const actLow = actTrim.toLowerCase();
+            const actMap = USE_TW ? {
+                'read access to this path': '讀取此路徑',
+                'write access to this path': '寫入此路徑',
+                'read/write access to this path': '讀寫此路徑',
+                'reading this url': '讀取此網址',
+                'executing actions on this url': '在此網址上執行操作',
+                'browser downloads from this site': '從此網站進行瀏覽器下載',
+                'running this command': '執行此指令',
+                'running this command outside the sandbox': '在沙箱外執行此指令',
+                'using this mcp tool': '使用此 MCP 工具',
+                'a one-time administrator (uac) elevation': '一次性管理員 (UAC) 權限提升',
+                'access to this resource': '存取此資源',
+                'the browser agent to download a file': '瀏覽器代理下載檔案',
+            } : {
+                'read access to this path': '读取此路径',
+                'write access to this path': '写入此路径',
+                'read/write access to this path': '读写此路径',
+                'reading this url': '读取此网址',
+                'executing actions on this url': '在此网址上执行操作',
+                'browser downloads from this site': '从此网站进行浏览器下载',
+                'running this command': '运行此命令',
+                'running this command outside the sandbox': '在沙箱外运行此命令',
+                'using this mcp tool': '使用此 MCP 工具',
+                'a one-time administrator (uac) elevation': '一次性管理员 (UAC) 提权',
+                'access to this resource': '访问此资源',
+                'the browser agent to download a file': '浏览器智能体下载文件',
+            };
+            const target = actMap[actLow] || actTrim;
+            const sep = actMap[actLow] ? '' : ' ';
+            return isSave
+                ? (USE_TW ? ("是否儲存規則以一律允許" + sep + target + "？") : ("是否保存规则以始终允许" + sep + target + "？"))
+                : (USE_TW ? ("是否允許" + sep + target + "？") : ("是否允许" + sep + target + "？"));
+        }],
+        [/^Conflicts with your configured Ask permission:\s*(.+)$/i, (m, d) => (USE_TW ? "與您設定的「詢問」權限衝突：" : "与您配置的“询问”权限冲突：") + d],
+        [/^Requires manual confirmation:\s*(.+)$/i, (m, d) => (USE_TW ? "需要手動確認：" : "需要手动确认：") + d],
+        [/^Show\s+(\d+)\s+more\s+subagents?$/i, (m, n) => USE_TW ? ("顯示另外 " + n + " 個子代理") : ("显示另外 " + n + " 个子代理")],
+        [/^Showing latest\s+(\d+)\s+browser steps?$/i, (m, n) => USE_TW ? ("目前顯示最近 " + n + " 個瀏覽器步驟") : ("当前显示最近 " + n + " 个浏览器步骤")],
+        [/^Showing first\s+(\d+)\s+references?$/i, (m, n) => USE_TW ? ("目前顯示前 " + n + " 個引用") : ("当前显示前 " + n + " 个引用")],
+        [/^(\d+)\s+references?$/i, (m, n) => n + (USE_TW ? " 個引用" : " 个引用")],
+        [/^Load older messages,\s*showing\s+(\d+)\s+of\s+(\d+)$/i, (m, a, b) => USE_TW ? ("載入更早的訊息，目前顯示 " + a + " / " + b + " 則") : ("加载更早的消息，当前显示 " + a + " / " + b + " 条")],
+        [/^Sort and filter conversations\s*\((\d+)\s+active\)$/i, (m, n) => USE_TW ? ("排序與篩選對話（" + n + " 個生效中）") : ("排序和筛选会话（" + n + " 个生效中）")],
+        [/^Proceed with implementation plan and\s+(\d+)\s+comments?$/i, (m, n) => USE_TW ? ("按實施計畫並附帶 " + n + " 則評論繼續執行") : ("按实施计划并附带 " + n + " 条评论继续执行")],
+        [/^Compare responses from\s+(\d+)\s+models side-by-side to find the best result\.?$/i, (m, n) => USE_TW ? ("並排比較 " + n + " 個模型的回覆，找出最佳結果。") : ("并排对比 " + n + " 个模型的回复，找出最佳结果。")],
+        [/^You have\s+(\d+)\s+conversations? in progress\.\s+Updating will interrupt them,\s+and they will automatically resume once the update completes\.?$/i, (m, n) => USE_TW ? ("您有 " + n + " 個進行中的對話。更新將暫時中斷它們，更新完成後會自動恢復。") : ("您有 " + n + " 个正在进行的会话。更新将暂时中断它们，更新完成后会自动恢复。")],
+        [/^You have\s+(\d+)\s+conversations? in progress\.\s+Updating will cancel them and you'll need to manually restart them\.?$/i, (m, n) => USE_TW ? ("您有 " + n + " 個進行中的對話。更新將取消它們，之後您需要手動重新啟動。") : ("您有 " + n + " 个正在进行的会话。更新将取消它们，之后您需要手动重新启动。")],
+        [/^(.+?)\s+is no longer available\.\s+Runs use\s+(.+?)\s+instead\.?$/i, (m, oldM, newM) => oldM + (USE_TW ? " 已不再提供，執行時將改用 " : " 已不再可用，运行时将改用 ") + newM + "。"],
+        [/^(.+?)\s+is no longer available\.\s+Runs will fail until you pick another model\.?$/i, (m, oldM) => oldM + (USE_TW ? " 已不再提供，在您選擇其他模型之前執行將會失敗。" : " 已不再可用，在您选择其他模型之前运行将会失败。")],
     ];
 
     function translateExactOrDynamic(t) {
@@ -999,8 +1115,40 @@
             if (valNorm === 'Desktop') return '桌面';
             if (valNorm === 'Grid') return USE_TW ? '網格' : '网格';
         }
+        if (valNorm === 'commands.' && (pText.includes('Inspect live bindings') || pText.includes('实时绑定') || pText.includes('即時綁定'))) {
+            return USE_TW ? ' 指令。' : ' 命令。';
+        }
         return null;
     }
+
+    const COORDINATOR_ICON_LABELS = {
+        'Robot': ['机器人', '機器人'],
+        'Tree': ['树状图', '樹狀圖'],
+        'Hub': ['枢纽', '樞紐'],
+        'Sliders': ['滑块', '滑桿'],
+        'Terminal window': ['终端窗口', '終端機視窗'],
+        'Command prompt': ['命令提示符', '命令提示字元'],
+        'Code': ['代码', '程式碼'],
+        'Sparkles': ['闪光', '閃光'],
+        'Wrench': ['扳手', '扳手'],
+        'Shield': ['盾牌', '盾牌'],
+        'Speedometer': ['速度表', '速度表'],
+        'Gauge': ['仪表', '儀表'],
+        'Eye': ['眼睛', '眼睛'],
+        'Flask': ['烧瓶', '燒瓶'],
+        'Radar': ['雷达', '雷達'],
+        'Bot': ['机器人', '機器人']
+    };
+    const COORDINATOR_COLOR_LABELS = {
+        'Blue': ['蓝色', '藍色'],
+        'Purple': ['紫色', '紫色'],
+        'Teal': ['青色', '青色'],
+        'Green': ['绿色', '綠色'],
+        'Amber': ['琥珀色', '琥珀色'],
+        'Orange': ['橙色', '橙色'],
+        'Red': ['红色', '紅色'],
+        'Indigo': ['靛蓝色', '靛藍色']
+    };
 
     function translateElementAttributes(node) {
         if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
@@ -1017,11 +1165,16 @@
                     newAttr = SCOPED_SWARM_MAP[t][USE_TW ? 1 : 0];
                 }
                 if (!newAttr && attr === 'aria-label') {
+                    const testId = node.getAttribute('data-testid') || '';
                     if (node.getAttribute('role') === 'radiogroup') {
                         if (t === 'Icon') newAttr = USE_TW ? '圖示' : '图标';
                         else if (t === 'Color') newAttr = USE_TW ? '顏色' : '颜色';
                     } else if (node.hasAttribute('data-agy-layout') && t === 'Layout') {
                         newAttr = USE_TW ? '版面配置' : '布局';
+                    } else if (testId.startsWith('coordinator-icon-option-') && Object.prototype.hasOwnProperty.call(COORDINATOR_ICON_LABELS, t)) {
+                        newAttr = COORDINATOR_ICON_LABELS[t][USE_TW ? 1 : 0];
+                    } else if (testId.startsWith('coordinator-color-option-') && Object.prototype.hasOwnProperty.call(COORDINATOR_COLOR_LABELS, t)) {
+                        newAttr = COORDINATOR_COLOR_LABELS[t][USE_TW ? 1 : 0];
                     }
                 }
                 if (!newAttr) {
