@@ -510,10 +510,13 @@ const MAIN_PROCESS_TEXT_TABLES = {
     ],
     'dist/remote/sshPrompts.js': [
         ["message: confirm ? `${label} asks:` : 'Touch your security key',", "message: confirm ? `${label} 询问：` : '请轻触您的安全密钥',", "message: confirm ? `${label} 詢問：` : '請輕觸您的安全金鑰',"],
+        ["const TOUCH_TITLE = 'Touch your security key';", "const TOUCH_TITLE = '请轻触您的安全密钥';", "const TOUCH_TITLE = '請輕觸您的安全金鑰';"],
+        ["<p class=\"context\">Connecting to <span id=\"label\"></span></p>", "<p class=\"context\">正在连接到 <span id=\"label\"></span></p>", "<p class=\"context\">正在連線至 <span id=\"label\"></span></p>"],
         ["buttons: confirm ? ['Yes', 'No'] : ['Cancel'],", "buttons: confirm ? ['是', '否'] : ['取消'],", "buttons: confirm ? ['是', '否'] : ['取消'],"],
         [">Asked again: your last answer may not have worked.<", ">再次询问：您上次的回答可能未生效。<", ">再次詢問：您上次的回答可能無效。<"],
         [">That's too long.<", ">输入内容过长。<", ">輸入內容過長。<"],
-        ['>Cancel</button><button id="continue">Continue</button>', '>取消</button><button id="continue">继续</button>', '>取消</button><button id="continue">繼續</button>']
+        ['>Cancel</button><button id="continue">Continue</button>', '>取消</button><button id="continue">继续</button>', '>取消</button><button id="continue">繼續</button>'],
+        ['>Cancel</button><button id="continue" class="primary">Continue</button>', '>取消</button><button id="continue" class="primary">继续</button>', '>取消</button><button id="continue" class="primary">繼續</button>']
     ],
     'dist/deviceChooser.js': [
         ["hid: 'HID device',", "hid: 'HID 设备',", "hid: 'HID 裝置',"],

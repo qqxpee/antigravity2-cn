@@ -747,6 +747,99 @@
             return (USE_TW ? "已傳送訊息給 " : "已向 ") + rZh + (USE_TW ? "" : " 发送消息");
         }],
         [/^Failed to save project settings:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存專案設定失敗：" : "保存项目设置失败：") + err],
+
+        // v2.33.0 新增界面：浏览数据/Cookie、快捷键方案、远程登录、套件审查与动态操作提示
+        [/^Account this MCP server uses:\s*(.+)$/i, (m, acc) => (USE_TW ? "此 MCP 伺服器使用的帳戶：" : "此 MCP 服务器使用的账户：") + acc],
+        [/^Add shortcut for\s+(.+)$/i, (m, target) => USE_TW ? ("為 " + target + " 新增快速鍵") : ("为 " + target + " 添加快捷键")],
+        [/^App view for\s+(.+)$/i, (m, name) => name + (USE_TW ? " 的應用程式檢視" : " 的应用视图")],
+        [/^Authorization code for\s+(.+)$/i, (m, name) => name + (USE_TW ? " 的授權碼" : " 的授权码")],
+        [/^Bounding box on page\s+(\d+)$/i, (m, p) => USE_TW ? ("第 " + p + " 頁的邊界框") : ("第 " + p + " 页的边界框")],
+        [/^Comment on page\s+(\d+)$/i, (m, p) => USE_TW ? ("第 " + p + " 頁的註解") : ("第 " + p + " 页的评论")],
+        [/^Connect GitHub:\s*(.+)$/i, (m, detail) => (USE_TW ? "連線 GitHub：" : "连接 GitHub：") + detail],
+        [/^Cost summary:\s*(.+)$/i, (m, detail) => (USE_TW ? "費用摘要：" : "费用摘要：") + detail],
+        [/^(Couldn't|Failed to)\s+(archive|unarchive|pin|unpin|delete|rename|open|load|save|update|create|fork|duplicate|export|share)\s+conversation$/i, (m, lead, verb) => {
+            const vMap = USE_TW
+                ? { archive: '封存', unarchive: '取消封存', pin: '釘選', unpin: '取消釘選', delete: '刪除', rename: '重新命名', open: '開啟', load: '載入', save: '儲存', update: '更新', create: '建立', fork: '分支', duplicate: '複製', export: '匯出', share: '分享' }
+                : { archive: '归档', unarchive: '取消归档', pin: '置顶', unpin: '取消置顶', delete: '删除', rename: '重命名', open: '打开', load: '加载', save: '保存', update: '更新', create: '创建', fork: '分叉', duplicate: '复制', export: '导出', share: '分享' };
+            const act = vMap[verb.toLowerCase()] || verb;
+            return /^Couldn/i.test(lead)
+                ? (USE_TW ? ("無法" + act + "對話") : ("无法" + act + "会话"))
+                : (USE_TW ? (act + "對話失敗") : (act + "会话失败"));
+        }],
+        [/^Delete cookies for\s+(.+)$/i, (m, site) => USE_TW ? ("刪除 " + site + " 的 Cookie") : ("删除 " + site + " 的 Cookie")],
+        [/^Delete side question:\s*(.+)$/i, (m, q) => (USE_TW ? "刪除側邊提問：" : "删除侧边提问：") + q],
+        [/^Detached at\s+(.+)$/i, (m, ref) => (USE_TW ? "已分離於 " : "已分离于 ") + ref],
+        [/^Details for\s+(.+)$/i, (m, name) => name + (USE_TW ? " 的詳細資料" : " 的详情")],
+        [/^Duplicate\s+(.+?)\s+name$/i, (m, kind) => {
+            const kZh = map.get(norm(kind)) || lowerMap.get(norm(kind).toLowerCase()) || kind;
+            return kZh + (USE_TW ? "名稱重複" : "名称重复");
+        }],
+        [/^Edit comment:\s*(.+)$/i, (m, txt) => (USE_TW ? "編輯註解：" : "编辑评论：") + txt],
+        [/^Edit\s+(.+?)\s+name$/i, (m, target) => USE_TW ? ("編輯 " + target + " 名稱") : ("编辑 " + target + " 名称")],
+        [/^Failed to archive\s+(.+)$/i, (m, target) => (USE_TW ? "封存失敗：" : "归档失败：") + target],
+        [/^Failed to create project:\s*(.+)$/i, (m, err) => (USE_TW ? "建立專案失敗：" : "创建项目失败：") + err],
+        [/^Failed to create\s+(.+?)\.?$/i, (m, target) => (USE_TW ? "建立失敗：" : "创建失败：") + target],
+        [/^Failed to delete\s+([^:]+):\s*(.+)$/i, (m, target, err) => USE_TW ? ("刪除 " + target + " 失敗：" + err) : ("删除 " + target + " 失败：" + err)],
+        [/^Failed to resolve folder:\s*(.+?)\s*\((.+)\)$/i, (m, dir, err) => USE_TW ? ("解析資料夾失敗：" + dir + " (" + err + ")") : ("解析文件夹失败：" + dir + " (" + err + ")")],
+        [/^Failed to save\s+"(.+?)"$/i, (m, name) => USE_TW ? ("儲存「" + name + "」失敗") : ("保存“" + name + "”失败")],
+        [/^Failed to save project Google3 configuration:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存專案 Google3 設定失敗：" : "保存项目 Google3 配置失败：") + err],
+        [/^Failed to save project permissions:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存專案權限失敗：" : "保存项目权限失败：") + err],
+        [/^Failed to save project:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存專案失敗：" : "保存项目失败：") + err],
+        [/^Failed to save settings:\s*(.+)$/i, (m, err) => (USE_TW ? "儲存設定失敗：" : "保存设置失败：") + err],
+        [/^Failed to select workspace:\s*(.+)$/i, (m, err) => (USE_TW ? "選取工作區失敗：" : "选择工作区失败：") + err],
+        [/^Failed to unarchive project:\s*(.+)$/i, (m, err) => (USE_TW ? "取消封存專案失敗：" : "取消归档项目失败：") + err],
+        [/^Failed to update\s+"(.+?)"$/i, (m, name) => USE_TW ? ("更新「" + name + "」失敗") : ("更新“" + name + "”失败")],
+        [/^Filter skills and rules:\s*(.+)$/i, (m, q) => (USE_TW ? "篩選技能與規則：" : "筛选技能和规则：") + q],
+        [/^Fix with Agent:\s*(.+)$/i, (m, target) => (USE_TW ? "使用代理修復：" : "使用智能体修复：") + target],
+        [/^Go to page\s+(\d+)$/i, (m, p) => USE_TW ? ("前往第 " + p + " 頁") : ("跳转到第 " + p + " 页")],
+        [/^Go to slide\s+(\d+)$/i, (m, s) => USE_TW ? ("前往第 " + s + " 張投影片") : ("跳转到第 " + s + " 张幻灯片")],
+        [/^Go to turn\s+(\d+)\s+of\s+(\d+)$/i, (m, a, b) => USE_TW ? ("前往第 " + a + " / " + b + " 輪") : ("跳转到第 " + a + " / " + b + " 轮")],
+        [/^Install folder\s+"(.+?)"\s+is already in use$/i, (m, dir) => USE_TW ? ("安裝資料夾「" + dir + "」已被使用") : ("安装文件夹“" + dir + "”已被占用")],
+        [/^Make\s+(.+?)\s+the default\s+(.+?)\s+account$/i, (m, acc, provider) => USE_TW ? ("將 " + acc + " 設為預設 " + provider + " 帳戶") : ("将 " + acc + " 设为默认 " + provider + " 账户")],
+        [/^Manage\s+(.+?)\s+app settings\.?$/i, (m, app) => USE_TW ? ("管理 " + app + " 應用程式設定。") : ("管理 " + app + " 应用设置。")],
+        [/^More actions for\s+(.+)$/i, (m, target) => target + " 的更多操作"],
+        [/^Move to Group:\s*(.+)$/i, (m, grp) => (USE_TW ? "移至群組：" : "移动到分组：") + grp],
+        [/^New secret for\s+(.+)$/i, (m, name) => USE_TW ? ("為 " + name + " 新增密鑰") : ("为 " + name + " 新建密钥")],
+        [/^No\s+(plugins|skills|rules|agents|bundles|sites|results|items|servers|commands|hosts|conversations|workflows|shortcuts)\s+found for$/i, (m, kind) => {
+            const kMap = USE_TW
+                ? { plugins: '外掛程式', skills: '技能', rules: '規則', agents: '代理', bundles: '套件', sites: '網站', results: '結果', items: '項目', servers: '伺服器', commands: '指令', hosts: '主機', conversations: '對話', workflows: '工作流程', shortcuts: '快速鍵' }
+                : { plugins: '插件', skills: '技能', rules: '规则', agents: '智能体', bundles: '套件', sites: '网站', results: '结果', items: '项目', servers: '服务器', commands: '命令', hosts: '主机', conversations: '会话', workflows: '工作流', shortcuts: '快捷键' };
+            return (USE_TW ? "找不到符合以下條件的" : "未找到匹配的") + (kMap[kind.toLowerCase()] || kind) + "：";
+        }],
+        [/^Open Subagent:\s*(.+)$/i, (m, name) => (USE_TW ? "開啟子代理：" : "打开子代理：") + name],
+        [/^Open URL in system browser:\s*(.+)$/i, (m, url) => (USE_TW ? "在系統瀏覽器中開啟 URL：" : "在系统浏览器中打开 URL：") + url],
+        [/^Opens external link:\s*(.+)$/i, (m, url) => (USE_TW ? "開啟外部連結：" : "打开外部链接：") + url],
+        [/^Page\s+(\d+)\s+failed to load$/i, (m, p) => USE_TW ? ("第 " + p + " 頁載入失敗") : ("第 " + p + " 页加载失败")],
+        [/^Plan,\s*(\d+)\s+of\s+(\d+)\s+steps?\s+done$/i, (m, a, b) => USE_TW ? ("計畫，已完成 " + a + " / " + b + " 步") : ("计划，已完成 " + a + " / " + b + " 步")],
+        [/^Playback speed\s+([0-9.]+x)$/i, (m, spd) => "播放速度 " + spd],
+        [/^Plugins in\s+(.+)$/i, (m, name) => name + (USE_TW ? " 中的外掛程式" : " 中的插件")],
+        [/^Question\s+(\d+)\s+of\s+(\d+)$/i, (m, a, b) => USE_TW ? ("第 " + a + " / " + b + " 個問題") : ("第 " + a + " / " + b + " 个问题")],
+        [/^Remove context from\s+(.+)$/i, (m, target) => USE_TW ? ("移除來自 " + target + " 的上下文") : ("移除来自 " + target + " 的上下文")],
+        [/^Remove shortcut\s+(.+?)\s+for\s+(.+)$/i, (m, key, act) => USE_TW ? ("移除 " + act + " 的快速鍵 " + key) : ("移除 " + act + " 的快捷键 " + key)],
+        [/^Remove\s+(.+?)\s+from Recent$/i, (m, item) => USE_TW ? ("從最近項目中移除 " + item) : ("从最近列表中移除 " + item)],
+        [/^Remove\s+(.+?)\s+from list$/i, (m, item) => USE_TW ? ("從清單中移除 " + item) : ("从列表中移除 " + item)],
+        [/^Reset\s+(.+?)\s+to default$/i, (m, item) => USE_TW ? ("將 " + item + " 重設為預設值") : ("将 " + item + " 重置为默认")],
+        [/^Review\s+(.+?)\s+before installing$/i, (m, item) => USE_TW ? ("安裝前審查 " + item) : ("安装前审查 " + item)],
+        [/^Run\s+(.+?)\s+now$/i, (m, item) => (USE_TW ? "立即執行 " : "立即运行 ") + item],
+        [/^Scroll to:\s*(.+?)\s+on page\s+(\d+)$/i, (m, target, p) => USE_TW ? ("捲動至第 " + p + " 頁的：" + target) : ("滚动到第 " + p + " 页的：" + target)],
+        [/^Search Google for\s+"(.+)"$/i, (m, q) => USE_TW ? ("在 Google 搜尋「" + q + "」") : ("在 Google 中搜索“" + q + "”")],
+        [/^Search match on page\s+(\d+)$/i, (m, p) => USE_TW ? ("第 " + p + " 頁的搜尋相符項目") : ("第 " + p + " 页的搜索匹配项")],
+        [/^Secret for a new\s+(.+?)\s+account$/i, (m, provider) => USE_TW ? ("新 " + provider + " 帳戶的密鑰") : ("新 " + provider + " 账户的密钥")],
+        [/^Secret for\s+(.+)$/i, (m, name) => name + (USE_TW ? " 的密鑰" : " 的密钥")],
+        [/^Shortcut\s+(.+?)\s+for\s+(.+)$/i, (m, key, act) => act + (USE_TW ? " 的快速鍵 " : " 的快捷键 ") + key],
+        [/^Show\s+(.+?)\s+in folder$/i, (m, item) => USE_TW ? ("在資料夾中顯示 " + item) : ("在文件夹中显示 " + item)],
+        [/^Sign in to\s+(.+?)\s+remotely$/i, (m, target) => (USE_TW ? "遠端登入 " : "远程登录 ") + target],
+        [/^Sign in to\s+(.+)$/i, (m, target) => (USE_TW ? "登入 " : "登录 ") + target],
+        [/^Switch environment\s*\((.+)\)$/i, (m, env) => (USE_TW ? "切換環境 (" : "切换环境 (") + env + ")"],
+        [/^The browser blocked the download of\s+(.+)$/i, (m, file) => (USE_TW ? "瀏覽器已封鎖下載 " : "浏览器已阻止下载 ") + file],
+        [/^Toggle Word Wrap(.*)$/i, (m, suffix) => (USE_TW ? "切換自動換行" : "切换自动换行") + (suffix || "")],
+        [/^Turn\s+(\d+)\s+of\s+(\d+)$/i, (m, a, b) => USE_TW ? ("第 " + a + " / " + b + " 輪") : ("第 " + a + " / " + b + " 轮")],
+        [/^Using default\s+(.+?)\s+name$/i, (m, kind) => {
+            const kZh = map.get(norm(kind)) || lowerMap.get(norm(kind).toLowerCase()) || kind;
+            return (USE_TW ? "使用預設" : "使用默认") + kZh + (USE_TW ? "名稱" : "名称");
+        }],
+        [/^View Diff for\s+(.+)$/i, (m, target) => USE_TW ? ("檢視 " + target + " 的差異") : ("查看 " + target + " 的差异")],
+        [/^You're signing in on\s+(.+?)\.\s*Your sign-in stays on that machine\.?$/i, (m, host) => USE_TW ? ("您正在 " + host + " 上登入。登入狀態僅保留在該機器上。") : ("您正在 " + host + " 上登录。登录状态仅保留在该机器上。")],
     ];
 
     function translateExactOrDynamic(t) {
@@ -998,6 +1091,12 @@
             if (valNorm === 'Stage') return '舞台';
             if (valNorm === 'Desktop') return '桌面';
             if (valNorm === 'Grid') return USE_TW ? '網格' : '网格';
+        }
+        if (valNorm === "Couldn't delete cookies for" && (pText.includes('cookies') || pText.includes('Cookie'))) {
+            return USE_TW ? '無法刪除以下網站的 Cookie：' : '无法删除以下网站的 Cookie：';
+        }
+        if (valNorm === 'Inspect live bindings or record custom key chords filtered to') {
+            return USE_TW ? '檢視即時按鍵繫結或錄製自訂組合鍵，目前篩選範圍為 ' : '查看实时按键绑定或录制自定义组合键，当前筛选范围为 ';
         }
         return null;
     }

@@ -668,3 +668,56 @@ test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and han
     await settle();
     assert.equal(domTw.window.document.getElementById('see-all').textContent, '顯示全部 (5)');
 });
+
+test('v2.33.0 browsing data, keybinding scheme, bundles and dynamic prompts translate in SC and TC without single-word pollution', async t => {
+    const html = `
+        <h2 id="browsing-title">Clear Browsing Data?</h2>
+        <span id="cookies-site">Cookies by Site</span>
+        <span id="kb-scheme">Keybinding Scheme</span>
+        <span id="browser-agent">Enable Browser Agent</span>
+        <button id="add-bundle">Add bundle</button>
+        <button id="insert-main">Insert into main conversation</button>
+        <div id="cookie-err">Couldn't delete cookies for <span>example.com</span></div>
+        <div id="kb-filter">Inspect live bindings or record custom key chords filtered to <code>antigravity</code></div>
+        <div id="signin-remote">You're signing in on devbox-01. Your sign-in stays on that machine.</div>
+        <button id="mcp-acc" aria-label="Account this MCP server uses: work@example.com"></button>
+        <button id="go-turn" aria-label="Go to turn 3 of 12"></button>
+        <button id="plan-steps" aria-label="Plan, 2 of 5 steps done"></button>
+        <button id="rm-shortcut" aria-label="Remove shortcut Cmd+K for Command Palette"></button>
+        <div id="no-bundles">No bundles found for</div>
+        <div id="icon-safe"><span id="w-code">Code</span><span id="w-eye">Eye</span><span id="w-hub">Hub</span><span id="w-shield">Shield</span></div>
+    `;
+
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('browsing-title').textContent, '清除浏览数据？');
+    assert.equal(w.document.getElementById('cookies-site').textContent, '按网站管理 Cookie');
+    assert.equal(w.document.getElementById('kb-scheme').textContent, '快捷键方案');
+    assert.equal(w.document.getElementById('browser-agent').textContent, '启用浏览器智能体');
+    assert.equal(w.document.getElementById('add-bundle').textContent, '添加套件');
+    assert.equal(w.document.getElementById('insert-main').textContent, '插入到主会话');
+    assert.equal(w.document.getElementById('cookie-err').textContent, '无法删除以下网站的 Cookie：example.com');
+    assert.equal(w.document.getElementById('kb-filter').textContent, '查看实时按键绑定或录制自定义组合键，当前筛选范围为 antigravity');
+    assert.equal(w.document.getElementById('signin-remote').textContent, '您正在 devbox-01 上登录。登录状态仅保留在该机器上。');
+    assert.equal(w.document.getElementById('mcp-acc').getAttribute('aria-label'), '此 MCP 服务器使用的账户：work@example.com');
+    assert.equal(w.document.getElementById('go-turn').getAttribute('aria-label'), '跳转到第 3 / 12 轮');
+    assert.equal(w.document.getElementById('plan-steps').getAttribute('aria-label'), '计划，已完成 2 / 5 步');
+    assert.equal(w.document.getElementById('rm-shortcut').getAttribute('aria-label'), '移除 Command Palette 的快捷键 Cmd+K');
+    assert.equal(w.document.getElementById('no-bundles').textContent, '未找到匹配的套件：');
+    assert.equal(w.document.getElementById('w-code').textContent, 'Code');
+    assert.equal(w.document.getElementById('w-eye').textContent, 'Eye');
+    assert.equal(w.document.getElementById('w-hub').textContent, 'Hub');
+    assert.equal(w.document.getElementById('w-shield').textContent, 'Shield');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('browsing-title').textContent, '清除瀏覽資料？');
+    assert.equal(domTw.window.document.getElementById('cookies-site').textContent, '依網站檢視 Cookie');
+    assert.equal(domTw.window.document.getElementById('kb-scheme').textContent, '快速鍵方案');
+    assert.equal(domTw.window.document.getElementById('browser-agent').textContent, '啟用瀏覽器代理');
+    assert.equal(domTw.window.document.getElementById('signin-remote').textContent, '您正在 devbox-01 上登入。登入狀態僅保留在該機器上。');
+    assert.equal(domTw.window.document.getElementById('go-turn').getAttribute('aria-label'), '前往第 3 / 12 輪');
+    assert.equal(domTw.window.document.getElementById('plan-steps').getAttribute('aria-label'), '計畫，已完成 2 / 5 步');
+    assert.equal(domTw.window.document.getElementById('no-bundles').textContent, '找不到符合以下條件的套件：');
+});
