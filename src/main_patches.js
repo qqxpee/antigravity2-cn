@@ -423,6 +423,9 @@ function patchTrayJs(trayContent, useTw) {
 }
 
 function patchLoadingOverlayJs(loadingContent, useTw) {
+    if (!loadingContent.includes('<div class="text">')) {
+        return loadingContent;
+    }
     console.log(`[修改] 正在向 loadingOverlay.js 注入加载页汉化...`);
     const replacementText = useTw
         ? '<div class="text">正在載入 Antigravity…</div>'
@@ -506,7 +509,37 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["`in this window. ${entry.label} will get access to your `", "`继续后，${entry.label} 将获得访问权限，可访问您的`", "`繼續後，${entry.label} 將取得權限，可存取您的`"],
         ['"organization\'s Google Cloud account.\\n"', '"所属组织的 Google Cloud 账户。\\n"', '"所屬組織的 Google Cloud 帳戶。\\n"'],
         ["`Workforce pool: ${names[1]}  Provider: ${names[2]}`", "`Workforce 池：${names[1]}  提供方：${names[2]}`", "`Workforce 集區：${names[1]}  提供者：${names[2]}`"],
-        ["`Identity provider: ${provider}`", "`身份提供方：${provider}`", "`身分提供者：${provider}`"]
+        ["`Identity provider: ${provider}`", "`身份提供方：${provider}`", "`身分提供者：${provider}`"],
+        ["message: `${name} can't be the SSH config file`,", "message: `${name} 无法作为 SSH 配置文件`,", "message: `${name} 無法作為 SSH 設定檔`,"],
+        ["title: 'Choose another SSH config file',", "title: '选择其他 SSH 配置文件',", "title: '選取其他 SSH 設定檔',"],
+        ["buttons: ['Choose Another File…', 'Cancel'],", "buttons: ['选择其他文件…', '取消'],", "buttons: ['選取其他檔案…', '取消'],"],
+        ["title: 'Could not restart the SSH server',", "title: '无法重启 SSH 服务器',", "title: '無法重新啟動 SSH 伺服器',"],
+        ["message: `${entry.label} still runs Antigravity server ${running}.`,", "message: `${entry.label} 仍在运行 Antigravity 服务器 ${running}。`,", "message: `${entry.label} 仍在執行 Antigravity 伺服器 ${running}。`,"],
+        ["buttons: ['Allow', \"Don't Allow\"],", "buttons: ['允许', '不允许'],", "buttons: ['允許', '不允許'],"],
+        ["title: 'Microphone access',", "title: '麦克风权限',", "title: '麥克風存取權限',"],
+        ["message: `Allow ${label} to use your microphone?`,", "message: `允许 ${label} 使用您的麦克风吗？`,", "message: `允許 ${label} 使用您的麥克風嗎？`,"],
+        ["detail: `The page in this window comes from ${label}. If you allow it, that ` +", "detail: `此窗口中的页面来自 ${label}。如果您允许，只要其任意` +", "detail: `此視窗中的頁面來自 ${label}。如果您允許，只要其任一` +"],
+        ["\"host can use this computer's microphone for voice whenever one of \" +", "\"主机窗口处于打开状态，该主机即可使用此电脑的麦克风进行语音输入。\" +", "\"視窗處於開啟狀態，該主機即可使用此電腦的麥克風進行語音輸入。\" +"],
+        ["'its windows is open. Antigravity asks again after you quit it.',", "'退出 Antigravity 后，下次将重新询问。',", "'結束 Antigravity 後，下次將會重新詢問。',"],
+        ["buttons: ['Continue', 'Cancel'],", "buttons: ['继续', '取消'],", "buttons: ['繼續', '取消'],"],
+        ["message: `Finish this sign-in on ${entry.label}?`,", "message: `要在 ${entry.label} 上完成此次登录吗？`,", "message: `要在 ${entry.label} 上完成此次登入嗎？`,"],
+        ["detail: `Continue only if you just chose to sign in from the ${entry.label} ` +", "detail: `仅当您刚才主动选择从 ${entry.label} 窗口登录时才继续。` +", "detail: `僅在您剛才選擇從 ${entry.label} 視窗登入時才繼續。` +"],
+        ["'window. Your browser opens the sign-in page; once you sign in, ' +", "'您的浏览器将打开登录页面；完成登录后，' +", "'您的瀏覽器將會開啟登入頁面；完成登入後，' +"],
+        ["`${entry.label} gets access to that account.\\n` +", "`${entry.label} 将获得该账户的访问权限。\\n` +", "`${entry.label} 將取得該帳戶的存取權限。\\n` +"],
+        ["`Sign-in page: ${(0, types_1.sanitizeRemoteText)(new URL(origin).host, 200)}`,", "`登录页面：${(0, types_1.sanitizeRemoteText)(new URL(origin).host, 200)}`,", "`登入頁面：${(0, types_1.sanitizeRemoteText)(new URL(origin).host, 200)}`,"],
+        ["buttons: ['Take Over', 'Cancel'],", "buttons: ['接管', '取消'],", "buttons: ['接管', '取消'],"],
+        ["title: 'Shared home directory',", "title: '共享主目录',", "title: '共用家目錄',"],
+        ["? `This window's Antigravity server runs on ${host}, another machine that shares your home directory.`", "? `此窗口的 Antigravity 服务器正在 ${host} 上运行（另一台共享您主目录的机器）。`", "? `此視窗的 Antigravity 伺服器正在 ${host} 上執行（另一台共用您家目錄的機器）。`"],
+        ["? `Your Antigravity server runs on ${host}, another machine that shares your home directory.`", "? `您的 Antigravity 服务器正在 ${host} 上运行（另一台共享您主目录的机器）。`", "? `您的 Antigravity 伺服器正在 ${host} 上執行（另一台共用您家目錄的機器）。`"],
+        [": `${host}, another machine that shares your home directory, started your Antigravity server.`,", ": `${host}（另一台共享您主目录的机器）启动了您的 Antigravity 服务器。`,", ": `${host}（另一台共用您家目錄的機器）啟動了您的 Antigravity 伺服器。`,"],
+        ["? `${label} reached ${here} this time. Cancel and reconnect to try again for ${host}, or take over to stop the server on ${host}, and its agents, and run it on ${here} instead.`", "? `${label} 本次连接到了 ${here}。您可以取消并重新连接以再次尝试连接 ${host}，或选择“接管”以停止 ${host} 上的服务器及其智能体，改为在 ${here} 上运行。`", "? `${label} 本次連線至 ${here}。您可以取消並重新連線以再次嘗試連線 ${host}，或選擇「接管」以停止 ${host} 上的伺服器及其代理，改為在 ${here} 上執行。`"],
+        ["? `${label} reached ${here}. Take over to stop the server on ${host}, and its agents, and run it on ${here} instead. To keep it running, connect to ${host}.`", "? `${label} 已连接到 ${here}。选择“接管”将停止 ${host} 上的服务器及其智能体，改为在 ${here} 上运行。若需保持其运行，请连接到 ${host}。`", "? `${label} 已連線至 ${here}。選擇「接管」將停止 ${host} 上的伺服器及其代理，改為在 ${here} 上執行。若要保持其執行，請連線至 ${host}。`"],
+        [": `${label} reached ${here}. Take over only if that server no longer runs, for example if ${host} was shut down or replaced: if it still runs, both servers would write the same files. To check, connect to ${host}.`,", ": `${label} 已连接到 ${here}。仅在确认该服务器已停止运行（例如 ${host} 已关机或被替换）时才选择“接管”：若它仍在运行，两个服务器将同时写入同一批文件。如需确认，请连接到 ${host}。`,", ": `${label} 已連線至 ${here}。僅在確認該伺服器已停止執行（例如 ${host} 已關機或被取代）時才選擇「接管」：若它仍在執行，兩個伺服器將會同時寫入相同的檔案。若要確認，請連線至 ${host}。`,"],
+        ["const what = terminals === 0 ? 'agent or task' : 'agent, task or terminal';", "const what = terminals === 0 ? '智能体或任务' : '智能体、任务或终端';", "const what = terminals === 0 ? '代理或任務' : '代理、任務或終端機';"],
+        ["buttons: ['Restart', 'Later'],", "buttons: ['重启', '稍后'],", "buttons: ['重新啟動', '稍後'],"],
+        ["title: 'Restart SSH server',", "title: '重启 SSH 服务器',", "title: '重新啟動 SSH 伺服器',"],
+        ["message: `${label} is running server ${running}; this app is ${expected}. Restart the server now?`,", "message: `${label} 正在运行服务器 ${running}，当前应用版本为 ${expected}。是否立即重启服务器？`,", "message: `${label} 正在執行伺服器 ${running}，目前應用程式版本為 ${expected}。是否立即重新啟動伺服器？`,"],
+        ["detail: `Any ${what} still running on it stops. The server starts again with this app's version.`,", "detail: `其上仍在运行的任何${what}都将停止。服务器将以当前应用版本重新启动。`,", "detail: `其上仍在執行的任何${what}都將停止。伺服器將以目前應用程式版本重新啟動。`,"]
     ],
     'dist/remote/sshPrompts.js': [
         ["message: confirm ? `${label} asks:` : 'Touch your security key',", "message: confirm ? `${label} 询问：` : '请轻触您的安全密钥',", "message: confirm ? `${label} 詢問：` : '請輕觸您的安全金鑰',"],
@@ -515,8 +548,22 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["buttons: confirm ? ['Yes', 'No'] : ['Cancel'],", "buttons: confirm ? ['是', '否'] : ['取消'],", "buttons: confirm ? ['是', '否'] : ['取消'],"],
         [">Asked again: your last answer may not have worked.<", ">再次询问：您上次的回答可能未生效。<", ">再次詢問：您上次的回答可能無效。<"],
         [">That's too long.<", ">输入内容过长。<", ">輸入內容過長。<"],
-        ['>Cancel</button><button id="continue">Continue</button>', '>取消</button><button id="continue">继续</button>', '>取消</button><button id="continue">繼續</button>'],
-        ['>Cancel</button><button id="continue" class="primary">Continue</button>', '>取消</button><button id="continue" class="primary">继续</button>', '>取消</button><button id="continue" class="primary">繼續</button>']
+        ['>Cancel</button>', '>取消</button>', '>取消</button>'],
+        ['>Continue</button>', '>继续</button>', '>繼續</button>'],
+        ["(who) => (isAccount(who) ? ['Password', who] : undefined),", "(who) => (isAccount(who) ? ['密码', who] : undefined),", "(who) => (isAccount(who) ? ['密碼', who] : undefined),"],
+        ["(who) => (isAccount(who) ? ['Current password', who] : undefined),", "(who) => (isAccount(who) ? ['当前密码', who] : undefined),", "(who) => (isAccount(who) ? ['目前密碼', who] : undefined),"],
+        ["(who) => (isAccount(who) ? ['New password', who] : undefined),", "(who) => (isAccount(who) ? ['新密码', who] : undefined),", "(who) => (isAccount(who) ? ['新密碼', who] : undefined),"],
+        ["(who) => (isAccount(who) ? ['Confirm new password', who] : undefined),", "(who) => (isAccount(who) ? ['确认新密码', who] : undefined),", "(who) => (isAccount(who) ? ['確認新密碼', who] : undefined),"],
+        ["['Passphrase', baseName(key)]", "['密钥口令', baseName(key)]", "['金鑰密碼', baseName(key)]"],
+        ["? `${asked[0]} for ${hostPromptsMarked ? asked[1] : label}`", "? `${hostPromptsMarked ? asked[1] : label} 的${asked[0]}`", "? `${hostPromptsMarked ? asked[1] : label} 的${asked[0]}`"],
+        ["? `Trust ${hostName(host.split(' (')[0])}?`", "? `信任 ${hostName(host.split(' (')[0])}？`", "? `信任 ${hostName(host.split(' (')[0])}？`"],
+        ["? `Connect to ${hostName(host)} anyway?`", "? `仍要连接到 ${hostName(host)}？`", "? `仍要連線至 ${hostName(host)} 嗎？`"],
+        ["return 'Accept updated host keys?';", "return '接受更新的主机密钥？';", "return '接受更新的主機金鑰嗎？';"],
+        ["return key ? `Add ${baseName(key.split(' (')[0])} to ssh-agent?` : undefined;", "return key ? `将 ${baseName(key.split(' (')[0])} 添加到 ssh-agent？` : undefined;", "return key ? `要將 ${baseName(key.split(' (')[0])} 新增至 ssh-agent 嗎？` : undefined;"],
+        ["return `Question from ${who}`;", "return `来自 ${who} 的询问`;", "return `來自 ${who} 的詢問`;"],
+        ["return `Verification code for ${who}`;", "return `${who} 的验证码`;", "return `${who} 的驗證碼`;"],
+        ["return `Password for ${who}`;", "return `${who} 的密码`;", "return `${who} 的密碼`;"],
+        ["return /\\bpin\\b/i.test(text) ? `PIN for ${who}` : `Sign in to ${who}`;", "return /\\bpin\\b/i.test(text) ? `${who} 的 PIN` : `登录到 ${who}`;", "return /\\bpin\\b/i.test(text) ? `${who} 的 PIN` : `登入 ${who}`;"]
     ],
     'dist/deviceChooser.js': [
         ["hid: 'HID device',", "hid: 'HID 设备',", "hid: 'HID 裝置',"],
@@ -562,6 +609,14 @@ const MAIN_PROCESS_TEXT_TABLES = {
     ],
     'dist/provisionSplash.js': [
         ["<div>Setting up WSL: ${escapeHtml(distro)}</div>", "<div>正在初始化 WSL：${escapeHtml(distro)}</div>", "<div>正在設定 WSL：${escapeHtml(distro)}</div>"]
+    ],
+    'dist/ideInstall/wizardHtml.js': [
+        ["<title>Welcome to Antigravity</title>", "<title>欢迎使用 Antigravity</title>", "<title>歡迎使用 Antigravity</title>"],
+        [">Setting up…</div>", ">正在设置…</div>", ">正在設定…</div>"],
+        ["<h1>Welcome to the new Antigravity!</h1>", "<h1>欢迎使用全新 Antigravity！</h1>", "<h1>歡迎使用全新 Antigravity！</h1>"],
+        ["<p>Antigravity has been redesigned to put agents first with new capabilities. If you'd still like a code editor, you can download it as a separate app named <b>Antigravity IDE</b>.</p>", "<p>Antigravity 经过全新设计，以智能体为核心并带来了全新能力。如果您仍需要代码编辑器，可将其作为名为 <b>Antigravity IDE</b> 的独立应用下载。</p>", "<p>Antigravity 經過全新設計，以代理為核心並帶來全新功能。如果您仍需要程式碼編輯器，可將其作為名為 <b>Antigravity IDE</b> 的獨立應用程式下載。</p>"],
+        ["<span>Download the Antigravity IDE</span>", "<span>下载 Antigravity IDE</span>", "<span>下載 Antigravity IDE</span>"],
+        [">Explore the new Antigravity</button>", ">探索全新 Antigravity</button>", ">探索全新 Antigravity</button>"]
     ]
 };
 

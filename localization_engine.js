@@ -144,6 +144,8 @@ if (USE_TW) {
         "[警告] 未能在 tray.js 中找到 createTray 函数插入点。": "[警告] 未能在 tray.js 中找到 createTray 函式插入點。",
         "[签名] 检测到 macOS 平台，正在对应用包进行本地 ad-hoc 深度重签名: ": "[簽名] 偵測到 macOS 平台，正在對應用程式包進行本機 ad-hoc 深度重新簽名: ",
         "[签名] 重新签名成功！": "[簽名] 重新簽名成功！",
+        "[签名] 目标路径并非完整 macOS .app 应用包，已跳过重签名: ": "[簽名] 目標路徑並非完整 macOS .app 應用程式包，已跳過重新簽名: ",
+        "[警告] 保存汉化偏好配置失败: ": "[警告] 儲存漢化偏好設定失敗: ",
         "[错误] 重新签名失败，已中止操作。详情:": "[錯誤] 重新簽名失敗，已中止操作。詳情:",
         "[错误] 未能从路径 ": "[錯誤] 未能從路徑 ",
         " 识别到有效的 .app 路径，无法完成 macOS 重签名。": " 識別到有效的 .app 路徑，無法完成 macOS 重新簽名。",
@@ -464,13 +466,19 @@ function resolveMacAppBundle(dir) {
     return null;
 }
 
+function isValidMacAppBundle(bundlePath) {
+    if (!bundlePath || !fs.existsSync(bundlePath)) return false;
+    return fs.existsSync(path.join(bundlePath, 'Contents', 'MacOS')) ||
+        fs.existsSync(path.join(bundlePath, 'Contents', 'Info.plist'));
+}
+
 function resignAppOnMac(anyPath) {
     if (process.platform !== 'darwin') return true;
 
     const targetApp = resolveMacAppBundle(anyPath);
-    if (!targetApp || !fs.existsSync(targetApp)) {
-        console.error(`[错误] 未能从路径 ${anyPath} 识别到有效的 .app 路径，无法完成 macOS 重签名。`);
-        return false;
+    if (!isValidMacAppBundle(targetApp)) {
+        console.log(`[签名] 目标路径并非完整 macOS .app 应用包，已跳过重签名: ${anyPath}`);
+        return true;
     }
 
     const plistPath = path.join(targetApp, 'Contents', 'Info.plist');
@@ -804,6 +812,46 @@ function restoreProxyIfNeeded(installDir) {
     }
 }
 
+function getPrefsFilePath() {
+    const baseDir = process.platform === 'win32'
+        ? (process.env.APPDATA || process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
+        : (process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'));
+    return path.join(baseDir, 'Antigravity', 'localization-prefs.json');
+}
+
+function saveLocalizationPref(installDir, pref) {
+    try {
+        const prefsPath = getPrefsFilePath();
+        let data = {};
+        if (fs.existsSync(prefsPath)) {
+            const raw = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+            if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+                data = raw;
+            }
+        }
+        const key = path.resolve(installDir).toLowerCase();
+        data[key] = {
+            useTw: Boolean(pref.useTw),
+            brandTitle: String(pref.brandTitle || 'english'),
+            updatedAt: new Date().toISOString()
+        };
+        fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
+        fs.writeFileSync(prefsPath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {
+        console.warn(`[警告] 保存汉化偏好配置失败: ${e.message}`);
+    }
+}
+
+function canRestartApp(installDir) {
+    if (process.platform === 'win32') {
+        return fs.existsSync(path.join(installDir, 'Antigravity.exe'));
+    }
+    if (process.platform === 'darwin') {
+        return isValidMacAppBundle(resolveMacAppBundle(installDir));
+    }
+    return false;
+}
+
 // ==========================================
 // 入口
 // ==========================================
@@ -898,16 +946,14 @@ function main() {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
         success = install20(resourcesDir, noKill);
         if (success) {
+            saveLocalizationPref(installDir, { useTw: USE_TW, brandTitle: BRAND_TITLE_MODE });
             injectProxyIfNeeded(installDir);
         }
     }
 
     // 5. 校验通过且原来客户端在运行，则自动重新启动客户端（仅当目标为有效客户端包/可执行程序时触发，避免自定义目录误弹 Finder）
     const macAppBundle = process.platform === 'darwin' ? resolveMacAppBundle(installDir) : null;
-    const canRestartApp = process.platform === 'win32'
-        ? fs.existsSync(path.join(installDir, 'Antigravity.exe'))
-        : Boolean(macAppBundle);
-    if (success && wasAppRunning && !noKill && canRestartApp) {
+    if (success && wasAppRunning && !noKill && canRestartApp(installDir)) {
         console.log("\n[启动] 检测到安装前反重力客户端处于开启状态，正在重新启动客户端...");
         try {
             if (process.platform === 'win32') {
@@ -939,7 +985,14 @@ function main() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { generateJs };
+    module.exports = {
+        generateJs,
+        ensureWritePermission,
+        resignAppOnMac,
+        resolveMacAppBundle,
+        isValidMacAppBundle,
+        canRestartApp
+    };
 }
 
 main();

@@ -669,55 +669,169 @@ test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and han
     assert.equal(domTw.window.document.getElementById('see-all').textContent, '顯示全部 (5)');
 });
 
-test('v2.33.0 browsing data, keybinding scheme, bundles and dynamic prompts translate in SC and TC without single-word pollution', async t => {
+test('v2.33.0 browsing data, keybinding scheme, bundles, coordinator pickers, permissions and dynamic prompts translate in SC and TC without single-word pollution', async t => {
     const html = `
+      <div>
         <h2 id="browsing-title">Clear Browsing Data?</h2>
+        <span id="browsing-history">Browsing history</span>
         <span id="cookies-site">Cookies by Site</span>
         <span id="kb-scheme">Keybinding Scheme</span>
         <span id="browser-agent">Enable Browser Agent</span>
         <button id="add-bundle">Add bundle</button>
+        <button id="rm-bundle">Remove bundle</button>
         <button id="insert-main">Insert into main conversation</button>
-        <div id="cookie-err">Couldn't delete cookies for <span>example.com</span></div>
-        <div id="kb-filter">Inspect live bindings or record custom key chords filtered to <code>antigravity</code></div>
+        <button id="sq-unarch">Unarchive the main conversation to insert</button>
+        <p id="cookie-err" data-testid="browser-site-data-delete-error">Couldn't delete cookies for <span>example.com</span>. Try again.</p>
+        <div id="clearing-site">Clearing cookies and site data for example.com</div>
+        <p id="no-match-split" data-testid="browser-site-data-no-match">No sites match \u201c<span>alpha.dev</span>\u201d.</p>
+        <div id="no-match-full">No sites match "beta.dev".</div>
+        <div id="kb-filter">Inspect live bindings or record custom key chords filtered to <code>antigravity.</code> commands.</div>
         <div id="signin-remote">You're signing in on devbox-01. Your sign-in stays on that machine.</div>
         <button id="mcp-acc" aria-label="Account this MCP server uses: work@example.com"></button>
         <button id="go-turn" aria-label="Go to turn 3 of 12"></button>
         <button id="plan-steps" aria-label="Plan, 2 of 5 steps done"></button>
         <button id="rm-shortcut" aria-label="Remove shortcut Cmd+K for Command Palette"></button>
+        <button id="reset-cmd" aria-label="Reset command palette to default"></button>
         <div id="no-bundles">No bundles found for</div>
-        <div id="icon-safe"><span id="w-code">Code</span><span id="w-eye">Eye</span><span id="w-hub">Hub</span><span id="w-shield">Shield</span></div>
+        <div id="no-plugins-q">No plugins found for "lint".</div>
+        <div id="dup-folder">Duplicate folder name</div>
+        <div id="dup-rule">Duplicate rule name</div>
+        <div id="dup-wf">Duplicate workflow name</div>
+        <div id="bundle-prefix">3 plugins. Disabling or removing the bundle applies only to the ones it installed.</div>
+        <div id="comment-pg">Comment on page 2</div>
+        <div id="edit-comment">Edit comment: fix typo</div>
+        <div id="export-err">Failed to export artifact</div>
+        <div id="del-ws-err">Failed to delete workspace</div>
+        <div id="gh-lbl" aria-label="GitHub: Authentication required"></div>
+        <div id="ssh-lbl">SSH: devbox-01</div>
+        <div id="see-doc">See Docs: https://example.com</div>
+        <input id="acc-lbl" aria-label="Label for work@example.com" />
+        <button id="more-lbl" aria-label="More for devbox-01"></button>
+        <button id="safe-del-ws">Delete Workspace</button>
+        <button id="unsafe-del-var">Delete MyCustomVar</button>
+        <div id="meta-row" class="flex flex-wrap items-baseline gap-1 text-xs text-muted-foreground"><span id="meta-init">Initialized with</span><code>defaultConfig</code></div>
+        <div id="meta-decl-row" class="flex flex-wrap items-baseline gap-1 text-xs text-muted-foreground"><span id="meta-decl">Declared by</span><code>corePkg</code></div>
+        <p id="prose-init">Initialized with a custom environment variable for testing.</p>
+        <button id="ico-robot" data-testid="coordinator-icon-option-smart_toy" role="radio" aria-label="Robot"></button>
+        <button id="ico-code" data-testid="coordinator-icon-option-code_blocks" role="radio" aria-label="Code"></button>
+        <button id="ico-flask" data-testid="coordinator-icon-option-science" role="radio" aria-label="Flask"></button>
+        <button id="col-blue" data-testid="coordinator-color-option-blue" role="radio" aria-label="Blue"></button>
+        <button id="perm-q1">Allow browser downloads from this site?</button>
+        <button id="perm-q2">Save rule to always allow running this command outside the sandbox?</button>
+        <span id="loc-btn" aria-label="Where the agent runs, current: This computer"></span>
+        <button id="plan-go">Proceed with implementation plan and 3 comments</button>
+        <div id="upd-prog">You have 2 conversations in progress. Updating will interrupt them, and they will automatically resume once the update completes.</div>
+        <div id="model-gone">Gemini 2.5 Pro is no longer available. Runs use Gemini 3 Flash instead.</div>
+        <div role="menu" aria-label="Select model"><span id="model-unavail">Unavailable</span></div>
+        <span id="plain-unavail">Unavailable</span>
+        <div id="model-avail-1">Claude 3.7 Sonnet is currently available to Pro users.</div>
+        <div id="model-avail-2">Gemini 2.5 Pro is now available on Google AI Pro. Third-party model access will no longer be available starting on May 15, 2026.</div>
+        <div id="model-dep-only">Claude 3.5 Sonnet will no longer be available on your current plan starting on 2026-06-01</div>
+        <div id="model-dep-3p">Third-party model access will no longer be available on your current plan starting on 15 July 2026.</div>
+        <div id="icon-safe"><span id="w-code">Code</span><span id="w-eye">Eye</span><span id="w-hub">Hub</span><span id="w-shield">Shield</span><span id="w-robot">Robot</span><span id="w-flask">Flask</span></div>
+        <button id="plain-radio" role="radio" aria-label="Code"></button>
+      </div>
     `;
 
     const w = await fixture(t, html);
     assert.equal(w.document.getElementById('browsing-title').textContent, '清除浏览数据？');
+    assert.equal(w.document.getElementById('browsing-history').textContent, '浏览历史记录');
     assert.equal(w.document.getElementById('cookies-site').textContent, '按网站管理 Cookie');
     assert.equal(w.document.getElementById('kb-scheme').textContent, '快捷键方案');
     assert.equal(w.document.getElementById('browser-agent').textContent, '启用浏览器智能体');
     assert.equal(w.document.getElementById('add-bundle').textContent, '添加套件');
+    assert.equal(w.document.getElementById('rm-bundle').textContent, '移除套件');
     assert.equal(w.document.getElementById('insert-main').textContent, '插入到主会话');
-    assert.equal(w.document.getElementById('cookie-err').textContent, '无法删除以下网站的 Cookie：example.com');
-    assert.equal(w.document.getElementById('kb-filter').textContent, '查看实时按键绑定或录制自定义组合键，当前筛选范围为 antigravity');
+    assert.equal(w.document.getElementById('sq-unarch').textContent, '请先取消归档主会话再插入');
+    assert.equal(w.document.getElementById('cookie-err').textContent, '无法删除以下网站的 Cookie：example.com，请重试。');
+    assert.equal(w.document.getElementById('clearing-site').textContent, '正在清除以下网站的 Cookie 和网站数据：example.com');
+    assert.equal(w.document.getElementById('no-match-split').textContent, '没有匹配“alpha.dev”的网站。');
+    assert.equal(w.document.getElementById('no-match-full').textContent, '没有匹配“beta.dev”的网站。');
+    assert.equal(w.document.getElementById('kb-filter').textContent, '查看实时按键绑定或录制自定义组合键，当前筛选范围为 antigravity. 命令。');
     assert.equal(w.document.getElementById('signin-remote').textContent, '您正在 devbox-01 上登录。登录状态仅保留在该机器上。');
     assert.equal(w.document.getElementById('mcp-acc').getAttribute('aria-label'), '此 MCP 服务器使用的账户：work@example.com');
     assert.equal(w.document.getElementById('go-turn').getAttribute('aria-label'), '跳转到第 3 / 12 轮');
     assert.equal(w.document.getElementById('plan-steps').getAttribute('aria-label'), '计划，已完成 2 / 5 步');
-    assert.equal(w.document.getElementById('rm-shortcut').getAttribute('aria-label'), '移除 Command Palette 的快捷键 Cmd+K');
+    assert.equal(w.document.getElementById('rm-shortcut').getAttribute('aria-label'), '移除 命令面板 的快捷键 Cmd+K');
+    assert.equal(w.document.getElementById('reset-cmd').getAttribute('aria-label'), '将 命令面板 重置为默认值');
     assert.equal(w.document.getElementById('no-bundles').textContent, '未找到匹配的套件：');
+    assert.equal(w.document.getElementById('no-plugins-q').textContent, '未找到与“lint”匹配的插件');
+    assert.equal(w.document.getElementById('dup-folder').textContent, '文件夹名称重复');
+    assert.equal(w.document.getElementById('dup-rule').textContent, '规则名称重复');
+    assert.equal(w.document.getElementById('dup-wf').textContent, '工作流名称重复');
+    assert.equal(w.document.getElementById('bundle-prefix').textContent, '3 个插件。停用或移除此套件仅会影响由它安装的项目。');
+    assert.equal(w.document.getElementById('export-err').textContent, '导出产物失败');
+    assert.equal(w.document.getElementById('del-ws-err').textContent, '删除工作区失败');
+    assert.equal(w.document.getElementById('gh-lbl').getAttribute('aria-label'), 'GitHub：需要身份验证');
+    assert.equal(w.document.getElementById('ssh-lbl').textContent, 'SSH：devbox-01');
+    assert.equal(w.document.getElementById('see-doc').textContent, '查看 文档：https://example.com');
+    assert.equal(w.document.getElementById('acc-lbl').getAttribute('aria-label'), 'work@example.com 的标签');
+    assert.equal(w.document.getElementById('more-lbl').getAttribute('aria-label'), 'devbox-01 的更多操作');
+    assert.equal(w.document.getElementById('safe-del-ws').textContent, '删除工作区');
+    assert.equal(w.document.getElementById('unsafe-del-var').textContent, 'Delete MyCustomVar');
+    assert.equal(w.document.getElementById('meta-init').textContent, '初始化来源');
+    assert.equal(w.document.getElementById('meta-decl').textContent, '声明来源');
+    assert.equal(w.document.getElementById('prose-init').textContent, 'Initialized with a custom environment variable for testing.');
+    assert.equal(w.document.getElementById('ico-robot').getAttribute('aria-label'), '机器人');
+    assert.equal(w.document.getElementById('ico-code').getAttribute('aria-label'), '代码');
+    assert.equal(w.document.getElementById('ico-flask').getAttribute('aria-label'), '烧瓶');
+    assert.equal(w.document.getElementById('col-blue').getAttribute('aria-label'), '蓝色');
+    assert.equal(w.document.getElementById('perm-q1').textContent, '是否允许从此网站进行浏览器下载？');
+    assert.equal(w.document.getElementById('perm-q2').textContent, '是否保存规则以始终允许在沙箱外运行此命令？');
+    assert.equal(w.document.getElementById('loc-btn').getAttribute('aria-label'), '智能体运行位置，当前：此电脑');
+    assert.equal(w.document.getElementById('plan-go').textContent, '按实施计划并附带 3 条评论继续执行');
+    assert.equal(w.document.getElementById('upd-prog').textContent, '您有 2 个正在进行的会话。更新将暂时中断它们，更新完成后会自动恢复。');
+    assert.equal(w.document.getElementById('model-gone').textContent, 'Gemini 2.5 Pro 已不再可用，运行时将改用 Gemini 3 Flash。');
+    assert.equal(w.document.getElementById('model-unavail').textContent, '不可用');
+    assert.equal(w.document.getElementById('plain-unavail').textContent, 'Unavailable');
+    assert.equal(w.document.getElementById('model-avail-1').textContent, 'Claude 3.7 Sonnet 目前已向 Pro 用户 开放。');
+    assert.equal(w.document.getElementById('model-avail-2').textContent, 'Gemini 2.5 Pro 现已向 Google AI Pro 开放。第三方模型访问权限将自 2026 年 5 月 15 日 起不再提供。');
+    assert.equal(w.document.getElementById('model-dep-only').textContent, 'Claude 3.5 Sonnet 将自 2026 年 6 月 1 日 起不再在您当前的方案中提供');
+    assert.equal(w.document.getElementById('model-dep-3p').textContent, '第三方模型访问权限将自 2026 年 7 月 15 日 起不再在您当前的方案中提供。');
     assert.equal(w.document.getElementById('w-code').textContent, 'Code');
     assert.equal(w.document.getElementById('w-eye').textContent, 'Eye');
     assert.equal(w.document.getElementById('w-hub').textContent, 'Hub');
     assert.equal(w.document.getElementById('w-shield').textContent, 'Shield');
+    assert.equal(w.document.getElementById('w-robot').textContent, 'Robot');
+    assert.equal(w.document.getElementById('w-flask').textContent, 'Flask');
+    assert.equal(w.document.getElementById('plain-radio').getAttribute('aria-label'), 'Code');
 
     const domTw = createDom(html);
     t.after(() => domTw.window.close());
     domTw.window.eval(loadRuntime({ traditional: true }));
     await settle();
     assert.equal(domTw.window.document.getElementById('browsing-title').textContent, '清除瀏覽資料？');
+    assert.equal(domTw.window.document.getElementById('browsing-history').textContent, '瀏覽記錄');
     assert.equal(domTw.window.document.getElementById('cookies-site').textContent, '依網站檢視 Cookie');
     assert.equal(domTw.window.document.getElementById('kb-scheme').textContent, '快速鍵方案');
     assert.equal(domTw.window.document.getElementById('browser-agent').textContent, '啟用瀏覽器代理');
+    assert.equal(domTw.window.document.getElementById('add-bundle').textContent, '新增套件');
+    assert.equal(domTw.window.document.getElementById('rm-bundle').textContent, '移除套件');
+    assert.equal(domTw.window.document.getElementById('sq-unarch').textContent, '請先取消封存主對話再插入');
+    assert.equal(domTw.window.document.getElementById('cookie-err').textContent, '無法刪除以下網站的 Cookie：example.com，請重試。');
+    assert.equal(domTw.window.document.getElementById('no-match-split').textContent, '沒有符合「alpha.dev」的網站。');
+    assert.equal(domTw.window.document.getElementById('no-match-full').textContent, '沒有符合「beta.dev」的網站。');
+    assert.equal(domTw.window.document.getElementById('kb-filter').textContent, '檢視即時按鍵繫結或錄製自訂組合鍵，目前篩選範圍為 antigravity. 指令。');
     assert.equal(domTw.window.document.getElementById('signin-remote').textContent, '您正在 devbox-01 上登入。登入狀態僅保留在該機器上。');
     assert.equal(domTw.window.document.getElementById('go-turn').getAttribute('aria-label'), '前往第 3 / 12 輪');
     assert.equal(domTw.window.document.getElementById('plan-steps').getAttribute('aria-label'), '計畫，已完成 2 / 5 步');
+    assert.equal(domTw.window.document.getElementById('rm-shortcut').getAttribute('aria-label'), '移除 命令選擇區 的快速鍵 Cmd+K');
+    assert.equal(domTw.window.document.getElementById('reset-cmd').getAttribute('aria-label'), '將 命令選擇區 重設為預設值');
     assert.equal(domTw.window.document.getElementById('no-bundles').textContent, '找不到符合以下條件的套件：');
+    assert.equal(domTw.window.document.getElementById('no-plugins-q').textContent, '找不到與「lint」相符的外掛程式');
+    assert.equal(domTw.window.document.getElementById('bundle-prefix').textContent, '3 個外掛程式。停用或移除此套件僅會影響由它安裝的項目。');
+    assert.equal(domTw.window.document.getElementById('comment-pg').textContent, '第 2 頁的評論');
+    assert.equal(domTw.window.document.getElementById('edit-comment').textContent, '編輯評論：fix typo');
+    assert.equal(domTw.window.document.getElementById('export-err').textContent, '匯出成品失敗');
+    assert.equal(domTw.window.document.getElementById('ico-code').getAttribute('aria-label'), '程式碼');
+    assert.equal(domTw.window.document.getElementById('col-blue').getAttribute('aria-label'), '藍色');
+    assert.equal(domTw.window.document.getElementById('perm-q1').textContent, '是否允許從此網站進行瀏覽器下載？');
+    assert.equal(domTw.window.document.getElementById('loc-btn').getAttribute('aria-label'), '代理執行位置，目前：此電腦');
+    assert.equal(domTw.window.document.getElementById('model-unavail').textContent, '無法使用');
+    assert.equal(domTw.window.document.getElementById('plain-unavail').textContent, 'Unavailable');
+    assert.equal(domTw.window.document.getElementById('model-avail-1').textContent, 'Claude 3.7 Sonnet 目前已向 Pro 使用者 開放。');
+    assert.equal(domTw.window.document.getElementById('model-avail-2').textContent, 'Gemini 2.5 Pro 現已向 Google AI Pro 開放。第三方模型存取權限將自 2026 年 5 月 15 日 起不再提供。');
+    assert.equal(domTw.window.document.getElementById('model-dep-only').textContent, 'Claude 3.5 Sonnet 將自 2026 年 6 月 1 日 起不再於您目前的方案中提供');
+    assert.equal(domTw.window.document.getElementById('model-dep-3p').textContent, '第三方模型存取權限將自 2026 年 7 月 15 日 起不再於您目前的方案中提供。');
+    assert.equal(domTw.window.document.getElementById('w-code').textContent, 'Code');
 });

@@ -4,8 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
+const childProcess = require('node:child_process');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
-const { patchPreloadJs, patchUtilsJs, patchTrayJs, patchMainProcessModule } = require('../src/main_patches');
+const { patchPreloadJs, patchUtilsJs, patchTrayJs, patchLoadingOverlayJs, patchMainProcessModule } = require('../src/main_patches');
 const { loadEngine } = require('./helpers/runtime-loader.cjs');
 
 const signature = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
@@ -352,4 +353,296 @@ test('patchTrayJs and patchUtilsJs guard missing actions and missing win variabl
         console
     });
     assert.doesNotThrow(() => hubEvents['did-frame-finish-load']({}, false, 1, 2));
+});
+
+test('ensureWritePermission returns false on EPERM/EACCES and true on writable directories without chmod', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-write-perm-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const engineDir = path.resolve(__dirname, '..');
+
+    const runProbe = (mockCode) => {
+        const script = [
+            "const fs = require('fs');",
+            "Object.defineProperty(process, 'platform', { value: 'win32' });",
+            mockCode ? `fs.writeFileSync = () => { const e = new Error('denied'); e.code = '${mockCode}'; throw e; };` : '',
+            "const { ensureWritePermission } = require('./localization_engine');",
+            `process.stdout.write(String(ensureWritePermission(${JSON.stringify(root)})));`
+        ].join('\n');
+        const res = childProcess.spawnSync(process.execPath, ['-e', script], { cwd: engineDir, encoding: 'utf8' });
+        assert.equal(res.status, 0, res.stderr);
+        return res.stdout.trim();
+    };
+
+    assert.equal(runProbe('EPERM'), 'false');
+    assert.equal(runProbe('EACCES'), 'false');
+    assert.equal(runProbe(null), 'true');
+});
+
+test('resignAppOnMac and canRestartApp skip non-bundle staging dirs while preserving rollback on real bundle failure', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-mac-bundle-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const enginePath = path.resolve(__dirname, '..', 'localization_engine.js');
+    const source = fs.readFileSync(enginePath, 'utf8').replace(/\bmain\(\);\s*$/, '');
+
+    const createMacEngine = (codesignStatus) => {
+        const spawned = [];
+        const ctx = vm.createContext({
+            __dirname: path.dirname(enginePath),
+            __filename: enginePath,
+            Buffer,
+            console: { log() {}, warn() {}, error() {} },
+            process: {
+                argv: [process.execPath, enginePath],
+                platform: 'darwin',
+                env: { ...process.env },
+                execPath: process.execPath,
+                exit() { throw new Error('unexpected exit'); },
+            },
+            require(name) {
+                if (name === 'child_process' || name === 'node:child_process') {
+                    return {
+                        spawnSync(cmd, args) {
+                            spawned.push({ cmd, args });
+                            if (cmd === 'codesign') return { status: codesignStatus, stdout: '', stderr: codesignStatus === 0 ? '' : 'codesign failed' };
+                            return { status: 0, stdout: '', stderr: '' };
+                        },
+                        execFileSync() { return ''; },
+                        execSync() { return ''; },
+                    };
+                }
+                if (name === './src/asar_patcher' || name === './src/main_patches') {
+                    return require(path.resolve(__dirname, '..', name));
+                }
+                return require(name);
+            },
+        });
+        vm.runInContext(source, ctx, { filename: enginePath });
+        return { ctx, spawned };
+    };
+
+    // 1. Fake .app directory without Contents/MacOS or Contents/Info.plist
+    const fakeBundle = path.join(root, 'staging.app');
+    const fakeResources = path.join(fakeBundle, 'Contents', 'Resources');
+    fs.mkdirSync(fakeResources, { recursive: true });
+    const sim1 = createMacEngine(1);
+    assert.equal(sim1.ctx.resignAppOnMac(fakeResources), true);
+    assert.equal(sim1.ctx.canRestartApp(fakeBundle), false);
+    assert.equal(sim1.spawned.length, 0);
+
+    // 2. Plain staging directory without .app
+    const plainStaging = path.join(root, 'plain-staging', 'resources');
+    fs.mkdirSync(plainStaging, { recursive: true });
+    const sim2 = createMacEngine(1);
+    assert.equal(sim2.ctx.resignAppOnMac(plainStaging), true);
+    assert.equal(sim2.ctx.canRestartApp(plainStaging), false);
+    assert.equal(sim2.spawned.length, 0);
+
+    // 3. Real .app bundle with Contents/MacOS: codesign failure must return false for rollback
+    const realBundle = path.join(root, 'Antigravity.app');
+    const realResources = path.join(realBundle, 'Contents', 'Resources');
+    fs.mkdirSync(path.join(realBundle, 'Contents', 'MacOS'), { recursive: true });
+    fs.mkdirSync(realResources, { recursive: true });
+    const simFail = createMacEngine(1);
+    assert.equal(simFail.ctx.resignAppOnMac(realResources), false);
+    assert.equal(simFail.ctx.canRestartApp(realBundle), true);
+    assert.ok(simFail.spawned.some(c => c.cmd === 'codesign'));
+});
+
+test('patchLoadingOverlayJs silently skips when <div class="text"> is absent and translates legacy markup', () => {
+    const warnings = [];
+    const origWarn = console.warn;
+    console.warn = (...args) => warnings.push(args.join(' '));
+    try {
+        const modernOverlay = '<body><svg class="logo"></svg></body>';
+        assert.equal(patchLoadingOverlayJs(modernOverlay, false), modernOverlay);
+        assert.equal(patchLoadingOverlayJs(modernOverlay, true), modernOverlay);
+        assert.equal(warnings.length, 0);
+
+        const legacyOverlay = '<div class="text">Loading Antigravity</div>';
+        assert.match(patchLoadingOverlayJs(legacyOverlay, false), /正在加载 Antigravity…/);
+        assert.match(patchLoadingOverlayJs(legacyOverlay, true), /正在載入 Antigravity…/);
+        assert.equal(warnings.length, 0);
+    } finally {
+        console.warn = origWarn;
+    }
+});
+
+test('main-process patches cover v2.33.0 wizardHtml, remoteManager dialogs and resilient sshPrompts buttons', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-v233-main-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const wizardSample = [
+        '<title>Welcome to Antigravity</title>',
+        '<div class="text" style="font-size: 13px;">Setting up…</div>',
+        '<h1>Welcome to the new Antigravity!</h1>',
+        "<p>Antigravity has been redesigned to put agents first with new capabilities. If you'd still like a code editor, you can download it as a separate app named <b>Antigravity IDE</b>.</p>",
+        '<span>Download the Antigravity IDE</span>',
+        '<button class="btn-primary" id="btn-skip">Explore the new Antigravity</button>'
+    ].join('\n');
+
+    const wizSc = patchMainProcessModule('dist/ideInstall/wizardHtml.js', wizardSample, false);
+    assert.match(wizSc, /欢迎使用 Antigravity/);
+    assert.match(wizSc, /正在设置…/);
+    assert.match(wizSc, /探索全新 Antigravity/);
+
+    const wizTw = patchMainProcessModule('dist/ideInstall/wizardHtml.js', wizardSample, true);
+    assert.match(wizTw, /歡迎使用 Antigravity/);
+    assert.match(wizTw, /正在設定…/);
+    assert.match(wizTw, /程式碼編輯器/);
+
+    const remoteSample = [
+        "title: 'Choose another SSH config file',",
+        "buttons: ['Choose Another File…', 'Cancel'],",
+        "title: 'Could not restart the SSH server',",
+        "message: `${entry.label} still runs Antigravity server ${running}.`,",
+        "buttons: ['Allow', \"Don't Allow\"],",
+        "title: 'Microphone access',",
+        "message: `Allow ${label} to use your microphone?`,",
+        "buttons: ['Continue', 'Cancel'],",
+        "message: `Finish this sign-in on ${entry.label}?`,",
+        "buttons: ['Take Over', 'Cancel'],",
+        "title: 'Shared home directory',",
+        "const what = terminals === 0 ? 'agent or task' : 'agent, task or terminal';",
+        "buttons: ['Restart', 'Later'],",
+        "title: 'Restart SSH server',",
+        "detail: `Any ${what} still running on it stops. The server starts again with this app's version.`,"
+    ].join('\n');
+
+    const rmSc = patchMainProcessModule('dist/remote/remoteManager.js', remoteSample, false);
+    assert.match(rmSc, /选择其他 SSH 配置文件/);
+    assert.match(rmSc, /buttons: \['允许', '不允许'\]/);
+    assert.match(rmSc, /麦克风权限/);
+    assert.match(rmSc, /要在 \$\{entry\.label\} 上完成此次登录吗/);
+    assert.match(rmSc, /共享主目录/);
+    assert.match(rmSc, /智能体或任务/);
+    assert.match(rmSc, /buttons: \['重启', '稍后'\]/);
+
+    const rmTw = patchMainProcessModule('dist/remote/remoteManager.js', remoteSample, true);
+    assert.match(rmTw, /buttons: \['允許', '不允許'\]/);
+    assert.match(rmTw, /共用家目錄/);
+    assert.match(rmTw, /代理、任務或終端機/);
+
+    const sshSample = [
+        "(who) => (isAccount(who) ? ['Password', who] : undefined),",
+        "? `${asked[0]} for ${hostPromptsMarked ? asked[1] : label}`",
+        "return `Question from ${who}`;",
+        '<button id="cancel" class="custom-sec">Cancel</button><button id="continue" class="custom-cta">Continue</button>'
+    ].join('\n');
+    const sshSc = patchMainProcessModule('dist/remote/sshPrompts.js', sshSample, false);
+    assert.match(sshSc, /\['密码', who\]/);
+    assert.match(sshSc, /来自 \$\{who\} 的询问/);
+    assert.match(sshSc, />取消<\/button><button id="continue" class="custom-cta">继续<\/button>/);
+
+    const src = path.join(root, 'app.asar');
+    const dst = path.join(root, 'app.asar.tmp');
+    writeArchive(src, {
+        'dist/preload.js': { body: '// original preload' },
+        'dist/ideInstall/wizardHtml.js': { body: wizardSample },
+    });
+    patchAsarArchive(src, dst, new Map([
+        ['dist/preload.js', orig => `${orig}\n${signature}`],
+        ['dist/ideInstall/wizardHtml.js', orig => patchMainProcessModule('dist/ideInstall/wizardHtml.js', orig, false)],
+    ]));
+    assert.doesNotThrow(() => validateAsarCandidate(src, dst, signature));
+});
+
+test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards elevated processes and aborts launch on fix failure', t => {
+    const ensure = require('../scripts/ensure_localized');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-ensure-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    // 1. Bat file must remain pure 7-bit ASCII with CRLF
+    const batPath = path.resolve(__dirname, '..', '启动Antigravity(自动检查汉化).bat');
+    const batBuf = fs.readFileSync(batPath);
+    assert.equal([...batBuf].some(b => b > 127), false, 'launcher bat must be pure 7-bit ASCII');
+    assert.equal(/(?<!\r)\n/.test(batBuf.toString('latin1')), false, 'launcher bat must use CRLF');
+
+    // 2. Argument parsing & --huifu rejection & \resources normalization
+    const fakeInstall = path.join(root, 'AG 中文版');
+    const fakeRes = path.join(fakeInstall, 'resources');
+    fs.mkdirSync(fakeRes, { recursive: true });
+    writeArchive(path.join(fakeRes, 'app.asar'), { 'dist/preload.js': { body: '// original' } });
+
+    const parsed = ensure.parseArgs([
+        '--fix',
+        '--launch',
+        `--install-dir=${fakeRes}`,
+        '--brand-title=hidden',
+        '--tw'
+    ]);
+    assert.equal(parsed.fix, true);
+    assert.equal(parsed.launch, true);
+    assert.equal(parsed.brandTitle, 'hidden');
+    assert.equal(parsed.explicitTw, true);
+    assert.equal(ensure.normalizeInstallDir(parsed.installDir), path.resolve(fakeInstall));
+    assert.throws(() => ensure.parseArgs(['--huifu']), /不支持 --huifu/);
+    assert.throws(() => ensure.parseArgs(['--install-dir=']), /不能为空/);
+    assert.throws(() => ensure.parseArgs(['--brand-title=unknown']), /未识别的 --brand-title/);
+
+    // 3. Registry UTF-16LE + negative/quoted icon index cleanup
+    const regOut = [
+        'HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ag',
+        `    DisplayIcon    REG_SZ    "${path.join(fakeInstall, 'Antigravity.exe')}",-1`
+    ].join('\r\n');
+    const detected = ensure.detectInstallDir(null, (cmd, args) => {
+        assert.equal(cmd, 'cmd');
+        assert.deepEqual(args.slice(0, 3), ['/d', '/u', '/c']);
+        return regOut;
+    });
+    assert.equal(detected, path.resolve(fakeInstall));
+
+    // 4. isRunning guards against tasklist / PowerShell failures and elevated empty ExecutablePath
+    assert.equal(ensure.isRunning(fakeInstall, () => 'INFO: No tasks are running.\r\n'), false);
+    assert.throws(() => ensure.isRunning(fakeInstall, (cmd) => {
+        if (cmd === 'tasklist') return 'Antigravity.exe               1234 Console';
+        throw new Error('WMI timeout');
+    }), /无法查询进程路径/);
+    assert.throws(() => ensure.isRunning(fakeInstall, (cmd) => {
+        if (cmd === 'tasklist') return 'Antigravity.exe               1234 Console';
+        return '__EMPTY_PATH__\r\n';
+    }), /无法读取其可执行路径/);
+    assert.equal(ensure.isRunning(fakeInstall, (cmd) => {
+        if (cmd === 'tasklist') return 'Antigravity.exe               1234 Console';
+        return path.join(root, 'OtherInstall', 'Antigravity.exe') + '\r\n';
+    }), false);
+    assert.equal(ensure.isRunning(fakeInstall, (cmd) => {
+        if (cmd === 'tasklist') return 'Antigravity.exe               1234 Console';
+        return path.join(fakeInstall, 'Antigravity.exe') + '\r\n';
+    }), true);
+
+    // 5. Non-win32 returns non-zero exit code
+    assert.equal(ensure.main(['--fix'], { platform: 'linux' }), 1);
+
+    // 6. --fix failure must abort launch and return non-zero; prefs are persisted & inherited
+    const fakeAppData = path.join(root, 'AppData');
+    const prevAppData = process.env.APPDATA;
+    const prevXdg = process.env.XDG_CONFIG_HOME;
+    process.env.APPDATA = fakeAppData;
+    process.env.XDG_CONFIG_HOME = fakeAppData;
+    t.after(() => {
+        process.env.APPDATA = prevAppData;
+        process.env.XDG_CONFIG_HOME = prevXdg;
+    });
+
+    ensure.saveLocalizationPref(fakeInstall, { useTw: true, brandTitle: 'hidden' });
+    let launchCalled = false;
+    let capturedEngineArgs = null;
+    const code = ensure.main(['--fix', '--launch', `--install-dir=${fakeInstall}`], {
+        platform: 'win32',
+        execFileSync: () => 'INFO: No tasks.\r\n',
+        spawnSync: (_exe, args) => {
+            capturedEngineArgs = args;
+            return { status: 1 };
+        },
+        spawn: () => {
+            launchCalled = true;
+            return { unref() {} };
+        }
+    });
+    assert.equal(code, 1);
+    assert.equal(launchCalled, false);
+    assert.ok(capturedEngineArgs.includes('--tw'));
+    assert.ok(capturedEngineArgs.includes('--brand-title'));
+    assert.ok(capturedEngineArgs.includes('hidden'));
+    assert.ok(capturedEngineArgs.includes('--no-kill'));
 });

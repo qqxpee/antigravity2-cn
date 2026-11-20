@@ -25,8 +25,13 @@ jobs:
           package-manager-cache: false
       - name: Install test dependencies
         run: npm ci
-      - name: Check engine syntax
-        run: node --check localization_engine.js
+      - name: Check engine and script syntax
+        shell: bash
+        run: |
+          node --check localization_engine.js
+          for f in src/*.js scripts/*.js; do
+            node --check "$f"
+          done
       - name: Check dictionaries
         run: node scripts/compare_dicts.js
       - name: Run regression tests

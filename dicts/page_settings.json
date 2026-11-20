@@ -551,6 +551,7 @@
   "An agent is using the built-in browser. Clearing its data signs the agent out of sites and may interrupt its task.": "有智能体正在使用内置浏览器。清除其数据会使智能体退出各网站登录，并可能中断当前任务。",
   "Antigravity (AGY) Style": "Antigravity (AGY) 风格",
   "Browsing Data": "浏览数据",
+  "Browsing history": "浏览历史记录",
   "Choose between non-colliding VS Code defaults or standalone Antigravity chords.": "在不冲突的 VS Code 默认快捷键与独立 Antigravity 组合键之间选择。",
   "Choose what to clear from the built-in browser. It can't be undone.": "选择要从内置浏览器中清除的数据。此操作无法撤销。",
   "Clear Browsing Data?": "清除浏览数据？",
