@@ -47,7 +47,7 @@ function getLanguageServerCandidates() {
             }
         } else {
             const psOut = child_process.execSync('ps -ww -ax -o pid=,command=', { encoding: 'utf-8', stdio: 'pipe', timeout: 5000 });
-            const lines = psOut.split(/\r?\n/).filter(l => l.includes('language_server') && l.includes('--csrf_token'));
+            const lines = psOut.split(/\r?\n/).filter(l => l.includes('language_server') && (l.includes('--csrf_token') || l.includes('--https_server_port') || l.includes('--override_ide_name antigravity')));
             for (const line of lines) {
                 const m = line.trim().match(/^(\d+)\s+(.+)$/);
                 if (!m) continue;

@@ -835,3 +835,48 @@ test('v2.33.0 browsing data, keybinding scheme, bundles, coordinator pickers, pe
     assert.equal(domTw.window.document.getElementById('model-dep-3p').textContent, '第三方模型存取權限將自 2026 年 7 月 15 日 起不再於您目前的方案中提供。');
     assert.equal(domTw.window.document.getElementById('w-code').textContent, 'Code');
 });
+
+test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates and contextual hints translate in SC and TC', async t => {
+    const html = `
+      <div>
+        <h2 id="orch-title">Orchestrator Settings</h2>
+        <span id="think-eff">Thinking effort</span>
+        <button id="cust-sb" aria-label="Customize Sidebar">Customize Sidebar</button>
+        <p id="screen-lock">Screen locked: agents can't use this Mac until you unlock it</p>
+        <div id="disc-err">Couldn't disconnect GitHub: network timeout</div>
+        <div id="load-err">Failed to load page Settings: 500</div>
+        <button id="more-opt" aria-label="More options for devbox-01">...</button>
+        <span id="new-conv">Opens the New Conversation screen for this workspace</span>
+        <p id="send-hint"><span>Messages now send immediately. Configure in</span><a href="#">Settings</a></p>
+        <p id="sys-click"><span>In System Settings, click</span><strong>Privacy</strong></p>
+        <p id="already-on"><span>Already on? Select</span><strong>Antigravity</strong></p>
+      </div>
+    `;
+
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('orch-title').textContent, '编排器设置');
+    assert.equal(w.document.getElementById('think-eff').textContent, '思考深度');
+    assert.equal(w.document.getElementById('cust-sb').getAttribute('aria-label'), '自定义侧边栏');
+    assert.equal(w.document.getElementById('screen-lock').textContent, '屏幕已锁定：在您解锁前，智能体无法使用此 Mac');
+    assert.equal(w.document.getElementById('disc-err').textContent, '无法断开 GitHub 的连接：network timeout');
+    assert.equal(w.document.getElementById('load-err').textContent, '加载页面 Settings 失败：500');
+    assert.equal(w.document.getElementById('more-opt').getAttribute('aria-label'), 'devbox-01 的更多选项');
+    assert.equal(w.document.getElementById('new-conv').textContent, '打开此 工作区 的新会话界面');
+    assert.equal(w.document.getElementById('send-hint').querySelector('span').textContent, '消息现已改为立即发送。可在 ');
+    assert.equal(w.document.getElementById('sys-click').querySelector('span').textContent, '在“系统设置”中，点击 ');
+    assert.equal(w.document.getElementById('already-on').querySelector('span').textContent, '已经开启？请选择 ');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('orch-title').textContent, '編排器設定');
+    assert.equal(domTw.window.document.getElementById('cust-sb').getAttribute('aria-label'), '自訂側邊欄');
+    assert.equal(domTw.window.document.getElementById('screen-lock').textContent, '螢幕已鎖定：在您解鎖前，代理無法使用此 Mac');
+    assert.equal(domTw.window.document.getElementById('disc-err').textContent, '無法中斷 GitHub 的連線：network timeout');
+    assert.equal(domTw.window.document.getElementById('load-err').textContent, '載入頁面 Settings 失敗：500');
+    assert.equal(domTw.window.document.getElementById('more-opt').getAttribute('aria-label'), 'devbox-01 的更多選項');
+    assert.equal(domTw.window.document.getElementById('new-conv').textContent, '開啟此 工作區 的新對話畫面');
+    assert.equal(domTw.window.document.getElementById('send-hint').querySelector('span').textContent, '訊息現已改為立即傳送。可在 ');
+    assert.equal(domTw.window.document.getElementById('sys-click').querySelector('span').textContent, '在「系統設定」中，按一下 ');
+});

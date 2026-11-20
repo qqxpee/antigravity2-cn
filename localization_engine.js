@@ -672,14 +672,17 @@ function install20(resourcesDir, noKill = false) {
         if (!(noKill && wasAppRunning)) {
             cleanElectronCache();
         }
+        if (buildDir) {
+            try { fs.rmSync(buildDir, { recursive: true, force: true }); } catch (e) {}
+            buildDir = null;
+        }
         if (!resignAppOnMac(resourcesDir)) {
             try {
-                replaceFileWithRetry(rollbackArchive, asarPath, !noKill);
+                fs.writeFileSync(asarPath, originalLive);
                 if (plistBackup && plistPath) fs.writeFileSync(plistPath, plistBackup);
                 if (refreshBackup && fs.existsSync(bakPath)) fs.unlinkSync(bakPath);
             } catch (rollbackError) {
-                retainRecoveryFiles = true;
-                throw new Error(`macOS 签名失败且回滚失败，原始文件保留于 ${rollbackArchive}: ${rollbackError.message}`);
+                throw new Error(`macOS 签名失败且回滚失败: ${rollbackError.message}`);
             }
             return false;
         }

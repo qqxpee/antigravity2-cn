@@ -1175,6 +1175,12 @@
                 : (model + ' 将自 ' + formatEnglishDate(dateStr) + ' 起不再在您当前的方案中提供')) + (dot ? '。' : '');
         }],
 
+        // v2.34.0 动态模板规则
+        [/^Couldn't disconnect (.+?): (.+)$/, (m, target, reason) => (USE_TW ? '無法中斷 ' + target + ' 的連線：' : '无法断开 ' + target + ' 的连接：') + reason],
+        [/^Failed to load page (.+?): (.+)$/, (m, page, reason) => (USE_TW ? '載入頁面 ' + page + ' 失敗：' : '加载页面 ' + page + ' 失败：') + reason],
+        [/^More options for (.+)$/, (m, target) => target + (USE_TW ? ' 的更多選項' : ' 的更多选项')],
+        [/^Opens the New Conversation screen for this (.+)$/, (m, target) => (USE_TW ? '開啟此 ' + translateNoun(target) + ' 的新對話畫面' : '打开此 ' + translateNoun(target) + ' 的新会话界面')],
+
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
             const nLow = norm(noun).toLowerCase();
@@ -1466,6 +1472,18 @@
             return valNorm === 'Initialized with'
                 ? (USE_TW ? '初始化來源' : '初始化来源')
                 : (USE_TW ? '宣告來源' : '声明来源');
+        }
+        if (valNorm === 'Messages now send immediately. Configure in') {
+            return USE_TW ? '訊息現已改為立即傳送。可在 ' : '消息现已改为立即发送。可在 ';
+        }
+        if (valNorm === 'In System Settings, click') {
+            return USE_TW ? '在「系統設定」中，按一下 ' : '在“系统设置”中，点击 ';
+        }
+        if (valNorm === 'In System Settings, turn on') {
+            return USE_TW ? '在「系統設定」中，開啟 ' : '在“系统设置”中，开启 ';
+        }
+        if (valNorm === 'Already on? Select') {
+            return USE_TW ? '已經開啟？請選取 ' : '已经开启？请选择 ';
         }
         return null;
     }
