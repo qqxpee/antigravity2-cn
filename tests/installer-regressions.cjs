@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
+const { spawnSync } = require('node:child_process');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
 const { patchPreloadJs, patchUtilsJs, patchTrayJs, patchMainProcessModule } = require('../src/main_patches');
 const { loadEngine } = require('./helpers/runtime-loader.cjs');
@@ -299,6 +300,51 @@ test('requiring localization_engine from node -e does not invoke main() or kill 
         { cwd: engineDir, encoding: 'utf8' }
     ).trim();
     assert.equal(out, 'function');
+});
+
+test('Linux tarball can be localized and restored, and refuses to patch a running copy', {
+    skip: process.platform !== 'linux',
+}, t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-linux-install-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    const installDir = path.join(root, 'Antigravity x64');
+    const resources = path.join(installDir, 'resources');
+    const asar = path.join(resources, 'app.asar');
+    const backup = asar + '.bak';
+    writeArchive(asar, {
+        'dist/preload.js': { body: '// original preload' },
+        'package.json': { body: '{"version":"2.33.0"}' },
+    });
+    const original = fs.readFileSync(asar);
+    const engine = path.resolve(__dirname, '..', 'localization_engine.js');
+    const run = (...args) => {
+        const result = spawnSync(process.execPath, [engine, ...args], { encoding: 'utf8' });
+        assert.ifError(result.error);
+        return result;
+    };
+
+    const installed = run('--install-dir', installDir);
+    assert.equal(installed.status, 0, installed.stderr);
+    assert.deepEqual(fs.readFileSync(backup), original);
+    validateAsarCandidate(backup, asar, signature);
+    const localized = fs.readFileSync(asar);
+
+    // The test process itself stands in for the running executable.
+    const executable = path.join(installDir, 'antigravity');
+    fs.symlinkSync(process.execPath, executable);
+    for (const args of [[], ['--huifu']]) {
+        const blocked = run('--install-dir', asar, ...args);
+        assert.equal(blocked.status, 1);
+        assert.match(blocked.stderr, /完全退出/);
+    }
+    assert.deepEqual(fs.readFileSync(asar), localized);
+    assert.deepEqual(fs.readFileSync(backup), original);
+    fs.unlinkSync(executable);
+
+    const restored = run('--install-dir', asar, '--huifu');
+    assert.equal(restored.status, 0, restored.stderr);
+    assert.deepEqual(fs.readFileSync(asar), original);
 });
 
 test('readAsarLayout rejects invalid headerSize2 framing and compareDicts rejects non-object JSON', t => {

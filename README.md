@@ -2,7 +2,7 @@
 
 👉 **[繁體中文版說明文件 (Traditional Chinese README)](README_TW.md)**
 
-> **支持系统**：Windows & macOS (均已内置一键脚本)  
+> **支持系统**：Windows、macOS（一键脚本）和 Ubuntu（官方 tar.gz，命令行）<br>
 > **匹配版本**：Antigravity v2.32.2+  
 
 > **核心引擎**：Node.js (无需安装 Python，零依赖，极速极稳)  
@@ -93,6 +93,20 @@ node localization_engine.js --brand-title translated
    - **Windows**：双击运行 **`双击卸载还原官方英文.bat`**。
    - **macOS**：双击运行 **`双击卸载还原官方英文.command`**。
 3. 运行完成后，软件将自动清除所有汉化注入，无痕恢复至官方原版英文状态。
+
+### 4. Ubuntu 官方 tar.gz 版
+
+已在 Ubuntu 22.04 x86_64 的 Antigravity 2.33.0 上验证安装和还原。使用当前用户解压的客户端，目录中应有 `antigravity` 和 `resources/app.asar`。安装 [Node.js LTS](https://nodejs.org/) 后，完全退出客户端，在本仓库目录运行：
+
+~~~bash
+# 将路径替换成实际解压目录
+node localization_engine.js --install-dir "$HOME/.local/opt/Antigravity-x64"
+
+# 恢复原版（也请先完全退出客户端）
+node localization_engine.js --install-dir "$HOME/.local/opt/Antigravity-x64" --huifu
+~~~
+
+安装会在 `resources` 目录保存原版 `app.asar.bak`。需要繁体中文时，在安装命令末尾加上 `--tw`。客户端更新覆盖汉化后，退出客户端并重新运行安装命令。
 
 ---
 

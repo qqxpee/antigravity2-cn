@@ -261,6 +261,23 @@ function checkIfAppIsRunning() {
     return false;
 }
 
+function isLinuxAppRunning(resourcesDir) {
+    const executable = path.join(resourcesDir, '..', 'antigravity');
+    if (!fs.existsSync(executable)) return false;
+
+    const resolved = fs.realpathSync(executable);
+    return fs.readdirSync('/proc').some(pid => {
+        if (!/^\d+$/.test(pid)) return false;
+        try {
+            const runningExecutable = fs.readlinkSync(path.join('/proc', pid, 'exe'));
+            return runningExecutable === resolved || runningExecutable === resolved + ' (deleted)';
+        } catch {
+            // The process may have exited, or it may belong to another user.
+            return false;
+        }
+    });
+}
+
 function sleepSync(ms) {
     try {
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -395,6 +412,9 @@ function spawnCommandSync(cmd, args) {
 }
 
 function cleanElectronCache() {
+    // Unpacked Linux copies can share the same profile. Leave its caches alone.
+    if (process.platform === 'linux') return;
+
     let baseAppSupportDir = "";
     if (process.platform === 'darwin') {
         let userHome = os.homedir();
@@ -851,15 +871,7 @@ function main() {
     // 1. 探测路径
     const installDir = detectInstallationDir(manualDir);
 
-    // 2. 检测客户端是否正在运行，并根据参数决定是否关闭以解除文件锁定
-    wasAppRunning = checkIfAppIsRunning();
-    if (noKill) {
-        console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
-    } else if (wasAppRunning) {
-        closeAntigravityProcesses();
-    }
-
-    // 3. 找到 resources 资源目录
+    // 2. 找到 resources 资源目录
     let resourcesDir = "";
     if (fs.existsSync(path.join(installDir, "resources"))) {
         resourcesDir = path.join(installDir, "resources");
@@ -883,6 +895,21 @@ function main() {
     if (!ensureWritePermission(resourcesDir)) {
         console.error("[错误] 当前用户对目标目录缺少写入权限，请使用管理员权限运行脚本。");
         process.exit(1);
+    }
+
+    // 3. 检测客户端是否正在运行
+    if (process.platform === 'linux') {
+        if (isLinuxAppRunning(resourcesDir)) {
+            console.error("[错误] 请完全退出此安装目录中的 Antigravity 后再继续。");
+            process.exit(1);
+        }
+    } else {
+        wasAppRunning = checkIfAppIsRunning();
+        if (noKill) {
+            console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
+        } else if (wasAppRunning) {
+            closeAntigravityProcesses();
+        }
     }
 
     // 4. 执行安装或卸载恢复
