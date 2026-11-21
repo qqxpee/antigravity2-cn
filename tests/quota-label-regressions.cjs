@@ -64,3 +64,18 @@ test('late model menu roles and labels correct an already cached New translation
     assert.equal(doc.querySelector('#badge').textContent, '新');
     assert.equal(doc.querySelector('#command').textContent, '新建');
 });
+
+test('combined limit and reset duration labels translate in SC and TC', async t => {
+    const html = '<span id="weekly">Weekly limit, resets in 5d 22h</span><span id="daily">Daily limit, resets in 3h 15m</span><span id="short">5h limit, resets in &lt;1m</span><span id="days">7d limit</span>';
+    const docSc = await render(t, html);
+    assert.equal(docSc.querySelector('#weekly').textContent, '每周限额，5 天 22 小时 后重置');
+    assert.equal(docSc.querySelector('#daily').textContent, '每日限额，3 小时 15 分钟 后重置');
+    assert.equal(docSc.querySelector('#short').textContent, '5 小时限额，<1 分钟 后重置');
+    assert.equal(docSc.querySelector('#days').textContent, '7 天限额');
+
+    const docTw = await render(t, html, { traditional: true });
+    assert.equal(docTw.querySelector('#weekly').textContent, '每週上限，5 天 22 小時 後重設');
+    assert.equal(docTw.querySelector('#daily').textContent, '每日上限，3 小時 15 分鐘 後重設');
+    assert.equal(docTw.querySelector('#short').textContent, '5 小時上限，<1 分鐘 後重設');
+    assert.equal(docTw.querySelector('#days').textContent, '7 天上限');
+});
