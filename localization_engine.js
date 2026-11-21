@@ -91,7 +91,7 @@ function getOptionValue(name, defaultValue) {
 }
 
 const rawBrandTitle = String(getOptionValue('--brand-title', 'english')).toLowerCase();
-const BRAND_TITLE_MODE = BRAND_TITLE_ALIASES[rawBrandTitle] || 'english';
+let BRAND_TITLE_MODE = BRAND_TITLE_ALIASES[rawBrandTitle] || 'english';
 if (!BRAND_TITLE_ALIASES[rawBrandTitle]) {
     console.warn(`[警告] 未识别的 --brand-title 参数 "${rawBrandTitle}"，已回退为 english。`);
 }
@@ -164,7 +164,12 @@ if (USE_TW) {
         "[警告] 未能在 tray.js 中命中任何任务栏注入点。": "[警告] 未能在 tray.js 中命中任何系統匣注入點。",
         "[警告] 未能在 loadingOverlay.js 中找到加载页文本插入点。": "[警告] 未能在 loadingOverlay.js 中找到載入頁文字插入點。",
         "[警告] 未能在 updater.js 中找到更新弹窗插入点。": "[警告] 未能在 updater.js 中找到更新彈出視窗插入點。",
-        "[错误] 当前用户对目标目录缺少写入权限，请使用管理员权限运行脚本。": "[錯誤] 目前使用者對目標目錄缺少寫入權限，請使用管理員權限執行指令碼。"
+        "[错误] 当前用户对目标目录缺少写入权限，请使用管理员权限运行脚本。": "[錯誤] 目前使用者對目標目錄缺少寫入權限，請使用管理員權限執行指令碼。",
+        "[1/2] 正在注入汉化...": "[1/2] 正在注入繁體中文化...",
+        "[2/2] 注入完成！": "[2/2] 注入完成！",
+        "提示：汉化已成功安装。": "提示：繁體中文漢化已成功套用。",
+        "窗口将在 5 秒后自动关闭...": "視窗將在 5 秒後自動關閉...",
+        "[×] 注入失败，请检查上方错误信息。": "[×] 注入失敗，請檢查上方錯誤訊息。"
     };
     const translateMsg = (args) => {
         return args.map(arg => {
@@ -855,21 +860,79 @@ function canRestartApp(installDir) {
     return false;
 }
 
+function resolveBrandTitleChoice(choice) {
+    const trimmed = String(choice || '').trim();
+    if (trimmed === '2') return 'hidden';
+    if (trimmed === '3') return 'translated';
+    return 'english';
+}
+
+function promptBrandTitleMode(useTw = USE_TW, { input = process.stdin, output = process.stdout, log = console.log } = {}) {
+    const promptLines = useTw
+        ? [
+            '',
+            '請選擇左上角品牌顯示方式：',
+            '[1] 保持英文 Antigravity（推薦）',
+            '[2] 隱藏品牌名稱',
+            '[3] 顯示繁體中文品牌名稱（反重力）'
+        ]
+        : [
+            '',
+            '请选择左上角品牌显示方式：',
+            '[1] 保持英文 Antigravity（推荐）',
+            '[2] 隐藏品牌名',
+            '[3] 汉化为品牌名（反重力）'
+        ];
+    const questionText = useTw
+        ? '請輸入選項 [1/2/3]（直接按 Enter 預設為 1）：'
+        : '请选择 [1/2/3] (直接按 Enter 默认为 1): ';
+
+    for (const line of promptLines) {
+        log(line);
+    }
+
+    return new Promise((resolve) => {
+        const readline = require('readline');
+        const rl = readline.createInterface({ input, output });
+        let settled = false;
+        let aborted = false;
+        const finish = (answer) => {
+            if (settled) return;
+            settled = true;
+            rl.close();
+            resolve(resolveBrandTitleChoice(answer));
+        };
+        rl.on('SIGINT', () => {
+            aborted = true;
+            settled = true;
+            rl.close();
+            process.exit(130);
+        });
+        rl.on('close', () => {
+            if (!aborted) finish('1');
+        });
+        rl.question(questionText, finish);
+    });
+}
+
 // ==========================================
 // 入口
 // ==========================================
-function main() {
+async function main() {
     if (typeof require === 'function' && typeof module !== 'undefined' && require.main !== module) {
         return;
     }
     let huifu = false;
     let manualDir = "";
     let noKill = false;
+    let interactive = false;
 
     const args = process.argv.slice(2);
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--huifu') {
             huifu = true;
+        } else if (args[i] === '--interactive') {
+            interactive = true;
         } else if (args[i] === '--install-dir') {
             if (i + 1 >= args.length || !args[i + 1] || args[i + 1].startsWith('--')) {
                 console.error('[错误] --install-dir 缺少有效的路径参数！');
@@ -897,6 +960,14 @@ function main() {
                 process.exit(1);
             }
         }
+    }
+
+    const hasExplicitBrandTitle = args.some(a => a === '--brand-title' || a.startsWith('--brand-title='));
+    if (interactive && !huifu && !hasExplicitBrandTitle) {
+        BRAND_TITLE_MODE = await promptBrandTitleMode(USE_TW);
+    }
+    if (interactive && !huifu) {
+        console.log('\n[1/2] 正在注入汉化...');
     }
 
     // 1. 探测路径
@@ -983,7 +1054,13 @@ function main() {
     }
 
     if (!success) {
+        if (interactive && !huifu) {
+            console.log('\n[×] 注入失败，请检查上方错误信息。');
+        }
         process.exit(1);
+    }
+    if (interactive && !huifu) {
+        console.log('\n[2/2] 注入完成！\n\n提示：汉化已成功安装。\n\n窗口将在 5 秒后自动关闭...');
     }
 }
 
@@ -994,7 +1071,9 @@ if (typeof module !== 'undefined' && module.exports) {
         resignAppOnMac,
         resolveMacAppBundle,
         isValidMacAppBundle,
-        canRestartApp
+        canRestartApp,
+        resolveBrandTitleChoice,
+        promptBrandTitleMode
     };
 }
 

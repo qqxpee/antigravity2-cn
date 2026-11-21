@@ -646,3 +646,97 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
     assert.ok(capturedEngineArgs.includes('hidden'));
     assert.ok(capturedEngineArgs.includes('--no-kill'));
 });
+
+test('Windows batch launchers use pure 7-bit ASCII with CRLF and no chcp to stay immune to CP936/CP950/CP65001 mojibake', () => {
+    const repoRoot = path.resolve(__dirname, '..');
+    const batFiles = [
+        '双击安装中文汉化.bat',
+        '双击安装繁体中文.bat',
+        '双击卸载还原官方英文.bat',
+        '启动Antigravity(自动检查汉化).bat'
+    ];
+    for (const file of batFiles) {
+        const buf = fs.readFileSync(path.join(repoRoot, file));
+        for (let i = 0; i < buf.length; i++) {
+            assert.ok(buf[i] <= 0x7f, `${file} contains non-ASCII byte 0x${buf[i].toString(16)} at offset ${i}`);
+            if (buf[i] === 0x0a) {
+                assert.equal(buf[i - 1], 0x0d, `${file} contains bare LF without CR at offset ${i}`);
+            }
+        }
+        const text = buf.toString('ascii');
+        assert.equal(/\bchcp\b/i.test(text), false, `${file} must not call chcp`);
+    }
+});
+
+test('interactive brand prompt resolves choices in SC/TC and skips prompting when --brand-title is explicit', async t => {
+    const repoRoot = path.resolve(__dirname, '..');
+    const { PassThrough } = require('stream');
+    const engine = require(path.join(repoRoot, 'localization_engine.js'));
+    assert.equal(engine.resolveBrandTitleChoice('1'), 'english');
+    assert.equal(engine.resolveBrandTitleChoice('2'), 'hidden');
+    assert.equal(engine.resolveBrandTitleChoice('3'), 'translated');
+    assert.equal(engine.resolveBrandTitleChoice(''), 'english');
+
+    const logsSc = [];
+    const inSc = new PassThrough();
+    const outSc = new PassThrough();
+    const pSc = engine.promptBrandTitleMode(false, {
+        input: inSc,
+        output: outSc,
+        log: (line) => logsSc.push(line)
+    });
+    inSc.end('2\n');
+    assert.equal(await pSc, 'hidden');
+    assert.ok(logsSc.some(l => l.includes('请选择左上角品牌显示方式')));
+
+    const logsTw = [];
+    const inTw = new PassThrough();
+    const outTw = new PassThrough();
+    const pTw = engine.promptBrandTitleMode(true, {
+        input: inTw,
+        output: outTw,
+        log: (line) => logsTw.push(line)
+    });
+    inTw.end();
+    assert.equal(await pTw, 'english');
+    assert.ok(logsTw.some(l => l.includes('請選擇左上角品牌顯示方式')));
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag-interactive-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const fakeInstall = path.join(root, 'Antigravity');
+    const fakeRes = path.join(fakeInstall, 'resources');
+    fs.mkdirSync(fakeRes, { recursive: true });
+    writeArchive(path.join(fakeRes, 'app.asar'), { 'dist/preload.js': { body: '// original' } });
+
+    const fakeAppData = path.join(root, 'AppData');
+    const resInteractive = childProcess.spawnSync(
+        process.execPath,
+        [path.join(repoRoot, 'localization_engine.js'), '--interactive', `--install-dir=${fakeInstall}`, '--no-kill'],
+        {
+            cwd: repoRoot,
+            input: '2\n',
+            encoding: 'utf8',
+            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData }
+        }
+    );
+    assert.equal(resInteractive.status, 0, resInteractive.stderr || resInteractive.stdout);
+    assert.ok(resInteractive.stdout.includes('请选择左上角品牌显示方式'));
+    assert.ok(resInteractive.stdout.includes('注入完成！'));
+    const prefPath = path.join(fakeAppData, 'Antigravity', 'localization-prefs.json');
+    const installKey = path.resolve(fakeInstall).toLowerCase();
+    assert.equal(JSON.parse(fs.readFileSync(prefPath, 'utf8'))[installKey].brandTitle, 'hidden');
+
+    const resExplicit = childProcess.spawnSync(
+        process.execPath,
+        [path.join(repoRoot, 'localization_engine.js'), '--interactive', '--brand-title=translated', `--install-dir=${fakeInstall}`, '--no-kill'],
+        {
+            cwd: repoRoot,
+            input: '',
+            encoding: 'utf8',
+            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData }
+        }
+    );
+    assert.equal(resExplicit.status, 0, resExplicit.stderr || resExplicit.stdout);
+    assert.equal(resExplicit.stdout.includes('请选择左上角品牌显示方式'), false);
+    assert.equal(JSON.parse(fs.readFileSync(prefPath, 'utf8'))[installKey].brandTitle, 'translated');
+});
