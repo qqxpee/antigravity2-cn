@@ -112,3 +112,93 @@ test('server-returned RPC quota and model tooltip strings translate in SC and TC
     assert.equal(docTw.querySelector('#hit-5h-credits').textContent, '您已達到 5 小時限制，將於 36 分鐘重設。若您使用受支援的付費方案，可在此期間使用 AI 點數。');
     assert.equal(docTw.querySelector('#used-5h').textContent, '4 小時 54 分鐘後更新');
 });
+
+test('v2.34.0 Swarm Hive map, GIF export, and live timer/subagent counters translate in SC and TC', async t => {
+    const html = `
+        <div id="swarm-title">Untitled swarm</div>
+        <button id="tab-hive">Hive</button>
+        <div class="o2 hv">
+            <div class="hv-bar">
+                <div class="hv-sum"><span><b>12</b> threads</span><span class="busy"><i></i>3 working</span><span class="warn"><i></i>1 waiting</span><span class="bad"><i></i>2 stuck</span><span class="ok"><i></i>4 done</span></div>
+                <div class="btn-group hv-zoom" aria-label="Zoom">
+                    <button id="z-out" title="Zoom out" aria-label="Zoom out"></button>
+                    <button id="z-in" title="Zoom in" aria-label="Zoom in"></button>
+                    <button id="z-fit" title="Fit the whole swarm" aria-label="Fit the whole swarm"></button>
+                </div>
+            </div>
+            <svg class="hv-svg" aria-label="Where each worker is, by thread"></svg>
+            <div class="hv-bees">
+                <button id="bee-work" class="hv-bee working" title="@worker-1 · Codebase Researcher · Working for @coordinator" aria-label="@worker-1 · Codebase Researcher · Working for @coordinator"><span class="hv-nm" id="nm-work">worker-1</span></button>
+                <button id="bee-wait" class="hv-bee wait" title="@worker-2 · Waiting on @coordinator"><span class="hv-nm" id="nm-wait">design</span></button>
+            </div>
+            <div class="hv-key" aria-hidden="true">
+                <span id="k-done"><i></i>Tasks done</span>
+                <span id="k-sent"><i></i>Message just sent</span>
+                <span id="k-waiton"><i></i>Waiting on</span>
+                <span id="k-work"><i></i>Working</span>
+                <span id="k-wait"><i></i>Waiting</span>
+                <span id="k-ok"><i></i>Done</span>
+            </div>
+            <section class="hv-card">
+                <span id="card-prog">3 of 5 done</span>
+                <span id="card-bees">2 bees</span>
+                <button id="row-open" title="Open @worker-1">x</button>
+                <p id="card-empty">No one is on this thread yet.</p>
+            </section>
+            <span id="stall">Swarm stalled — no agents working</span>
+            <span id="coord-ask">The coordinator asked. Answer it in its chat.</span>
+            <span id="live-tip" title="Latest action: Reading config">x</span>
+            <span id="exp-btn">Export GIF</span>
+            <span id="exp-pct">Exporting 42%</span>
+            <span id="exp-done">Exported swarm-graph.gif (12 frames · 1.2 MB)</span>
+            <span id="exp-save">Right-click image to save, or open in a new tab.</span>
+        </div>
+        <span id="timers">Waiting for 2 timers</span>
+        <span id="timer1">Waiting for timer</span>
+        <span id="subrun">3 subagents/tasks running</span>
+        <span id="subblk">1 subagent blocked</span>
+    `;
+
+    const docSc = await render(t, html);
+    assert.equal(docSc.getElementById('tab-hive').textContent, '蜂巢');
+    assert.equal(docSc.querySelector('.hv-zoom').getAttribute('aria-label'), '缩放');
+    assert.equal(docSc.getElementById('z-out').getAttribute('title'), '缩小');
+    assert.equal(docSc.getElementById('z-in').getAttribute('title'), '放大');
+    assert.equal(docSc.getElementById('z-fit').getAttribute('title'), '缩放至完整蜂群');
+    assert.equal(docSc.querySelector('.hv-svg').getAttribute('aria-label'), '各成员所在的工作线分布');
+    assert.equal(docSc.querySelector('.hv-sum').textContent, '12 条工作线3 个工作中1 个等待中2 项卡住4 个已完成');
+    assert.equal(docSc.getElementById('k-done').textContent, '任务已完成');
+    assert.equal(docSc.getElementById('k-sent').textContent, '刚发送消息');
+    assert.equal(docSc.getElementById('k-waiton').textContent, '等待中');
+    assert.equal(docSc.getElementById('k-work').textContent, '工作中');
+    assert.equal(docSc.getElementById('k-wait').textContent, '等待中');
+    assert.equal(docSc.getElementById('k-ok').textContent, '已完成');
+    assert.equal(docSc.getElementById('bee-work').getAttribute('title'), '@worker-1 · Codebase Researcher · 正在为 @coordinator 工作');
+    assert.equal(docSc.getElementById('bee-wait').getAttribute('title'), '@worker-2 · 正在等待 @coordinator');
+    assert.equal(docSc.getElementById('nm-work').textContent, 'worker-1');
+    assert.equal(docSc.getElementById('nm-wait').textContent, 'design');
+    assert.equal(docSc.getElementById('card-prog').textContent, '已完成 3 / 5 项');
+    assert.equal(docSc.getElementById('card-bees').textContent, '2 位成员');
+    assert.equal(docSc.getElementById('row-open').getAttribute('title'), '打开 @worker-1');
+    assert.equal(docSc.getElementById('card-empty').textContent, '此工作线目前暂无成员。');
+    assert.equal(docSc.getElementById('stall').textContent, '蜂群已停滞 — 当前没有成员工作中');
+    assert.equal(docSc.getElementById('coord-ask').textContent, '协调器发起询问，请在协调器对话中回复。');
+    assert.equal(docSc.getElementById('live-tip').getAttribute('title'), '最新动作：Reading config');
+    assert.equal(docSc.getElementById('exp-btn').textContent, '导出 GIF');
+    assert.equal(docSc.getElementById('exp-pct').textContent, '正在导出 42%');
+    assert.equal(docSc.getElementById('exp-done').textContent, '已导出 swarm-graph.gif（12 帧 · 1.2 MB）');
+    assert.equal(docSc.getElementById('exp-save').textContent, '右键点击图片即可保存，或在新标签页中打开。');
+    assert.equal(docSc.getElementById('timers').textContent, '正在等待 2 个计时器');
+    assert.equal(docSc.getElementById('timer1').textContent, '正在等待计时器');
+    assert.equal(docSc.getElementById('subrun').textContent, '3 个子智能体/任务运行中');
+    assert.equal(docSc.getElementById('subblk').textContent, '1 个子智能体受阻');
+
+    const docTw = await render(t, html, { traditional: true });
+    assert.equal(docTw.getElementById('tab-hive').textContent, '蜂巢');
+    assert.equal(docTw.querySelector('.hv-sum').textContent, '12 個討論串3 個工作中1 個等待中2 項受阻4 個已完成');
+    assert.equal(docTw.getElementById('k-done').textContent, '任務已完成');
+    assert.equal(docTw.getElementById('k-sent').textContent, '剛傳送訊息');
+    assert.equal(docTw.getElementById('k-waiton').textContent, '正在等待');
+    assert.equal(docTw.getElementById('bee-work').getAttribute('title'), '@worker-1 · Codebase Researcher · 為 @coordinator 執行中');
+    assert.equal(docTw.getElementById('exp-done').textContent, '已匯出 swarm-graph.gif（12 格 · 1.2 MB）');
+});

@@ -30,7 +30,7 @@
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
+    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .hv-nm, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
 
     function isCodeOrEditor(node, forAttribute) {
         try {
@@ -345,10 +345,18 @@
         'blocked': ['受阻', '受阻'],
         'done': ['已完成', '已完成'],
         'active': ['活跃', '執行中'],
-        'paused': ['已暂停', '已暫停']
+        'paused': ['已暂停', '已暫停'],
+        'Hive': ['蜂巢', '蜂巢'],
+        'Tasks done': ['任务已完成', '任務已完成'],
+        'Message just sent': ['刚发送消息', '剛傳送訊息'],
+        'Waiting on': ['等待中', '正在等待'],
+        'Stuck': ['已卡住', '受阻'],
+        'Resting': ['休息中', '休息中'],
+        'Latest action': ['最新动作', '最新動作'],
+        'Zoom': ['缩放', '縮放']
     };
 
-    const SWARM_UI_SELECTOR = '[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar, #tab-overview, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label';
+    const SWARM_UI_SELECTOR = '[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar, #tab-overview, #tab-hive, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label';
 
     function isSwarmUiContext(el) {
         try {
@@ -391,9 +399,94 @@
         if (errMatch) {
             return (USE_TW ? '錯誤：' : '错误：') + errMatch[1];
         }
-        const openMemberMatch = trimmed.match(/^Open\s+([a-z0-9][a-z0-9._-]*)$/);
+        const openMemberMatch = trimmed.match(/^Open\s+(@?[a-z0-9][a-z0-9._-]*)$/);
         if (openMemberMatch) {
             return (USE_TW ? '開啟 ' : '打开 ') + openMemberMatch[1];
+        }
+        const workingForMatch = trimmed.match(/^Working for\s+(@\S+)$/i);
+        if (workingForMatch) {
+            return USE_TW ? ('為 ' + workingForMatch[1] + ' 執行中') : ('正在为 ' + workingForMatch[1] + ' 工作');
+        }
+        const waitingOnMemberMatch = trimmed.match(/^Waiting on\s+(@\S+)$/i);
+        if (waitingOnMemberMatch) {
+            return '正在等待 ' + waitingOnMemberMatch[1];
+        }
+        const waitingOnCountMatch = trimmed.match(/^Waiting on\s+(\d+)$/i);
+        if (waitingOnCountMatch) {
+            return USE_TW ? ('正在等待 ' + waitingOnCountMatch[1] + ' 位成員') : ('正在等待 ' + waitingOnCountMatch[1] + ' 位成员');
+        }
+        const waitersChipMatch = trimmed.match(/^(\d+)\s+waiting on\s+(@\S+)$/i);
+        if (waitersChipMatch) {
+            return waitersChipMatch[1] + ' 位正在等待 ' + waitersChipMatch[2];
+        }
+        const ofDoneMatch = trimmed.match(/^(\d+)\s+of\s+(\d+)\s+(?:tasks\s+)?done$/i);
+        if (ofDoneMatch) {
+            return '已完成 ' + ofDoneMatch[1] + ' / ' + ofDoneMatch[2] + (USE_TW ? ' 項' : ' 项');
+        }
+        const beeCountMatch = trimmed.match(/^(\d+)\s+bees?$/i);
+        if (beeCountMatch) {
+            return beeCountMatch[1] + (USE_TW ? ' 位成員' : ' 位成员');
+        }
+        const chipSummaryMatch = trimmed.match(/^(\d+)\s+(stuck|needs?\s+you|in\s+review|active|working|waiting|done|threads?\s+open)$/i);
+        if (chipSummaryMatch) {
+            const cnt = chipSummaryMatch[1];
+            const k = chipSummaryMatch[2].toLowerCase().replace(/\s+/g, ' ');
+            if (k === 'stuck') return cnt + (USE_TW ? ' 項受阻' : ' 项卡住');
+            if (k === 'needs you' || k === 'need you') return cnt + (USE_TW ? ' 項待您處理' : ' 项待您处理');
+            if (k === 'in review') return cnt + (USE_TW ? ' 項審查中' : ' 项审查中');
+            if (k === 'active') return cnt + (USE_TW ? ' 項執行中' : ' 项活跃');
+            if (k === 'working') return cnt + (USE_TW ? ' 個工作中' : ' 个工作中');
+            if (k === 'waiting') return cnt + (USE_TW ? ' 個等待中' : ' 个等待中');
+            if (k === 'done') return cnt + (USE_TW ? ' 個已完成' : ' 个已完成');
+            return cnt + (USE_TW ? ' 個討論串進行中' : ' 条工作线进行中');
+        }
+        const liveTipMatch = trimmed.match(/^(Thinking|Latest action):\s*(.+)$/s);
+        if (liveTipMatch) {
+            const lbl = liveTipMatch[1] === 'Thinking'
+                ? '思考中：'
+                : (USE_TW ? '最新動作：' : '最新动作：');
+            return lbl + liveTipMatch[2];
+        }
+        const lastSeenMatch = trimmed.match(/^last seen\s+(.+)\s+ago$/i);
+        if (lastSeenMatch) {
+            const dur = formatCompactDuration(lastSeenMatch[1]);
+            return (USE_TW ? '最近活躍於 ' : '最近活跃于 ') + dur + ' 前';
+        }
+        const sysAlertMatch = trimmed.match(/^@(\S+)\s+(ran out of quota|looks stuck|hit an error)$/i);
+        if (sysAlertMatch) {
+            const k = sysAlertMatch[2].toLowerCase();
+            const msg = k === 'ran out of quota'
+                ? (USE_TW ? ' 配額已耗盡' : ' 配额已耗尽')
+                : k === 'looks stuck' ? ' 似乎卡住了' : (USE_TW ? ' 發生錯誤' : ' 发生错误');
+            return '@' + sysAlertMatch[1] + msg;
+        }
+        const exportPctMatch = trimmed.match(/^Exporting\s+(\d+%)$/i);
+        if (exportPctMatch) {
+            return (USE_TW ? '正在匯出 ' : '正在导出 ') + exportPctMatch[1];
+        }
+        const exportFileMatch = trimmed.match(/^(Exporting|Rendering)\s+(.+?)(?:\.\.\.|…)$/i);
+        if (exportFileMatch) {
+            const verb = exportFileMatch[1].toLowerCase() === 'exporting'
+                ? (USE_TW ? '正在匯出 ' : '正在导出 ')
+                : (USE_TW ? '正在算圖 ' : '正在渲染 ');
+            return verb + exportFileMatch[2] + '…';
+        }
+        const exportedMatch = trimmed.match(/^Exported\s+(.+?)\s+\((.+)\)$/i);
+        if (exportedMatch) {
+            const meta = translateSwarmComposite(exportedMatch[2]) || exportedMatch[2];
+            return (USE_TW ? '已匯出 ' : '已导出 ') + exportedMatch[1] + '（' + meta + '）';
+        }
+        const downloadMatch = trimmed.match(/^Download\s+(.+)$/i);
+        if (downloadMatch) {
+            return (USE_TW ? '下載 ' : '下载 ') + downloadMatch[1];
+        }
+        const replayTitleMatch = trimmed.match(/^(.+?)\s+graph replay$/i);
+        if (replayTitleMatch) {
+            return replayTitleMatch[1] + (USE_TW ? ' 關係圖重播' : ' 关系图回放');
+        }
+        const narratorFailMatch = trimmed.match(/^The narrator's last step failed:\s*(.+)$/i);
+        if (narratorFailMatch) {
+            return (USE_TW ? '解說員最後一步失敗：' : '解说员最后一步失败：') + narratorFailMatch[1];
         }
         const noPostsTipMatch = trimmed.match(/^([^:]+):\s*No posts yet$/i);
         if (noPostsTipMatch) {
@@ -415,11 +508,19 @@
                 if (s === 'Active') { changed = true; return USE_TW ? '執行中' : '活跃'; }
                 if (s === 'Waiting') { changed = true; return '等待中'; }
                 if (s === 'Killed') { changed = true; return USE_TW ? '已終止' : '已终止'; }
+                if (s === 'Swarm start') { changed = true; return USE_TW ? '蜂群啟動' : '蜂群启动'; }
                 if (/^\d+\s+posts?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+posts?$/i, (_, n) => n + (USE_TW ? ' 則訊息' : ' 条消息')); }
+                if (/^\d+\s+members?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+members?$/i, (_, n) => n + (USE_TW ? ' 位成員' : ' 位成员')); }
+                if (/^\d+\s+frames?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+frames?$/i, (_, n) => n + (USE_TW ? ' 格' : ' 帧')); }
                 if (/^\d+\s+steps?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+steps?$/i, '$1 步'); }
                 if (/^\d+\s+unaddressed$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+unaddressed$/i, (_, n) => n + (USE_TW ? ' 則未指定對象' : ' 条未指定对象')); }
                 if (/^\d+\s+unread$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+unread$/i, (_, n) => n + (USE_TW ? ' 則未讀' : ' 条未读')); }
                 if (/^runs on\s+(.+)$/i.test(s)) { changed = true; return s.replace(/^runs on\s+(.+)$/i, (_, h) => (USE_TW ? '執行於 ' : '运行于 ') + h); }
+                if (Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, s)) { changed = true; return SCOPED_SWARM_MAP[s][USE_TW ? 1 : 0]; }
+                if (!s.includes('·') && !s.includes('\n')) {
+                    const sub = translateSwarmComposite(s);
+                    if (sub !== null) { changed = true; return sub; }
+                }
                 return seg;
             });
             return segs.join(' · ');
@@ -782,6 +883,15 @@
         [/^For paid Pro plans,\s*(.+?)\s+quota is separate\.\s*Higher\s+\1\s+quota\s*\(included as part of the larger\s+(.+?)\s+quota bucket\)\s*is available on Ultra plans\.?$/i, (m, model, bucket) => USE_TW ? ("在 Pro 付費方案中，" + model + " 配額會獨立計算。Ultra 方案則提供更高的 " + model + " 配額（納入較大的 " + bucket + " 配額池中）。") : ("在 Pro 付费方案中，" + model + " 配额独立计算。Ultra 方案提供更高的 " + model + " 配额（包含在更大的 " + bucket + " 配额池中）。")],
         [/^You can upgrade to a\s+(.+?)\s+plan to receive higher rate limits\.?$/i, (m, plan) => USE_TW ? ("您可以升級至 " + plan + " 方案以獲得更高的速率限制。") : ("您可以升级到 " + plan + " 计划以获得更高的速率限制。")],
         [/^The original\s+(.+?)\s+model for advanced workflows\.?$/i, (m, model) => USE_TW ? ("適合進階工作流程的初代 " + model + " 模型") : ("适用于高级工作流的初代 " + model + " 模型")],
+        [/^Waiting for (\d+) timers$/i, (m, n) => USE_TW ? ("正在等待 " + n + " 個計時器") : ("正在等待 " + n + " 个计时器")],
+        [/^Waiting for timer$/i, () => USE_TW ? "正在等待計時器" : "正在等待计时器"],
+        [/^(\d+) (subagents\/tasks|subagents?|tasks?) running$/i, (m, n, kind) => {
+            const k = kind.toLowerCase();
+            const lTw = k === 'subagents/tasks' ? ' 個子代理／任務' : k.startsWith('subagent') ? ' 個子代理' : ' 個任務';
+            const lSc = k === 'subagents/tasks' ? ' 个子智能体/任务' : k.startsWith('subagent') ? ' 个子智能体' : ' 个任务';
+            return USE_TW ? (n + lTw + "執行中") : (n + lSc + "运行中");
+        }],
+        [/^(\d+) subagents? blocked$/i, (m, n) => USE_TW ? (n + " 個子代理受阻") : (n + " 个子智能体受阻")],
 
         // 预设、权限与工具 Token 预算
         [/^Learn more about (.+)$/i, (m, p) => {
@@ -1565,6 +1675,9 @@
             if (valNorm === 'Stage') return '舞台';
             if (valNorm === 'Desktop') return '桌面';
             if (valNorm === 'Grid') return USE_TW ? '網格' : '网格';
+        }
+        if ((valNorm === 'thread' || valNorm === 'threads') && typeof p.closest === 'function' && p.closest('.hv-sum')) {
+            return USE_TW ? ' 個討論串' : ' 条工作线';
         }
         if (valNorm === "Couldn't delete cookies for" && (pText.includes('cookies') || pText.includes('Cookie'))) {
             return USE_TW ? '無法刪除以下網站的 Cookie：' : '无法删除以下网站的 Cookie：';
