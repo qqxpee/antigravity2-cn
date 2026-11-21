@@ -3733,5 +3733,7 @@
   "Predict the functional impact of a genomic variant": "预测基因组变异对功能的影响",
   "Query research databases for recent papers on a topic": "查询研究数据库以查找某主题的最新论文",
   "Malformed Worker RPC batch entry: id must be a finite number": "Worker RPC 批处理项格式错误：id 必须为有限数字",
-  "Malformed Worker RPC call: method must be a non-empty string": "Worker RPC 调用格式错误：method 必须为非空字符串"
+  "Malformed Worker RPC call: method must be a non-empty string": "Worker RPC 调用格式错误：method 必须为非空字符串",
+  "For paid Pro plans, Argon quota is separate. Higher Argon quota (included as part of the larger Gemini quota bucket) is available on Ultra plans.": "在 Pro 付费方案中，Argon 配额独立计算。Ultra 方案提供更高的 Argon 配额（包含在更大的 Gemini 配额池中）。",
+  "The original Gemini 4 model for advanced workflows": "适用于高级工作流的初代 Gemini 4 模型"
 }
