@@ -603,9 +603,39 @@ async function cmdScanUi(args = []) {
             console.warn(`[!] 拉取 Mendel 实验配置失败: ${e.message}`);
         }
 
-        // 同步通过 GetSlashCommands RPC 提取内置 `/` 斜杠命令与内置技能描述（位于 language_server 二进制内）
+        // 同步通过 GetUserStatus / RetrieveUserQuotaSummary / GetSlashCommands RPC 提取后端下发动态词条与内置 `/` 斜杠命令描述
+        let us = null;
+        const recordRpcString = (rawText, source) => {
+            const s = normalizeUiText(rawText || '');
+            if (isNaturalUiString(s)) {
+                if (!extracted.has(s)) extracted.set(s, new Set());
+                extracted.get(s).add(source);
+            }
+        };
         try {
-            const us = await postJsonRpc(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetUserStatus`, info.csrfToken, {});
+            us = await postJsonRpc(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetUserStatus`, info.csrfToken, {});
+            for (const cfg of (us?.userStatus?.cascadeModelConfigData?.clientModelConfigs || [])) {
+                recordRpcString(cfg?.tagDescription, 'rpc:userStatus');
+            }
+            recordRpcString(us?.userStatus?.userTier?.upgradeSubscriptionText, 'rpc:userStatus');
+        } catch (e) {
+            console.warn(`[!] 拉取用户状态动态词条失败: ${e.message}`);
+        }
+
+        try {
+            const quota = await postJsonRpc(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary`, info.csrfToken, {});
+            for (const grp of (quota?.response?.groups || quota?.groups || [])) {
+                recordRpcString(grp?.description, 'rpc:quotaSummary');
+                for (const bkt of (grp?.buckets || [])) {
+                    recordRpcString(bkt?.displayName, 'rpc:quotaSummary');
+                    recordRpcString(bkt?.description, 'rpc:quotaSummary');
+                }
+            }
+        } catch (e) {
+            console.warn(`[!] 拉取配额摘要动态词条失败: ${e.message}`);
+        }
+
+        try {
             const defaultModel = us?.userStatus?.cascadeModelConfigData?.defaultOverrideModelConfig?.modelOrAlias;
             const scData = await postJsonRpc(`https://127.0.0.1:${httpsPort}/exa.language_server_pb.LanguageServerService/GetSlashCommands`, info.csrfToken, {
                 cascadeConfig: {
@@ -618,11 +648,7 @@ async function cmdScanUi(args = []) {
             for (const cmd of (scData?.commands || [])) {
                 const defPath = cmd.info?.definitionPath || '';
                 if (defPath && !/[\\/]\.gemini[\\/]antigravity[\\/]builtin[\\/]/i.test(defPath)) continue;
-                const s = normalizeUiText(cmd.description || '');
-                if (isNaturalUiString(s)) {
-                    if (!extracted.has(s)) extracted.set(s, new Set());
-                    extracted.get(s).add('rpc:slashCommand');
-                }
+                recordRpcString(cmd.description, 'rpc:slashCommand');
             }
         } catch (e) {
             console.warn(`[!] 拉取内置斜杠命令描述失败: ${e.message}`);

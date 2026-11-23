@@ -7,7 +7,7 @@
     const USE_TW = __USE_TW_PLACEHOLDER__;
     const map = new Map(Object.entries(DICT_PLACEHOLDER));
     const lowerMap = new Map();
-    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator']);
+    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator', 'verify']);
     for (const [k, v] of map.entries()) {
         const lowerK = k.toLowerCase();
         if (LOWER_WORDS_EXCLUDE.has(lowerK) && k !== lowerK) {
@@ -30,7 +30,7 @@
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
+    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .hv-nm, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
 
     function isCodeOrEditor(node, forAttribute) {
         try {
@@ -218,16 +218,43 @@
         return parts.length && !text.slice(end).trim() ? parts.join(' ') : null;
     }
 
+    function translateLimitLabel(raw) {
+        const s = raw.trim();
+        if (/^daily\s+limit$/i.test(s)) return USE_TW ? '每日上限' : '每日限额';
+        if (/^weekly\s+limit$/i.test(s)) return USE_TW ? '每週上限' : '每周限额';
+        if (/^monthly\s+limit$/i.test(s)) return USE_TW ? '每月上限' : '每月限额';
+        const m = s.match(/^([0-9]+)(?:[- ]*(s|sec|seconds?|m|min|minutes?|h|hr|hours?|d|days?|w|wk|weeks?))\s+limit$/i);
+        if (m) {
+            const unit = m[2].toLowerCase();
+            const unitName = /^(?:w|wk|weeks?)$/.test(unit) ? (USE_TW ? '週' : '周')
+                : /^(?:d|days?)$/.test(unit) ? '天'
+                : /^(?:h|hr|hours?)$/.test(unit) ? (USE_TW ? '小時' : '小时')
+                : /^(?:m|min|minutes?)$/.test(unit) ? (USE_TW ? '分鐘' : '分钟') : '秒';
+            return m[1] + ' ' + unitName + (USE_TW ? '上限' : '限额');
+        }
+        return null;
+    }
+
+    function translateResetPart(raw) {
+        const reset = raw.trim().match(/^(?:Resets|Refreshes)\s+in\s+(.+)$/i);
+        if (!reset) return null;
+        const duration = formatUsageDuration(reset[1]);
+        return duration ? (duration + (USE_TW ? ' 後重設' : ' 后重置')) : null;
+    }
+
     function translateUsageText(value) {
-        const limit = value.match(/^([0-9]+)(?:h|[- ]hours?)\s+limit$/i);
-        if (limit) return limit[1] + (USE_TW ? ' 小時上限' : ' 小时限额');
+        const combo = value.match(/^(.+?),\s*((?:resets|refreshes)\s+in\s+.+)$/i);
+        if (combo) {
+            const limitPart = translateLimitLabel(combo[1]) || map.get(combo[1].trim()) || lowerMap.get(combo[1].trim().toLowerCase());
+            const resetPart = translateResetPart(combo[2]);
+            if (limitPart && resetPart) return limitPart + '，' + resetPart;
+        }
+        const limitLabel = translateLimitLabel(value);
+        if (limitLabel) return limitLabel;
         const remaining = value.match(/^([0-9]+(?:\.[0-9]+)?\s*%|%)\s+left$/i);
         if (remaining) return remaining[1] + (USE_TW ? ' 剩餘' : ' 剩余');
-        const reset = value.match(/^(?:Resets|Refreshes)\s+in\s+(.+)$/i);
-        if (reset) {
-            const duration = formatUsageDuration(reset[1]);
-            if (duration) return duration + (USE_TW ? ' 後重設' : ' 后重置');
-        }
+        const reset = translateResetPart(value);
+        if (reset) return reset;
         return null;
     }
 
@@ -318,10 +345,18 @@
         'blocked': ['受阻', '受阻'],
         'done': ['已完成', '已完成'],
         'active': ['活跃', '執行中'],
-        'paused': ['已暂停', '已暫停']
+        'paused': ['已暂停', '已暫停'],
+        'Hive': ['蜂巢', '蜂巢'],
+        'Tasks done': ['任务已完成', '任務已完成'],
+        'Message just sent': ['刚发送消息', '剛傳送訊息'],
+        'Waiting on': ['等待中', '正在等待'],
+        'Stuck': ['已卡住', '受阻'],
+        'Resting': ['休息中', '休息中'],
+        'Latest action': ['最新动作', '最新動作'],
+        'Zoom': ['缩放', '縮放']
     };
 
-    const SWARM_UI_SELECTOR = '[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar, #tab-overview, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label';
+    const SWARM_UI_SELECTOR = '[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar, #tab-overview, #tab-hive, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label';
 
     function isSwarmUiContext(el) {
         try {
@@ -364,9 +399,94 @@
         if (errMatch) {
             return (USE_TW ? '錯誤：' : '错误：') + errMatch[1];
         }
-        const openMemberMatch = trimmed.match(/^Open\s+([a-z0-9][a-z0-9._-]*)$/);
+        const openMemberMatch = trimmed.match(/^Open\s+(@?[a-z0-9][a-z0-9._-]*)$/);
         if (openMemberMatch) {
             return (USE_TW ? '開啟 ' : '打开 ') + openMemberMatch[1];
+        }
+        const workingForMatch = trimmed.match(/^Working for\s+(@\S+)$/i);
+        if (workingForMatch) {
+            return USE_TW ? ('為 ' + workingForMatch[1] + ' 執行中') : ('正在为 ' + workingForMatch[1] + ' 工作');
+        }
+        const waitingOnMemberMatch = trimmed.match(/^Waiting on\s+(@\S+)$/i);
+        if (waitingOnMemberMatch) {
+            return '正在等待 ' + waitingOnMemberMatch[1];
+        }
+        const waitingOnCountMatch = trimmed.match(/^Waiting on\s+(\d+)$/i);
+        if (waitingOnCountMatch) {
+            return USE_TW ? ('正在等待 ' + waitingOnCountMatch[1] + ' 位成員') : ('正在等待 ' + waitingOnCountMatch[1] + ' 位成员');
+        }
+        const waitersChipMatch = trimmed.match(/^(\d+)\s+waiting on\s+(@\S+)$/i);
+        if (waitersChipMatch) {
+            return waitersChipMatch[1] + ' 位正在等待 ' + waitersChipMatch[2];
+        }
+        const ofDoneMatch = trimmed.match(/^(\d+)\s+of\s+(\d+)\s+(?:tasks\s+)?done$/i);
+        if (ofDoneMatch) {
+            return '已完成 ' + ofDoneMatch[1] + ' / ' + ofDoneMatch[2] + (USE_TW ? ' 項' : ' 项');
+        }
+        const beeCountMatch = trimmed.match(/^(\d+)\s+bees?$/i);
+        if (beeCountMatch) {
+            return beeCountMatch[1] + (USE_TW ? ' 位成員' : ' 位成员');
+        }
+        const chipSummaryMatch = trimmed.match(/^(\d+)\s+(stuck|needs?\s+you|in\s+review|active|working|waiting|done|threads?\s+open)$/i);
+        if (chipSummaryMatch) {
+            const cnt = chipSummaryMatch[1];
+            const k = chipSummaryMatch[2].toLowerCase().replace(/\s+/g, ' ');
+            if (k === 'stuck') return cnt + (USE_TW ? ' 項受阻' : ' 项卡住');
+            if (k === 'needs you' || k === 'need you') return cnt + (USE_TW ? ' 項待您處理' : ' 项待您处理');
+            if (k === 'in review') return cnt + (USE_TW ? ' 項審查中' : ' 项审查中');
+            if (k === 'active') return cnt + (USE_TW ? ' 項執行中' : ' 项活跃');
+            if (k === 'working') return cnt + (USE_TW ? ' 個工作中' : ' 个工作中');
+            if (k === 'waiting') return cnt + (USE_TW ? ' 個等待中' : ' 个等待中');
+            if (k === 'done') return cnt + (USE_TW ? ' 個已完成' : ' 个已完成');
+            return cnt + (USE_TW ? ' 個討論串進行中' : ' 条工作线进行中');
+        }
+        const liveTipMatch = trimmed.match(/^(Thinking|Latest action):\s*(.+)$/s);
+        if (liveTipMatch) {
+            const lbl = liveTipMatch[1] === 'Thinking'
+                ? '思考中：'
+                : (USE_TW ? '最新動作：' : '最新动作：');
+            return lbl + liveTipMatch[2];
+        }
+        const lastSeenMatch = trimmed.match(/^last seen\s+(.+)\s+ago$/i);
+        if (lastSeenMatch) {
+            const dur = formatCompactDuration(lastSeenMatch[1]);
+            return (USE_TW ? '最近活躍於 ' : '最近活跃于 ') + dur + ' 前';
+        }
+        const sysAlertMatch = trimmed.match(/^@(\S+)\s+(ran out of quota|looks stuck|hit an error)$/i);
+        if (sysAlertMatch) {
+            const k = sysAlertMatch[2].toLowerCase();
+            const msg = k === 'ran out of quota'
+                ? (USE_TW ? ' 配額已耗盡' : ' 配额已耗尽')
+                : k === 'looks stuck' ? ' 似乎卡住了' : (USE_TW ? ' 發生錯誤' : ' 发生错误');
+            return '@' + sysAlertMatch[1] + msg;
+        }
+        const exportPctMatch = trimmed.match(/^Exporting\s+(\d+%)$/i);
+        if (exportPctMatch) {
+            return (USE_TW ? '正在匯出 ' : '正在导出 ') + exportPctMatch[1];
+        }
+        const exportFileMatch = trimmed.match(/^(Exporting|Rendering)\s+(.+?)(?:\.\.\.|…)$/i);
+        if (exportFileMatch) {
+            const verb = exportFileMatch[1].toLowerCase() === 'exporting'
+                ? (USE_TW ? '正在匯出 ' : '正在导出 ')
+                : (USE_TW ? '正在算圖 ' : '正在渲染 ');
+            return verb + exportFileMatch[2] + '…';
+        }
+        const exportedMatch = trimmed.match(/^Exported\s+(.+?)\s+\((.+)\)$/i);
+        if (exportedMatch) {
+            const meta = translateSwarmComposite(exportedMatch[2]) || exportedMatch[2];
+            return (USE_TW ? '已匯出 ' : '已导出 ') + exportedMatch[1] + '（' + meta + '）';
+        }
+        const downloadMatch = trimmed.match(/^Download\s+(.+)$/i);
+        if (downloadMatch) {
+            return (USE_TW ? '下載 ' : '下载 ') + downloadMatch[1];
+        }
+        const replayTitleMatch = trimmed.match(/^(.+?)\s+graph replay$/i);
+        if (replayTitleMatch) {
+            return replayTitleMatch[1] + (USE_TW ? ' 關係圖重播' : ' 关系图回放');
+        }
+        const narratorFailMatch = trimmed.match(/^The narrator's last step failed:\s*(.+)$/i);
+        if (narratorFailMatch) {
+            return (USE_TW ? '解說員最後一步失敗：' : '解说员最后一步失败：') + narratorFailMatch[1];
         }
         const noPostsTipMatch = trimmed.match(/^([^:]+):\s*No posts yet$/i);
         if (noPostsTipMatch) {
@@ -388,11 +508,19 @@
                 if (s === 'Active') { changed = true; return USE_TW ? '執行中' : '活跃'; }
                 if (s === 'Waiting') { changed = true; return '等待中'; }
                 if (s === 'Killed') { changed = true; return USE_TW ? '已終止' : '已终止'; }
+                if (s === 'Swarm start') { changed = true; return USE_TW ? '蜂群啟動' : '蜂群启动'; }
                 if (/^\d+\s+posts?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+posts?$/i, (_, n) => n + (USE_TW ? ' 則訊息' : ' 条消息')); }
+                if (/^\d+\s+members?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+members?$/i, (_, n) => n + (USE_TW ? ' 位成員' : ' 位成员')); }
+                if (/^\d+\s+frames?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+frames?$/i, (_, n) => n + (USE_TW ? ' 格' : ' 帧')); }
                 if (/^\d+\s+steps?$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+steps?$/i, '$1 步'); }
                 if (/^\d+\s+unaddressed$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+unaddressed$/i, (_, n) => n + (USE_TW ? ' 則未指定對象' : ' 条未指定对象')); }
                 if (/^\d+\s+unread$/i.test(s)) { changed = true; return s.replace(/^(\d+)\s+unread$/i, (_, n) => n + (USE_TW ? ' 則未讀' : ' 条未读')); }
                 if (/^runs on\s+(.+)$/i.test(s)) { changed = true; return s.replace(/^runs on\s+(.+)$/i, (_, h) => (USE_TW ? '執行於 ' : '运行于 ') + h); }
+                if (Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, s)) { changed = true; return SCOPED_SWARM_MAP[s][USE_TW ? 1 : 0]; }
+                if (!s.includes('·') && !s.includes('\n')) {
+                    const sub = translateSwarmComposite(s);
+                    if (sub !== null) { changed = true; return sub; }
+                }
                 return seg;
             });
             return segs.join(' · ');
@@ -709,8 +837,61 @@
         [/^(?:Refreshes|You have (?:used (?:some|all) of|reached) your (?:weekly|5-hour) limit, it will fully refresh) in a few seconds\.?$/i, () => USE_TW ? "幾秒後更新" : "几秒后刷新"],
         [/^Available AI Credits: (\d+)$/i, (m, num) => USE_TW ? ("可用 AI 點數: " + num) : ("可用 AI 额度: " + num)],
         [/^Your plan's baseline quota will refresh on (.+?)\.?\s*To continue using this model now, enable AI Credit overages\.?$/i, (m, when) => USE_TW ? ("您方案的基準配額將於 " + when + " 重新整理。如需立即繼續使用此模型，請啟用 AI 點數超額使用。") : ("您方案的基础配额将于 " + when + " 刷新。如需立即继续使用此模型，请启用 AI 额度超量使用。")],
-        [/^You have hit your weekly limit, it refreshes in (.+?)\. If on a supported paid plan, you can use AI credits in the interim or upgrade to a higher tier\.$/i, (m, when) => USE_TW ? ("您已達到每週額度限制，將於 " + when + " 重新整理。若您使用受支援的付費方案，可在此期間使用 AI 點數，或升級至更高層級。") : ("您已达到每周额度限制，将于 " + when + " 刷新。若您使用受支持的付费计划，可在此期间使用 AI 额度，或升级至更高层级。")],
-        [/^You have hit your weekly limit, the (\d+)-hour limit does not currently apply\. Your weekly limit will fully refresh in (.+?)\.$/i, (m, h, when) => USE_TW ? ("您已達到每週額度限制，" + h + " 小時限制目前不適用。您的每週額度限制將於 " + when + " 完全更新。") : ("您已达到每周额度限制，" + h + " 小时限制目前不适用。您的每周额度限制将于 " + when + " 完全刷新。")],
+        [/^You have hit your (weekly|daily|monthly|\d+-hour) limit,\s*it (?:will refresh|refreshes) in (.+?)\.\s*If on a supported paid plan, you can use AI credits in the interim(?:\s*(or upgrade to a higher tier))?\.?$/i, (m, unit, when, upgrade) => {
+            const u = unit.toLowerCase();
+            const uTw = u === 'weekly' ? '每週額度' : u === 'daily' ? '每日額度' : u === 'monthly' ? '每月額度' : (' ' + u.replace(/-hour$/i, '') + ' 小時');
+            const uSc = u === 'weekly' ? '每周额度' : u === 'daily' ? '每日额度' : u === 'monthly' ? '每月额度' : (' ' + u.replace(/-hour$/i, '') + ' 小时');
+            const dur = formatUsageDuration(when) || when;
+            const upTw = upgrade ? '，或升級至更高層級' : '';
+            const upSc = upgrade ? '，或升级至更高层级' : '';
+            return USE_TW
+                ? ("您已達到" + uTw + "限制，將於 " + dur + "重設。若您使用受支援的付費方案，可在此期間使用 AI 點數" + upTw + "。")
+                : ("您已达到" + uSc + "限制，将于 " + dur + "刷新。若您使用受支持的付费计划，可在此期间使用 AI 额度" + upSc + "。");
+        }],
+        [/^You have hit your (weekly|daily|monthly|\d+-hour) limit,\s*(?:so\s+)?the (weekly|daily|monthly|\d+-hour) limit does not currently apply\.\s*Your (?:weekly|daily|monthly|\d+-hour) limit will (?:(fully)\s+)?refresh in (.+?)\.?$/i, (m, hit, other, fully, when) => {
+            const label = (w, tw) => {
+                const l = w.toLowerCase();
+                if (l === 'weekly') return tw ? '每週額度' : '每周额度';
+                if (l === 'daily') return tw ? '每日額度' : '每日额度';
+                if (l === 'monthly') return tw ? '每月額度' : '每月额度';
+                const h = l.replace(/-hour$/i, '');
+                return tw ? (' ' + h + ' 小時') : (' ' + h + ' 小时');
+            };
+            const hitTw = label(hit, true), otherTw = label(other, true).trimStart();
+            const hitSc = label(hit, false), otherSc = label(other, false).trimStart();
+            const dur = formatUsageDuration(when) || when;
+            return USE_TW
+                ? ("您已達到" + hitTw + "限制，" + otherTw + "限制目前不適用。您的" + hitTw + "限制將於 " + dur + (fully ? "完全重設" : "重設") + "。")
+                : ("您已达到" + hitSc + "限制，" + otherSc + "限制目前不适用。您的" + hitSc + "限制将于 " + dur + (fully ? "完全刷新" : "刷新") + "。");
+        }],
+        [/^You have used some of your (weekly|daily|monthly|\d+-hour) limit,\s*it will (?:(fully)\s+)?refresh in (.+?)\.?$/i, (m, unit, fully, when) => {
+            const l = unit.toLowerCase();
+            const uTw = l === 'weekly' ? '每週額度' : l === 'daily' ? '每日額度' : l === 'monthly' ? '每月額度' : (' ' + l.replace(/-hour$/i, '') + ' 小時');
+            const uSc = l === 'weekly' ? '每周额度' : l === 'daily' ? '每日额度' : l === 'monthly' ? '每月额度' : (' ' + l.replace(/-hour$/i, '') + ' 小时');
+            const dur = /^less than a minute$/i.test(when.trim()) ? (USE_TW ? '不到 1 分鐘' : '不到 1 分钟') : (formatUsageDuration(when) || when);
+            return USE_TW
+                ? ("您已使用部分" + uTw + "限制，將於 " + dur + (fully ? "完全重設" : "重設") + "。")
+                : ("您已使用部分" + uSc + "限制，将于 " + dur + (fully ? "完全刷新" : "刷新") + "。");
+        }],
+        [/^Models within this group:\s*(.+)$/i, (m, models) => USE_TW ? ("此群組包含的模型：" + models) : ("此分组包含的模型：" + models)],
+        [/^(.+?)\s+(Weekly|Daily|Monthly|Five[- ]Hour|5[- ]Hour)\s+Limit$/i, (m, prefix, unit) => {
+            const u = unit.toLowerCase();
+            const uTw = u === 'weekly' ? '每週上限' : u === 'daily' ? '每日上限' : u === 'monthly' ? '每月上限' : '5 小時上限';
+            const uSc = u === 'weekly' ? '每周限额' : u === 'daily' ? '每日限额' : u === 'monthly' ? '每月限额' : '5 小时限额';
+            return USE_TW ? (prefix + " " + uTw) : (prefix + " " + uSc);
+        }],
+        [/^For paid Pro plans,\s*(.+?)\s+quota is separate\.\s*Higher\s+\1\s+quota\s*\(included as part of the larger\s+(.+?)\s+quota bucket\)\s*is available on Ultra plans\.?$/i, (m, model, bucket) => USE_TW ? ("在 Pro 付費方案中，" + model + " 配額會獨立計算。Ultra 方案則提供更高的 " + model + " 配額（納入較大的 " + bucket + " 配額池中）。") : ("在 Pro 付费方案中，" + model + " 配额独立计算。Ultra 方案提供更高的 " + model + " 配额（包含在更大的 " + bucket + " 配额池中）。")],
+        [/^You can upgrade to a\s+(.+?)\s+plan to receive higher rate limits\.?$/i, (m, plan) => USE_TW ? ("您可以升級至 " + plan + " 方案以獲得更高的速率限制。") : ("您可以升级到 " + plan + " 计划以获得更高的速率限制。")],
+        [/^The original\s+(.+?)\s+model for advanced workflows\.?$/i, (m, model) => USE_TW ? ("適合進階工作流程的初代 " + model + " 模型") : ("适用于高级工作流的初代 " + model + " 模型")],
+        [/^Waiting for (\d+) timers$/i, (m, n) => USE_TW ? ("正在等待 " + n + " 個計時器") : ("正在等待 " + n + " 个计时器")],
+        [/^Waiting for timer$/i, () => USE_TW ? "正在等待計時器" : "正在等待计时器"],
+        [/^(\d+) (subagents\/tasks|subagents?|tasks?) running$/i, (m, n, kind) => {
+            const k = kind.toLowerCase();
+            const lTw = k === 'subagents/tasks' ? ' 個子代理／任務' : k.startsWith('subagent') ? ' 個子代理' : ' 個任務';
+            const lSc = k === 'subagents/tasks' ? ' 个子智能体/任务' : k.startsWith('subagent') ? ' 个子智能体' : ' 个任务';
+            return USE_TW ? (n + lTw + "執行中") : (n + lSc + "运行中");
+        }],
+        [/^(\d+) subagents? blocked$/i, (m, n) => USE_TW ? (n + " 個子代理受阻") : (n + " 个子智能体受阻")],
 
         // 预设、权限与工具 Token 预算
         [/^Learn more about (.+)$/i, (m, p) => {
@@ -1181,6 +1362,57 @@
         [/^More options for (.+)$/, (m, target) => target + (USE_TW ? ' 的更多選項' : ' 的更多选项')],
         [/^Opens the New Conversation screen for this (.+)$/, (m, target) => (USE_TW ? '開啟此 ' + translateNoun(target) + ' 的新對話畫面' : '打开此 ' + translateNoun(target) + ' 的新会话界面')],
 
+        // 账号资格、地区不支持与 v2.33/v2.34 补充模板
+        [/^Your current account is not eligible for\s+(.+?),\s*because it is not currently available in your\s+(?:location|region|country|area)\.?$/i, (m, app) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW
+                ? `您目前的帳戶不符合使用 ${app.trim()} 的資格，因為您所在的地區目前不支援此服務${period}`
+                : `您当前的账户无权使用 ${app.trim()}，因为您所在的地区目前暂不支持此服务${period}`;
+        }],
+        [/^(?:Your current|This)\s+account is not eligible (?:for|to use)\s+(.+?)\.?$/i, (m, app) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW
+                ? `目前帳戶不符合使用 ${app.trim()} 的資格${period}`
+                : `当前账户无权使用 ${app.trim()}${period}`;
+        }],
+        [/^Sorry,\s*this account is ineligible to use\s+(.+?)\.?$/i, (m, app) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW
+                ? `抱歉，目前帳戶無權使用 ${app.trim()}${period}`
+                : `抱歉，当前账户无权使用 ${app.trim()}${period}`;
+        }],
+        [/^Further action is required to use\s+(.+?)\.?$/i, (m, app) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW
+                ? `需要採取進一步行動才能使用 ${app.trim()}${period}`
+                : `需要采取进一步操作才能使用 ${app.trim()}${period}`;
+        }],
+        [/^(?:This service|The service|Antigravity|Jetski)\s+is not (?:currently\s+)?available in your\s+(?:location|region|country|area)\.?$/i, (m) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW ? `您所在的地區目前不支援此服務${period}` : `您所在的地区目前暂不支持此服务${period}`;
+        }],
+        [/^Your (?:current\s+)?(?:location|region|country|area) is not supported\.?$/i, (m) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW ? `目前不支援您所在的地區${period}` : `当前不支持您所在的地区${period}`;
+        }],
+        [/^(.+?)\s+is not (?:currently\s+)?available in your\s+(?:location|region|country|area)\.?$/i, (m, target) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW ? `您所在的地區目前不支援 ${target.trim()}${period}` : `您所在的地区目前暂不支持 ${target.trim()}${period}`;
+        }],
+        [/^You['’]re signing in on\s+(.+?)\.\s*Your sign-in stays on that machine\.?$/i, (m, host) => {
+            const period = /\.$/.test(m.trim()) ? '。' : '';
+            return USE_TW
+                ? `您正在 ${host.trim()} 上登入。您的登入狀態會保留在該電腦上${period}`
+                : `您正在 ${host.trim()} 上登录。您的登录状态将保留在该设备上${period}`;
+        }],
+        [/^Turn\s+(\d+)\s+of\s+(\d+)$/i, (m, c, tot) => USE_TW ? ('第 ' + c + ' 輪（共 ' + tot + ' 輪）') : ('第 ' + c + ' 轮（共 ' + tot + ' 轮）')],
+        [/^Go to turn\s+(\d+)\s+of\s+(\d+)$/i, (m, c, tot) => USE_TW ? ('前往第 ' + c + ' / ' + tot + ' 輪') : ('跳至第 ' + c + ' / ' + tot + ' 轮')],
+        [/^Recording shortcut for\s+(.+?)\.\s*Press keys to bind,\s*Enter to save,\s*Escape to cancel\.?$/i, (m, cmd) => USE_TW ? ('正在錄製「' + cmd + '」的快速鍵。按下按鍵以綁定，按 Enter 儲存，按 Escape 取消。') : ('正在录制“' + cmd + '”的快捷键。按下按键以绑定，按 Enter 保存，按 Escape 取消。')],
+        [/^Low contrast ratio\s*\((.+?):1\)\.\s*Text may be hard to read\.?$/i, (m, r) => USE_TW ? ('對比度過低（' + r + ':1），文字可能難以閱讀。') : ('对比度过低（' + r + ':1），文字可能难以阅读。')],
+        [/^(?:Auth|Authorization) code for\s+(.+)$/i, (m, app) => app + (USE_TW ? ' 的授權碼' : ' 的授权码')],
+        [/^Failed to save project Google3 configuration:\s*(.+)$/i, (m, err) => (USE_TW ? '儲存專案 Google3 設定失敗：' : '保存项目 Google3 配置失败：') + err],
+        [/^Failed to save project:\s*(.+)$/i, (m, err) => (USE_TW ? '儲存專案失敗：' : '保存项目失败：') + err],
+
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
             const nLow = norm(noun).toLowerCase();
@@ -1444,6 +1676,9 @@
             if (valNorm === 'Desktop') return '桌面';
             if (valNorm === 'Grid') return USE_TW ? '網格' : '网格';
         }
+        if ((valNorm === 'thread' || valNorm === 'threads') && typeof p.closest === 'function' && p.closest('.hv-sum')) {
+            return USE_TW ? ' 個討論串' : ' 条工作线';
+        }
         if (valNorm === "Couldn't delete cookies for" && (pText.includes('cookies') || pText.includes('Cookie'))) {
             return USE_TW ? '無法刪除以下網站的 Cookie：' : '无法删除以下网站的 Cookie：';
         }
@@ -1484,6 +1719,14 @@
         }
         if (valNorm === 'Already on? Select') {
             return USE_TW ? '已經開啟？請選取 ' : '已经开启？请选择 ';
+        }
+        if (valNorm === 'FAQ' && p.tagName === 'A' && p.parentElement && (dfsParentTexts.get(p.parentElement) || originalParentTexts.get(p.parentElement) || p.parentElement.textContent || '').match(/visiting our|造訪我們的|访问我们的|了解更多请访问|請造訪/)) {
+            return USE_TW ? '常見問題' : '常见问题';
+        }
+        if ((valNorm === 'In this case,' || valNorm === 'chunks were collapsed into one. Chunks included in this read:') && pText.includes('chunks were collapsed into one')) {
+            return valNorm === 'In this case,'
+                ? (USE_TW ? '在此情況下，已將 ' : '在此情况下，已将 ')
+                : (USE_TW ? ' 個區塊合併為單一區塊。此次讀取包含的區塊：' : ' 个区块合并为单个区块。此次读取包含的区块：');
         }
         return null;
     }
@@ -1677,6 +1920,21 @@
                         const suffixNode = document.createTextNode(' 搞定一切');
                         translatedValues.set(suffixNode, suffixNode.nodeValue);
                         node.appendChild(suffixNode);
+                    }
+                }
+
+                // 處理 "Available for <projectId> project" 拆分文本節點
+                if (/^Available for\s+.+?\s+project$/i.test(elText)) {
+                    const textChildren = Array.from(node.childNodes).filter(c => c.nodeType === Node.TEXT_NODE);
+                    for (const tc of textChildren) {
+                        const n = norm(tc.nodeValue);
+                        if (n === 'Available for') {
+                            tc.nodeValue = USE_TW ? '適用於 ' : '适用于 ';
+                            translatedValues.set(tc, tc.nodeValue);
+                        } else if (n === 'project') {
+                            tc.nodeValue = USE_TW ? ' 專案' : ' 项目';
+                            translatedValues.set(tc, tc.nodeValue);
+                        }
                     }
                 }
 

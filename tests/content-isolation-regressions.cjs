@@ -880,3 +880,42 @@ test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates an
     assert.equal(domTw.window.document.getElementById('send-hint').querySelector('span').textContent, '訊息現已改為立即傳送。可在 ');
     assert.equal(domTw.window.document.getElementById('sys-click').querySelector('span').textContent, '在「系統設定」中，按一下 ');
 });
+
+test('region eligibility errors, login FAQ link, Available for project, and step counters translate in SC and TC', async t => {
+    const html = `
+      <div>
+        <p id="loc-err">Your current account is not eligible for Antigravity, because it is not currently available in your location.</p>
+        <p id="not-elig">This account is not eligible for Antigravity.</p>
+        <p id="reg-unsup">Your current region is not supported.</p>
+        <p id="faq-wrap">Please verify your account, then sign in again to continue. Learn more by visiting our <a id="faq-link" href="#">FAQ</a>.</p>
+        <span id="verify-btn">Verify</span>
+        <span id="lower-verify">verify</span>
+        <span id="avail-proj">Available for my-gcp-proj project</span>
+        <span id="plan-steps" aria-label="Plan, 3 of 5 steps done"></span>
+        <span id="q-of" aria-label="Question 2 of 4"></span>
+      </div>
+    `;
+
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('loc-err').textContent, '您当前的账户无权使用 Antigravity，因为您所在的地区目前暂不支持此服务。');
+    assert.equal(w.document.getElementById('not-elig').textContent, '当前账户无权使用 Antigravity。');
+    assert.equal(w.document.getElementById('reg-unsup').textContent, '当前不支持您所在的地区。');
+    assert.equal(w.document.getElementById('faq-link').textContent, '常见问题');
+    assert.equal(w.document.getElementById('verify-btn').textContent, '验证');
+    assert.equal(w.document.getElementById('lower-verify').textContent, 'verify');
+    assert.equal(w.document.getElementById('plan-steps').getAttribute('aria-label'), '计划，已完成 3 / 5 步');
+    assert.equal(w.document.getElementById('q-of').getAttribute('aria-label'), '第 2 / 4 个问题');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('loc-err').textContent, '您目前的帳戶不符合使用 Antigravity 的資格，因為您所在的地區目前不支援此服務。');
+    assert.equal(domTw.window.document.getElementById('not-elig').textContent, '目前帳戶不符合使用 Antigravity 的資格。');
+    assert.equal(domTw.window.document.getElementById('reg-unsup').textContent, '目前不支援您所在的地區。');
+    assert.equal(domTw.window.document.getElementById('faq-link').textContent, '常見問題');
+    assert.equal(domTw.window.document.getElementById('verify-btn').textContent, '驗證');
+    assert.equal(domTw.window.document.getElementById('lower-verify').textContent, 'verify');
+    assert.equal(domTw.window.document.getElementById('plan-steps').getAttribute('aria-label'), '計畫，已完成 3 / 5 步');
+    assert.equal(domTw.window.document.getElementById('q-of').getAttribute('aria-label'), '第 2 / 4 個問題');
+});
