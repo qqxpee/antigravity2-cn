@@ -1,5 +1,6 @@
 {
   "name": "antigravity2-cn",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "test": "node --test tests/*-regressions.cjs"

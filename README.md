@@ -265,3 +265,8 @@ node scripts/compare_dicts.js
 - 感谢所有参与测试与反馈的贡献者！
 - 特别鸣谢 **[yuaotian/antigravity-proxy](https://github.com/yuaotian/antigravity-proxy)** 提供优秀的 Windows 免 TUN 强制代理注入方案。
 - 特别鸣谢 **[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)** 开放的词典成果（MIT 协议），为本次 v2.26.0+ 新增特性词条整合提供了重要基础。
+
+---
+
+## 📄 开源协议
+本项目采用 [MIT License](LICENSE) 开源协议。
