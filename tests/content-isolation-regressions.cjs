@@ -891,6 +891,7 @@ test('region eligibility errors, login FAQ link, Available for project, and step
         <span id="verify-btn">Verify</span>
         <span id="lower-verify">verify</span>
         <span id="avail-proj">Available for my-gcp-proj project</span>
+        <span id="avail-proj-split">Available for <code>my-gcp-proj</code> project</span>
         <span id="plan-steps" aria-label="Plan, 3 of 5 steps done"></span>
         <span id="q-of" aria-label="Question 2 of 4"></span>
       </div>
@@ -903,6 +904,8 @@ test('region eligibility errors, login FAQ link, Available for project, and step
     assert.equal(w.document.getElementById('faq-link').textContent, '常见问题');
     assert.equal(w.document.getElementById('verify-btn').textContent, '验证');
     assert.equal(w.document.getElementById('lower-verify').textContent, 'verify');
+    assert.equal(w.document.getElementById('avail-proj').textContent, '适用于 my-gcp-proj 项目');
+    assert.equal(w.document.getElementById('avail-proj-split').textContent, '适用于 my-gcp-proj 项目');
     assert.equal(w.document.getElementById('plan-steps').getAttribute('aria-label'), '计划，已完成 3 / 5 步');
     assert.equal(w.document.getElementById('q-of').getAttribute('aria-label'), '第 2 / 4 个问题');
 
@@ -916,6 +919,8 @@ test('region eligibility errors, login FAQ link, Available for project, and step
     assert.equal(domTw.window.document.getElementById('faq-link').textContent, '常見問題');
     assert.equal(domTw.window.document.getElementById('verify-btn').textContent, '驗證');
     assert.equal(domTw.window.document.getElementById('lower-verify').textContent, 'verify');
+    assert.equal(domTw.window.document.getElementById('avail-proj').textContent, '適用於 my-gcp-proj 專案');
+    assert.equal(domTw.window.document.getElementById('avail-proj-split').textContent, '適用於 my-gcp-proj 專案');
     assert.equal(domTw.window.document.getElementById('plan-steps').getAttribute('aria-label'), '計畫，已完成 3 / 5 步');
     assert.equal(domTw.window.document.getElementById('q-of').getAttribute('aria-label'), '第 2 / 4 個問題');
 });
