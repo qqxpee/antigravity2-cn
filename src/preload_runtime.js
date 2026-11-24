@@ -1414,6 +1414,17 @@
         [/^Failed to save project:\s*(.+)$/i, (m, err) => (USE_TW ? '儲存專案失敗：' : '保存项目失败：') + err],
         [/^Available for\s+(.+?)\s+project$/i, (m, proj) => (USE_TW ? '適用於 ' : '适用于 ') + proj.trim() + (USE_TW ? ' 專案' : ' 项目')],
 
+        // v2.35.0 动态模板规则
+        [/^All (.+?) will be revoked\. The plugin will ask before doing this again\.$/, (m, target) => USE_TW ? ('將撤銷全部 ' + target + '。外掛程式在再次執行此操作前會先徵求您的同意。') : ('将撤销全部 ' + target + '。插件在再次执行此操作前会先征求您的同意。')],
+        [/^Available AI credits:\s*(.+)$/, (m, val) => (USE_TW ? '可用 AI 額度：' : '可用 AI 额度：') + val],
+        [/^Dismiss:\s*(.+)$/, (m, target) => (USE_TW ? '關閉：' : '忽略：') + target],
+        [/^Move to\s+(.+)$/, (m, dest) => (USE_TW ? '移至 ' : '移动到 ') + (lookupDict(dest) || dest)],
+        [/^New\s+(.+?)\.\.\.$/, (m, kind) => (USE_TW ? '新增' : '新建') + translateNoun(kind) + '...'],
+        [/^No matching languages for "(.+)"$/, (m, q) => USE_TW ? ('找不到與「' + q + '」相符的語言') : ('未找到与“' + q + '”匹配的语言')],
+        [/^Remove from\s+(.+)$/, (m, target) => (USE_TW ? '從 ' : '从 ') + (lookupDict(target) || target) + ' 移除'],
+        [/^Revoke all:\s*(.+)$/, (m, target) => (USE_TW ? '全部撤銷：' : '全部撤销：') + target],
+        [/^Revoke:\s*(.+)$/, (m, target) => (USE_TW ? '撤銷：' : '撤销：') + target],
+
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
             const nLow = norm(noun).toLowerCase();
