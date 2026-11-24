@@ -253,10 +253,13 @@ Antigravity 2.x 的前端 SPA 與「**新增 MCP 伺服器 (Add MCP Server)**」
   - **Windows**：請對 `双击安装繁体中文.bat` 按右鍵，選擇 **「以系統管理員身分執行」**。
   - **macOS**：若按兩下執行 `.command` 提示無法開啟或沒有執行權限，可在終端機中執行 `chmod +x *.command` 來授權。如果是系統安全攔截，請在「系統設定 -> 隱私權與安全性」中按一下「仍要開啟」。本中文化包已內建自動重新簽名機制，修改後會重新進行 Ad-hoc 簽名以防止 macOS 提示應用程式損壞。
 
-### 3）軟體官方更新後，中文化失效了怎麼辦？（含 Windows 自檢啟動器）
-* **原因**：Antigravity 內建 `electron-updater`（`autoDownload = true`、`autoInstallOnAppQuit = true`），背景下載的更新封裝會在您結束軟體時靜默安裝並覆蓋 `resources/app.asar`，因此下次開啟會變回英文。
-* **手動恢復**：完全結束軟體，重新按兩下執行 **`双击安装繁体中文.bat`**（macOS 使用者執行 **`双击安装繁体中文.command`**）即可恢復繁體中文。
+### 3）軟體官方更新與中文化後無法自動升級怎麼辦？（含 Windows / macOS 說明）
+* **平台差異說明**：
+  - **Windows**：Antigravity 內建 `electron-updater`（NSIS，`autoDownload = true`、`autoInstallOnAppQuit = true`），不校驗執行中程式的簽名要求。背景下載的更新封裝會在您結束軟體時靜默安裝並覆蓋 `resources/app.asar`，因此下次開啟會變回英文。
+  - **macOS**：由於中文化修改後必須進行本機 ad-hoc 重新簽名（`codesign --sign -`），應用程式套件的 designated requirement 會退化為僅符合目前套件自身的 `cdhash`。內建自動更新（`Squirrel.framework`）在安裝校驗階段會以目前套件的條件驗證官方新版，進而攔截安裝（`did not pass validation`），導致版本停留在舊版且**不會**出現「自動更新後變回英文」的情況。
+* **Windows 手動恢復**：完全結束軟體，重新按兩下執行 **`双击安装繁体中文.bat`** 即可恢復繁體中文。
 * **Windows 自動自檢啟動**：可在終端機或捷徑中執行 `node scripts/ensure_localized.js --fix --launch --tw`（或於 **`启动Antigravity(自动检查汉化).bat`** 內加上 `--tw`）。啟動前會自動檢查 `app.asar` 是否含漢化標記，若已被官方自動更新覆蓋且目標用戶端未在執行，會沿用上次的 `--tw` / `--brand-title` 偏好以 `--no-kill` 重新注入後再啟動（若修復失敗會中止啟動並回報錯誤，不會直接啟動英文版；如需切換簡體可傳入 `--sc`）。
+* **macOS 升級版本方式**：如需升級至官方最新版本，請前往 [antigravity.google/download](https://antigravity.google/download) 手動下載最新版 DMG 覆蓋安裝（替換 `Antigravity.app`），然後再重新按兩下執行 **`双击安装繁体中文.command`** 即可。
 
 ### 4）在簡體中文 Windows 上執行繁體版指令碼提示亂碼怎麼辦？
 * 為相容繁體中文 Windows（字碼頁 `CP950`），`双击安装繁体中文.bat` 依 Big5 編碼儲存；在簡體中文 Windows（預設 `CP936`）直接按兩下時終端機提示會顯示亂碼。可在 CMD 中先切換字碼頁再執行：`chcp 950 && 双击安装繁体中文.bat`，或直接執行 `node localization_engine.js --tw --brand-title english`。

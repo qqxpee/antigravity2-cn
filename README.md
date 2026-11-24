@@ -224,10 +224,13 @@ Antigravity 2.x 的前端 SPA 与“**添加 MCP 服务器 (Add MCP Server)**”
   - **Windows**：请右键点击 `双击安装中文汉化.bat`，选择 **“以管理员身份运行”**。
   - **macOS**：若双击运行 `.command` 提示无法打开或没有执行权限，可在终端中执行 `chmod +x *.command` 来授权。如果是系统安全拦截，请在“系统设置 -> 隐私与安全性”中点击“仍要打开”。本汉化包已内置自动重签名机制，修改后会重新进行 Ad-hoc 签名以防止 macOS 提示应用损坏。
 
-### 3）软件官方更新后，汉化失效了怎么办？（含 Windows 自检启动器）
-* **原因**：Antigravity 内置 `electron-updater`（`autoDownload = true`、`autoInstallOnAppQuit = true`），后台下载的更新包会在您退出软件时静默安装并覆盖 `resources/app.asar`，因此下次打开会变回英文。
-* **手动恢复**：完全退出软件，重新双击运行 **`双击安装中文汉化.bat`**（macOS 用户运行 **`双击安装中文汉化.command`**）即可恢复中文。
+### 3）软件官方更新与汉化后无法自动升级怎么办？（含 Windows / macOS 说明）
+* **平台差异说明**：
+  - **Windows**：Antigravity 内置 `electron-updater`（NSIS，`autoDownload = true`、`autoInstallOnAppQuit = true`），不校验运行中程序的签名要求。后台下载的更新包会在您退出软件时静默安装并覆盖 `resources/app.asar`，因此下次打开会变回英文。
+  - **macOS**：由于汉化修改后必须进行本地 ad-hoc 重签名（`codesign --sign -`），应用包的 designated requirement 会退化为仅匹配当前包自身的 `cdhash`。内置自动更新（`Squirrel.framework`）在安装校验阶段会以当前包的条件校验官方新版，从而拦截安装（`did not pass validation`），导致版本停留在旧版且**不会**触发“自动更新后变回英文”。
+* **Windows 手动恢复**：完全退出软件，重新双击运行 **`双击安装中文汉化.bat`** 即可恢复中文。
 * **Windows 自动自检启动**：可双击或创建桌面快捷方式指向 **`启动Antigravity(自动检查汉化).bat`**（底层调用 `node scripts/ensure_localized.js --fix --launch`）。它会在启动前检查 `app.asar` 是否含汉化标记；若已被官方自动更新覆盖且目标客户端未在运行，会自动沿用上次的 `--tw` / `--brand-title` 偏好以 `--no-kill` 重新注入后再拉起客户端（若修复失败会中止启动并报错，不会直接启动英文版；如需显式切换繁体或简体，可在参数中附加 `--tw` 或 `--sc`）。
+* **macOS 升级版本方法**：如需升级到官方最新版本，请前往 [antigravity.google/download](https://antigravity.google/download) 手动下载最新版 DMG 覆盖安装（替换 `Antigravity.app`），然后再重新双击运行 **`双击安装中文汉化.command`** 即可。
 
 ### 4）在简体中文 Windows 上运行繁体版脚本提示乱码怎么办？
 * 为兼容繁体中文 Windows（代码页 `CP950`），`双击安装繁体中文.bat` 按 Big5 编码保存；在简体中文 Windows（默认 `CP936`）直接双击时终端提示会显示乱码。可在 CMD 中先切换代码页再运行：`chcp 950 && 双击安装繁体中文.bat`，或直接执行 `node localization_engine.js --tw --brand-title english`。
