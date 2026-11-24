@@ -950,8 +950,10 @@ test('v2.35.0 inbox mode, dictation languages, plugin permissions and dynamic te
     assert.equal(w.document.getElementById('revoke-msg').textContent, '将撤销全部 file permissions。插件在再次执行此操作前会先征求您的同意。');
     assert.equal(w.document.getElementById('ai-credits').textContent, '可用 AI 额度：1,250');
     assert.equal(w.document.getElementById('dismiss-btn').getAttribute('aria-label'), '忽略：Update ready');
+    assert.equal(w.document.getElementById('move-to').textContent, '移动到 归档');
     assert.equal(w.document.getElementById('new-ws').textContent, '新建工作区...');
     assert.equal(w.document.getElementById('no-lang').textContent, '未找到与“klingon”匹配的语言');
+    assert.equal(w.document.getElementById('rm-from').textContent, '从 Favorites 移除');
     assert.equal(w.document.getElementById('rev-all').getAttribute('aria-label'), '全部撤销：GitHub');
     assert.equal(w.document.getElementById('rev-all').textContent, '全部撤销');
     assert.equal(w.document.getElementById('rev-one').getAttribute('aria-label'), '撤销：Read files');
@@ -963,10 +965,13 @@ test('v2.35.0 inbox mode, dictation languages, plugin permissions and dynamic te
     assert.equal(domTw.window.document.getElementById('inbox-mode').textContent, '收件匣模式');
     assert.equal(domTw.window.document.getElementById('dict-lang').textContent, '聽寫語言');
     assert.equal(domTw.window.document.getElementById('plug-perm').textContent, '外掛程式權限');
-    assert.equal(domTw.window.document.getElementById('ai-credits').textContent, '可用 AI 額度：1,250');
+    assert.equal(domTw.window.document.getElementById('revoke-msg').textContent, '將撤銷全部 file permissions。外掛程式在再次執行此操作前會先徵求您的同意。');
+    assert.equal(domTw.window.document.getElementById('ai-credits').textContent, '可用 AI 點數：1,250');
     assert.equal(domTw.window.document.getElementById('dismiss-btn').getAttribute('aria-label'), '關閉：Update ready');
+    assert.equal(domTw.window.document.getElementById('move-to').textContent, '移至 封存');
     assert.equal(domTw.window.document.getElementById('new-ws').textContent, '新增工作區...');
     assert.equal(domTw.window.document.getElementById('no-lang').textContent, '找不到與「klingon」相符的語言');
+    assert.equal(domTw.window.document.getElementById('rm-from').textContent, '從 Favorites 移除');
     assert.equal(domTw.window.document.getElementById('rev-all').getAttribute('aria-label'), '全部撤銷：GitHub');
     assert.equal(domTw.window.document.getElementById('rev-one').getAttribute('aria-label'), '撤銷：Read files');
 });
