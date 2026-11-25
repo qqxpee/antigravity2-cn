@@ -1202,3 +1202,25 @@ test('v2.35.1 React-split sentences keep CJK spacing, automation hints translate
     const w2 = await fixture(t, '<div id="pair"><button>Cancel</button> <button>Settings</button></div>');
     assert.equal(w2.document.getElementById('pair').textContent, '取消 设置');
 });
+
+test('plugin and feature names stay in the original language in SC and TC (#63)', async t => {
+    const html = `
+        <span id="n1">Chief of Staff</span><span id="n2">Concierge</span><span id="n3">Data Agent Kit</span>
+        <span id="n4">Google Workspace</span><span id="n5">Google Developer Knowledge</span>
+        <span id="s1">Sent to Chief of Staff</span><span id="s2">Chief of Staff voice mode is active</span>
+        <span id="s3">Welcome to the Concierge</span>
+    `;
+    const names = { n1: 'Chief of Staff', n2: 'Concierge', n3: 'Data Agent Kit', n4: 'Google Workspace', n5: 'Google Developer Knowledge' };
+    const w = await fixture(t, html);
+    for (const [id, name] of Object.entries(names)) assert.equal(w.document.getElementById(id).textContent, name, `SC ${name}`);
+    assert.equal(w.document.getElementById('s1').textContent, '已发送给 Chief of Staff');
+    // 原本误用 Concierge 的译名「语音助手」
+    assert.equal(w.document.getElementById('s2').textContent, 'Chief of Staff 语音模式已启用');
+    assert.equal(w.document.getElementById('s3').textContent, '欢迎使用 Concierge');
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    for (const [id, name] of Object.entries(names)) assert.equal(domTw.window.document.getElementById(id).textContent, name, `TC ${name}`);
+    assert.equal(domTw.window.document.getElementById('s2').textContent, 'Chief of Staff 語音模式已啟用');
+});

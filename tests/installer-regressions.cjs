@@ -1175,8 +1175,12 @@ test('main-process patches cover v2.35.1 SSH remote flow, passkey window, WSL me
     assert.ok(wslMain.includes('`无法将服务器安装到 WSL 发行版“${WSL_DISTRO}”：\\n${err.message}`'));
     const cable = patchMainProcessModule('dist/cablev2.js', "<html lang=\"en\"><title>Passkeys</title> updateStatus('Connecting to your device…')", true);
     assert.equal(cable, "<html lang=\"zh-TW\"><title>通行金鑰</title> updateStatus('正在連線至您的裝置…')");
-    assert.equal(patchMainProcessModule('dist/remote/sshPrompts.js', '`<!doctype html><html lang="en"${dark ? \' class="dark"\' : \'\'}>`', false), '`<!doctype html><html lang="zh-CN"${dark ? \' class="dark"\' : \'\'}>`');
-    for (const rel of ['dist/ideInstall/wizardHtml.js', 'dist/remote/disconnectedPage.js', 'dist/remote/signInCallback.js']) {
+    // 页面语系只在繁体模式改为 zh-TW，简体模式保持原样
+    const promptHtml = '`<!doctype html><html lang="en"${dark ? \' class="dark"\' : \'\'}>`';
+    assert.equal(patchMainProcessModule('dist/remote/sshPrompts.js', promptHtml, false), promptHtml);
+    assert.equal(patchMainProcessModule('dist/remote/sshPrompts.js', promptHtml, true), '`<!doctype html><html lang="zh-TW"${dark ? \' class="dark"\' : \'\'}>`');
+    for (const rel of ['dist/ideInstall/wizardHtml.js', 'dist/remote/disconnectedPage.js', 'dist/remote/signInCallback.js', 'dist/cablev2.js']) {
         assert.equal(patchMainProcessModule(rel, '<html lang="en">', true), '<html lang="zh-TW">', rel);
+        assert.equal(patchMainProcessModule(rel, '<html lang="en">', false), '<html lang="en">', rel);
     }
 });

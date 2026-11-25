@@ -568,7 +568,8 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["'Connection cancelled.'", "'连接已取消。'", "'已取消連線。'"]
     ],
     'dist/remote/sshPrompts.js': [
-        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
+        // 页面语系只在繁体模式改为 zh-TW；简体模式保持原样（由上游决定）
+        ['<html lang="en"', '<html lang="en"', '<html lang="zh-TW"'],
         ["message: confirm ? `${label} asks:` : 'Touch your security key',", "message: confirm ? `${label} 询问：` : '请轻触您的安全密钥',", "message: confirm ? `${label} 詢問：` : '請輕觸您的安全金鑰',"],
         ["const TOUCH_TITLE = 'Touch your security key';", "const TOUCH_TITLE = '请轻触您的安全密钥';", "const TOUCH_TITLE = '請輕觸您的安全金鑰';"],
         ["<p class=\"context\">Connecting to <span id=\"label\"></span></p>", "<p class=\"context\">正在连接到 <span id=\"label\"></span></p>", "<p class=\"context\">正在連線至 <span id=\"label\"></span></p>"],
@@ -638,7 +639,8 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["<div>Setting up WSL: ${escapeHtml(distro)}</div>", "<div>正在初始化 WSL：${escapeHtml(distro)}</div>", "<div>正在設定 WSL：${escapeHtml(distro)}</div>"]
     ],
     'dist/ideInstall/wizardHtml.js': [
-        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
+        // 页面语系只在繁体模式改为 zh-TW；简体模式保持原样（由上游决定）
+        ['<html lang="en"', '<html lang="en"', '<html lang="zh-TW"'],
         ["<title>Welcome to Antigravity</title>", "<title>欢迎使用 Antigravity</title>", "<title>歡迎使用 Antigravity</title>"],
         [">Setting up…</div>", ">正在设置…</div>", ">正在設定…</div>"],
         ["<h1>Welcome to the new Antigravity!</h1>", "<h1>欢迎使用全新 Antigravity！</h1>", "<h1>歡迎使用全新 Antigravity！</h1>"],
@@ -647,7 +649,8 @@ const MAIN_PROCESS_TEXT_TABLES = {
         [">Explore the new Antigravity</button>", ">探索全新 Antigravity</button>", ">探索全新 Antigravity</button>"]
     ],
     'dist/remote/disconnectedPage.js': [
-        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
+        // 页面语系只在繁体模式改为 zh-TW；简体模式保持原样（由上游决定）
+        ['<html lang="en"', '<html lang="en"', '<html lang="zh-TW"'],
         ["reconnect: 'Reconnect',", "reconnect: '重新连接',", "reconnect: '重新連線',"],
         ["stop: 'Stop Server',", "stop: '停止服务',", "stop: '停止伺服器',"],
         ["close: 'Close',", "close: '关闭',", "close: '關閉',"],
@@ -664,7 +667,8 @@ const MAIN_PROCESS_TEXT_TABLES = {
         [": `Agents keep running on ${host} unless its server stopped.`;", ": `除非其服务已停止，否则智能体仍在 ${host} 上继续运行。`;", ": `除非其伺服器已停止，否則代理仍在 ${host} 上繼續執行。`;"]
     ],
     'dist/remote/signInCallback.js': [
-        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
+        // 页面语系只在繁体模式改为 zh-TW；简体模式保持原样（由上游决定）
+        ['<html lang="en"', '<html lang="en"', '<html lang="zh-TW"'],
         ["const SIGNED_IN = page('You have successfully authenticated.', 'You can close this tab and return to Antigravity.');", "const SIGNED_IN = page('您已成功完成身份验证。', '您可以关闭此标签页并返回 Antigravity。');", "const SIGNED_IN = page('您已成功完成身分驗證。', '您可以關閉此分頁並返回 Antigravity。');"],
         ["return page(\"Sign-in didn't finish\", `Antigravity couldn't reach ${host} to finish signing in. ` +", "return page('登录未完成', `Antigravity 无法连接到 ${host} 以完成登录。` +", "return page('登入未完成', `Antigravity 無法連線至 ${host} 以完成登入。` +"],
         ["return page(\"Sign-in didn't finish\", 'This sign-in came back from another server than the sign-in page you ' +", "return page('登录未完成', '此登录回调来自与您此前同意的登录页不同的服务器，' +", "return page('登入未完成', '此登入回呼來自與您先前同意的登入頁不同的伺服器，' +"],
@@ -686,7 +690,8 @@ const MAIN_PROCESS_TEXT_TABLES = {
     ],
     // 通行密钥扫码窗口
     'dist/cablev2.js': [
-        ["<html lang=\"en\">", "<html lang=\"zh-CN\">", "<html lang=\"zh-TW\">"],
+        // 页面语系只在繁体模式改为 zh-TW；简体模式保持原样（由上游决定）
+        ["<html lang=\"en\">", "<html lang=\"en\">", "<html lang=\"zh-TW\">"],
         ["<title>Passkeys</title>", "<title>通行密钥</title>", "<title>通行金鑰</title>"],
         ["<h1 class=\"sheet-title\">Passkeys</h1>", "<h1 class=\"sheet-title\">通行密钥</h1>", "<h1 class=\"sheet-title\">通行金鑰</h1>"],
         ["<p class=\"mechanism-header\">Use your phone or tablet</p>", "<p class=\"mechanism-header\">使用手机或平板电脑</p>", "<p class=\"mechanism-header\">使用手機或平板電腦</p>"],
