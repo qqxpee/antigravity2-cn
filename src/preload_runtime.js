@@ -945,7 +945,8 @@
         [/^Yes, allow (.+) in this conversation$/i, (m, target) => USE_TW ? ("是，在此對話中允許 " + target) : ("是，在此会话中允许 " + target)],
         [/^Yes, always allow (.+)$/i, (m, target) => USE_TW ? ("是，一律允許 " + target) : ("是，始终允许 " + target)],
         [/^(\d+) tools? enabled$/i, (m, num) => USE_TW ? (num + " 個工具已啟用") : (num + " 个工具已启用")],
-        [/^(\d+)\s+tools$/i, (m, num) => num + (USE_TW ? " 個工具" : " 个工具")],
+        [/^(\d+)\s+tools?$/i, (m, num) => num + (USE_TW ? " 個工具" : " 个工具")],
+        [/^(\d+)\s+tools?\s+·\s+sign in for more$/i, (m, num) => num + (USE_TW ? " 個工具 · 登入以取得更多" : " 个工具 · 登录以获取更多")],
         [/^(\d+)\s+tools?\s+excluded$/i, (m, num) => num + (USE_TW ? " 個工具已排除" : " 个工具已排除")],
         [/^Exceeded the rules token budget\.\s+Full rule content\s+\(([\d,]+)\s+tokens?\)\s+was replaced with a lightweight file-path pointer in context\.$/i, (m, num) => USE_TW ? ("已超出規則 Token 預算。完整規則內容 (" + num + " 個 Token) 已在上下文中取代為輕量級檔案路徑指標。") : ("已超出规则 Token 预算。完整规则内容 (" + num + " 个 Token) 已在上下文中替换为轻量级文件路径指针。")],
         [/^All tools in this MCP server\s+\(([\d,]+)\s+tokens?\)\s+exceeded the customization budget and were excluded from context\.$/i, (m, num) => USE_TW ? ("此 MCP 伺服器中的所有工具 (" + num + " 個 Token) 均已超出自訂項預算，並已從上下文中排除。") : ("此 MCP 服务器中的所有工具 (" + num + " 个 Token) 均已超出自定义项预算，并已从上下文中排除。")],
@@ -1060,7 +1061,11 @@
         [/^When toggled on,\s*(.+?)\s+collects usage data to help Google enhance performance and features\.?$/i, (m, app) => USE_TW ? ("開啟後，" + app + " 會收集使用資料以協助 Google 改善效能與功能。") : ("开启后，" + app + " 会收集使用数据以帮助 Google 改进性能和功能。")],
         [/^When toggled on,\s*(.+?)\s+will use your AI credits to fulfill model requests once you're out of model quota\.\s*(.+?)\s+will always use your model quota first before using AI credits\.?$/i, (m, a1, a2) => USE_TW ? ("開啟後，當您的模型配額用盡時，" + a1 + " 將使用您的 AI 點數處理模型請求。" + a2 + " 永遠會優先使用模型配額，再使用 AI 點數。") : ("开启后，当您的模型配额用尽时，" + a1 + " 将使用您的 AI 积分处理模型请求。" + a2 + " 始终会优先使用模型配额，再使用 AI 积分。")],
         [/^Receive product updates,\s*tips,\s*and promotions from Google\s+(.+?)\s+via email\.?$/i, (m, app) => USE_TW ? ("透過電子郵件接收來自 Google " + app + " 的產品更新、技巧與優惠資訊。") : ("通过电子邮件接收来自 Google " + app + " 的产品更新、技巧和促销信息。")],
-        [/^Agents created by this\s+(.+?)\s+run in a dedicated\s+(.+?)\s+with its own permissions\.\s*You can change the permissions in the\s+(.+?)\s+settings page\.?$/i, (m, kind, scope, scope2) => USE_TW ? ("此 " + kind + " 建立的代理會在具有獨立權限的專屬 " + scope + " 中執行。您可以在 " + scope2 + " 設定頁面變更權限。") : ("此 " + kind + " 创建的智能体会在具有独立权限的专用 " + scope + " 中运行。您可以在 " + scope2 + " 设置页面更改权限。")],
+        [/^Agents created by this\s+(.+?)\s+run in a dedicated\s+(.+?)\s+with its own permissions\.\s*You can change the permissions in the\s+(.+?)\s+settings page\.?$/i, (m, kind, scope, scope2) => {
+            // 名词（automation、project）先查词典：译成中文时与前后中文之间不留空格，保留英文时加空格
+            const term = w => { const t = lookupDict(w) || w; return /[㐀-鿿]/.test(t) ? t : ' ' + t + ' '; };
+            return USE_TW ? ("此" + term(kind) + "建立的代理會在具有獨立權限的專屬" + term(scope) + "中執行。您可以在" + term(scope2) + "設定頁面變更權限。") : ("此" + term(kind) + "创建的智能体会在具有独立权限的专用" + term(scope) + "中运行。您可以在" + term(scope2) + "设置页面更改权限。");
+        }],
         [/^Stop\s+(\d+)\s+agents?\?$/i, (m, count) => USE_TW ? ("要停止 " + count + " 個代理嗎？") : ("要停止 " + count + " 个智能体吗？")],
         [/^(?:(Exploring|Explored|Editing|Edited|Running|Ran)\s+)?(\d+)\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?)(?:,\s*(?:(Exploring|Explored|Editing|Edited|Running|Ran)\s+)?(\d+)\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?))*$/i, (m) => {
             const verbMap = USE_TW
@@ -1135,7 +1140,7 @@
         [/^(\d+)\s+Drafts?$/i, (m, n) => n + (USE_TW ? " 則草稿" : " 条草稿")],
         [/^Resume\s+(\d+)\s+comment drafts?$/i, (m, n) => USE_TW ? ("恢復 " + n + " 則評論草稿") : ("恢复 " + n + " 条评论草稿")],
         [/^Couldn't connect to\s+(.+)$/i, (m, rest) => (USE_TW ? "無法連線至 " : "无法连接到 ") + rest],
-        [/^Connecting to\s+(.+?)(\.\.\.|…)?$/i, (m, host) => (USE_TW ? "正在連線至 " : "正在连接到 ") + host + "..."],
+        [/^Connecting to\s+(.+?)(\.\.\.|…)?$/i, (m, host, ell) => (USE_TW ? "正在連線至 " : "正在连接到 ") + host + (ell || "")],
         [/^Connected to\s+(.+)$/i, (m, host) => (USE_TW ? "已連線至 " : "已连接到 ") + host],
         [/^SSH Config\s*\((.+)\)$/i, (m, cfg) => (USE_TW ? "SSH 設定 (" : "SSH 配置 (") + cfg + ")"],
         [/^(\d+)\s+hidden hosts?$/i, (m, n) => n + (USE_TW ? " 個已隱藏的主機" : " 个已隐藏的主机")],
@@ -1647,9 +1652,15 @@
             : ('找不到所选的' + translateNoun(n1) + '。请从' + translateNoun(n3) + '选择器中选择其他' + translateNoun(n2) + '以发送。')],
         [/^This (.+?) overrides your global permission settings\.$/i, (m, kind) => USE_TW ? ('此' + translateNoun(kind) + '會覆寫您的全域權限設定。') : ('此' + translateNoun(kind) + '会覆盖您的全局权限设置。')],
         [/^(.+?) needs (.+?) to use your computer\.$/i, (m, app, perms) => {
-            const pZh = perms.replace(/Accessibility/gi, USE_TW ? '輔助使用' : '辅助功能').replace(/Screen Recording/gi, USE_TW ? '螢幕錄製' : '屏幕录制').replace(/\bboth\b/gi, USE_TW ? '兩項權限' : '这两项权限');
-            return app + (USE_TW ? ' 需要 ' : ' 需要 ') + pZh + (USE_TW ? ' 權限才能操作您的電腦。' : ' 权限才能控制您的电脑。');
+            // 「needs both」原本会译成「需要 这两项权限 权限」
+            if (/^both$/i.test(perms.trim())) return app + (USE_TW ? ' 需要這兩項權限才能操作您的電腦。' : ' 需要这两项权限才能控制您的电脑。');
+            const pZh = perms.replace(/Accessibility/gi, USE_TW ? '「輔助使用」' : '“辅助功能”').replace(/Screen Recording/gi, USE_TW ? '「螢幕錄製」' : '“屏幕录制”');
+            return app + ' 需要' + pZh + (USE_TW ? '權限才能操作您的電腦。' : '权限才能控制您的电脑。');
         }],
+        [/^Relaunch (.+?) to finish Screen Recording\.$/i, (m, app) => USE_TW ? ('請重新啟動 ' + app + ' 以完成「螢幕錄製」設定。') : ('请重新启动 ' + app + ' 以完成“屏幕录制”设置。')],
+        [/^Stop (\d+) items?\?$/i, (m, n) => USE_TW ? ('確定要停止 ' + n + ' 個項目嗎？') : ('确定要停止 ' + n + ' 个项目吗？')],
+        [/^Show (\d+) more subagents?$/i, (m, n) => USE_TW ? ('顯示另外 ' + n + ' 個子代理') : ('显示另外 ' + n + ' 个子代理')],
+        [/^\+(\d+) more \(Show all\)$/i, (m, n) => USE_TW ? ('另外 +' + n + ' 項（顯示全部）') : ('另外 +' + n + ' 项（显示全部）')],
         [/^(.+?) needs you to sign in before it can be used\.$/i, (m, name) => name + (USE_TW ? ' 需要您先登入後才能使用。' : ' 需要您先登录后才能使用。')],
         [/^No messages in last (\d+) steps\s*(?:·|—|,)\s*load (?:more|older)$/i, (m, n) => USE_TW ? ('最近 ' + n + ' 步沒有訊息 · 載入更早訊息') : ('最近 ' + n + ' 步无消息 · 加载更早消息')],
         [/^No visible messages in last (\d+) steps\. Activate Load older messages to continue\.$/i, (m, n) => USE_TW ? ('最近 ' + n + ' 步沒有可見訊息。請啟用「載入更早的訊息」以繼續。') : ('最近 ' + n + ' 步没有可见消息。请激活“加载更早的消息”以继续。')],
@@ -1977,11 +1988,13 @@
                 return USE_TW ? '」的網站。' : '”的网站。';
             }
         }
+        // v2.35.1 用独立的 " " 文字节点夹着 <code>antigravity.</code>，译文不再自带空格（否则出现双空格）；
+        // 空格写在同一个文字节点里的旧结构则照原文保留
         if (valNorm === 'Inspect live bindings or record custom key chords filtered to') {
-            return USE_TW ? '檢視即時按鍵繫結或錄製自訂組合鍵，目前篩選範圍為 ' : '查看实时按键绑定或录制自定义组合键，当前筛选范围为 ';
+            return (USE_TW ? '檢視即時按鍵繫結或錄製自訂組合鍵，目前篩選範圍為' : '查看实时按键绑定或录制自定义组合键，当前筛选范围为') + (/\s$/.test(originalVal) ? ' ' : '');
         }
         if (valNorm === 'commands.' && (pText.includes('Inspect live bindings') || pText.includes('实时按键绑定') || pText.includes('即時按鍵繫結') || pText.includes('实时绑定') || pText.includes('即時綁定'))) {
-            return USE_TW ? ' 指令。' : ' 命令。';
+            return (/^\s/.test(originalVal) ? ' ' : '') + (USE_TW ? '指令。' : '命令。');
         }
         if ((valNorm === 'Initialized with' || valNorm === 'Declared by') && p.tagName === 'SPAN' && p.nextElementSibling && p.nextElementSibling.tagName === 'CODE') {
             return valNorm === 'Initialized with'
@@ -1989,7 +2002,12 @@
                 : (USE_TW ? '宣告來源' : '声明来源');
         }
         if (valNorm === 'Messages now send immediately. Configure in') {
-            return USE_TW ? '訊息現已改為立即傳送。可在 ' : '消息现已改为立即发送。可在 ';
+            return USE_TW ? '訊息現已改為立即傳送。可在' : '消息现已改为立即发送。可在';
+        }
+        // 「Configure in <settings>.」的句点与链接同在 whitespace-nowrap 的 span 内
+        const msgHead = p.parentElement && p.parentElement.firstChild;
+        if (valNorm === '.' && msgHead && msgHead.nodeType === Node.TEXT_NODE && /^(?:Messages now send immediately|訊息現已改為立即傳送|消息现已改为立即发送)/.test((msgHead.nodeValue || '').trim())) {
+            return USE_TW ? '中調整。' : '中调整。';
         }
         if (valNorm === 'In System Settings, click') {
             return USE_TW ? '在「系統設定」中，按一下 ' : '在“系统设置”中，点击 ';
@@ -1999,6 +2017,38 @@
         }
         if (valNorm === 'Already on? Select') {
             return USE_TW ? '已經開啟？請選取 ' : '已经开启？请选择 ';
+        }
+        // macOS 权限引导句（电脑操作权限状态栏）：React Fragment 把句子拆成文字节点与 <strong>App</strong>／<strong>+</strong>
+        if (typeof p.getAttribute === 'function' && p.getAttribute('role') === 'status' && /System Settings|系統設定|系统设置/.test(pText)) {
+            const guide = {
+                ". If it isn't in the list, drag it in from the small window next to System Settings.": ['。如果列表中没有，请从“系统设置”旁的小窗口将它拖入。', '。如果清單中沒有，請從「系統設定」旁的小視窗將它拖曳進來。'],
+                ', choose': ['，选择', '，選取'],
+                ', then turn it on.': ['，然后将其开启。', '，然後將它開啟。'],
+                ', click': ['，点击 ', '，按一下 '],
+                ', then': ['，然后', '，然後'],
+                'drag it back in from the small window.': ['从小窗口将它重新拖入。', '從小視窗將它重新拖曳進來。'],
+                'click': ['点击 ', '按一下 '],
+                'and add it again.': [' 重新添加。', ' 重新加入。']
+            };
+            if (Object.prototype.hasOwnProperty.call(guide, valNorm)) return guide[valNorm][USE_TW ? 1 : 0];
+        }
+        // 自动化排程摘要：<b>Weekly</b> on <b>Monday</b> around <b>9:00 AM</b>
+        if ((valNorm === 'around' || valNorm === 'on') && typeof p.querySelector === 'function' && p.querySelector('.font-semibold') &&
+            /^(?:Daily|Weekdays|Weekly|每天|平日|工作日|每週|每周)/.test(pText.trim())) {
+            return valNorm === 'around' ? (USE_TW ? '約' : '约') : '';
+        }
+        // 声明权限说明句结尾：「…which you can change anytime in the <project> settings page.」
+        if (valNorm === 'settings page.' && /its own permissions|獨立權限|独立权限/.test(pText)) {
+            return USE_TW ? '設定頁面中變更。' : '设置页面中更改。';
+        }
+        // 插件详情页找不到项目：「No plugin found for <code>id</code>.」（前半句由词典翻译）
+        if (valNorm === '.' && typeof p.querySelector === 'function' && p.querySelector('.font-mono') &&
+            /^(?:No (?:app|plugin|bundle) found for|找不到(?:應用程式|外掛程式)|未找到(?:应用|插件))/.test(pText.trim())) {
+            return '。';
+        }
+        // 运行中项目批量选择栏：「3 selected」
+        if (valNorm === 'selected' && typeof p.closest === 'function' && p.closest('[data-testid="running-selection-bar"]')) {
+            return USE_TW ? ' 項已選取' : ' 项已选中';
         }
         if (valNorm === 'FAQ' && p.tagName === 'A' && p.parentElement && (dfsParentTexts.get(p.parentElement) || originalParentTexts.get(p.parentElement) || p.parentElement.textContent || '').match(/visiting our|造訪我們的|访问我们的|了解更多请访问|請造訪/)) {
             return USE_TW ? '常見問題' : '常见问题';
@@ -2134,6 +2184,40 @@
         return replaced ? out + text.slice(pos) : null;
     }
 
+    // React 会把相邻字符串之间的 " " 拆成独立文字节点；两侧译成中文后收掉这个空白（中文字之间不留空格）
+    const CJK_TAIL = /[㐀-鿿　-〿＀-￯]$/;
+    const CJK_HEAD = /^[㐀-鿿　-〿＀-￯]/;
+    function gapNeighborText(n) {
+        if (!n) return null;
+        if (n.nodeType === Node.TEXT_NODE) return n.nodeValue || '';
+        // 只看行内小元素（<strong>、链接按钮），避免对大型容器计算 textContent
+        if (n.nodeType === Node.ELEMENT_NODE && n.childElementCount <= 2) return n.textContent || '';
+        return null;
+    }
+    function isGapFiller(n) {
+        return n && (n.nodeType === Node.COMMENT_NODE || (n.nodeType === Node.TEXT_NODE && !n.nodeValue));
+    }
+    function collapseCjkGap(node) {
+        let prev = node.previousSibling;
+        let skippedText = false;
+        while (isGapFiller(prev)) {
+            if (prev.nodeType === Node.TEXT_NODE) skippedText = true;
+            prev = prev.previousSibling;
+        }
+        const before = gapNeighborText(prev);
+        if (!before || !CJK_TAIL.test(before)) return;
+        let next = node.nextSibling;
+        while (next && next.nodeType === Node.COMMENT_NODE) next = next.nextSibling;
+        if (!next || gapNeighborText(next) === null) return;
+        // 两侧都是元素（例如并排的两个链接或按钮）时，这个空白是分隔用的，保留
+        if (!skippedText && prev.nodeType !== Node.TEXT_NODE && next.nodeType !== Node.TEXT_NODE) return;
+        translateNode(next);
+        if (CJK_HEAD.test(gapNeighborText(next) || '')) {
+            translatedValues.set(node, '');
+            node.nodeValue = '';
+        }
+    }
+
     function translateNode(node) {
         try {
             if (!node) return;
@@ -2265,6 +2349,10 @@
                 if (isCodeOrEditor(node)) return;
 
                 let originalVal = node.nodeValue;
+                if (originalVal === ' ') {
+                    collapseCjkGap(node);
+                    return;
+                }
                 if (!originalVal || originalVal.trim().length < 1) return;
 
                 if (translatedValues.get(node) !== originalVal) {

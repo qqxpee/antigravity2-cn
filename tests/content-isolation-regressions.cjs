@@ -862,7 +862,7 @@ test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates an
     assert.equal(w.document.getElementById('load-err').textContent, '加载页面 Settings 失败：500');
     assert.equal(w.document.getElementById('more-opt').getAttribute('aria-label'), 'devbox-01 的更多选项');
     assert.equal(w.document.getElementById('new-conv').textContent, '打开此 工作区 的新会话界面');
-    assert.equal(w.document.getElementById('send-hint').querySelector('span').textContent, '消息现已改为立即发送。可在 ');
+    assert.equal(w.document.getElementById('send-hint').querySelector('span').textContent, '消息现已改为立即发送。可在');
     assert.equal(w.document.getElementById('sys-click').querySelector('span').textContent, '在“系统设置”中，点击 ');
     assert.equal(w.document.getElementById('already-on').querySelector('span').textContent, '已经开启？请选择 ');
 
@@ -877,7 +877,7 @@ test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates an
     assert.equal(domTw.window.document.getElementById('load-err').textContent, '載入頁面 Settings 失敗：500');
     assert.equal(domTw.window.document.getElementById('more-opt').getAttribute('aria-label'), 'devbox-01 的更多選項');
     assert.equal(domTw.window.document.getElementById('new-conv').textContent, '開啟此 工作區 的新對話畫面');
-    assert.equal(domTw.window.document.getElementById('send-hint').querySelector('span').textContent, '訊息現已改為立即傳送。可在 ');
+    assert.equal(domTw.window.document.getElementById('send-hint').querySelector('span').textContent, '訊息現已改為立即傳送。可在');
     assert.equal(domTw.window.document.getElementById('sys-click').querySelector('span').textContent, '在「系統設定」中，按一下 ');
 });
 
@@ -1151,4 +1151,54 @@ test('v2.35.1 icon-font fallbacks stay untranslated, permission pill uses short 
     await settle();
     assert.equal(domTw.window.document.getElementById('pill-turbo').textContent, '極速');
     assert.equal(domTw.window.document.getElementById('more-plain').textContent, '顯示另外 3 個');
+});
+
+test('v2.35.1 React-split sentences keep CJK spacing, automation hints translate their nouns, and SC/TC templates read naturally', async t => {
+    // 结构照 v2.35.1 React 实际输出：相邻字符串各自成为文字节点，" " 是独立节点，<!----> 是 Fragment 边界
+    const html = `
+        <span role="status" id="ps2">In System Settings, click <strong>+</strong>, choose<!----> <!----><strong>Antigravity</strong>, then turn it on.<!----> <!---->Already on? Select <strong>Antigravity</strong>, click <strong>–</strong>, then<!----> <!---->click <strong>+</strong> and add it again.</span>
+        <span id="kb">Inspect live bindings or record custom key chords filtered to<!----> <code>antigravity.</code> <!---->commands.</span>
+        <span id="msg">Messages now send immediately. Configure in<!----> <span class="whitespace-nowrap"><button>settings</button>.</span></span>
+        <span id="wk2"><span class="font-semibold">Weekly</span> on<!----> <!----><span class="font-semibold">Monday</span> around<!----> <!----><span class="font-semibold">9:00 AM</span></span>
+        <div id="dp">Agents created by <!---->Foo Plugin<!----> run in a dedicated<!----> <!---->project<!----> with its own permissions, which you can change anytime in the <!---->project<!----> settings page.<!----> On top of those defaults, Foo Plugin requests the access below.</div>
+        <div id="toast">Agents created by this automation run in a dedicated project with its own permissions. You can change the permissions in the project settings page.</div>
+        <div id="stopn">Stop 3 items?</div>
+        <div id="noapp" class="text-muted-foreground">No plugin found for<!----> <!----><span class="font-mono">foo-bar</span>.</div>
+        <div id="perm2">Antigravity needs both to use your computer.</div>
+        <div id="relaunch">Relaunch Antigravity to finish Screen Recording.</div>
+        <div id="tool1">1 tool</div><div id="tool2">5 tools · sign in for more</div>
+        <div id="conn">Connecting to devbox…</div><div id="conn2">Connecting to devbox</div>
+        <div data-testid="running-selection-bar"><span id="sel" class="text-foreground">3<!----> selected</span></div>
+    `;
+    const expected = {
+        ps2: ['在“系统设置”中，点击 +，选择 Antigravity，然后将其开启。已经开启？请选择 Antigravity，点击 –，然后点击 + 重新添加。', '在「系統設定」中，按一下 +，選取 Antigravity，然後將它開啟。已經開啟？請選取 Antigravity，按一下 –，然後按一下 + 重新加入。'],
+        kb: ['查看实时按键绑定或录制自定义组合键，当前筛选范围为 antigravity. 命令。', '檢視即時按鍵繫結或錄製自訂組合鍵，目前篩選範圍為 antigravity. 指令。'],
+        msg: ['消息现已改为立即发送。可在设置中调整。', '訊息現已改為立即傳送。可在設定中調整。'],
+        wk2: ['每周星期一约 9:00 AM', '每週星期一約 9:00 AM'],
+        dp: ['由 Foo Plugin 创建的智能体运行在专用的项目中并拥有独立权限，您可以随时在项目设置页面中更改。除上述默认权限外，Foo Plugin 还请求以下访问权限。', '由 Foo Plugin 建立的代理執行於專用的專案中並擁有獨立權限，您可以隨時在專案設定頁面中變更。除上述預設權限外，Foo Plugin 還請求以下存取權限。'],
+        toast: ['此自动化创建的智能体会在具有独立权限的专用项目中运行。您可以在项目设置页面更改权限。', '此自動化建立的代理會在具有獨立權限的專屬專案中執行。您可以在專案設定頁面變更權限。'],
+        stopn: ['确定要停止 3 个项目吗？', '確定要停止 3 個項目嗎？'],
+        noapp: ['未找到插件 foo-bar。', '找不到外掛程式 foo-bar。'],
+        perm2: ['Antigravity 需要这两项权限才能控制您的电脑。', 'Antigravity 需要這兩項權限才能操作您的電腦。'],
+        relaunch: ['请重新启动 Antigravity 以完成“屏幕录制”设置。', '請重新啟動 Antigravity 以完成「螢幕錄製」設定。'],
+        tool1: ['1 个工具', '1 個工具'],
+        tool2: ['5 个工具 · 登录以获取更多', '5 個工具 · 登入以取得更多'],
+        conn: ['正在连接到 devbox...', '正在連線至 devbox...'],
+        conn2: ['正在连接到 devbox', '正在連線至 devbox'],
+        sel: ['3 项已选中', '3 項已選取']
+    };
+    const w = await fixture(t, html);
+    for (const [id, [sc]] of Object.entries(expected)) {
+        assert.equal(w.document.getElementById(id).textContent, sc, `SC ${id}`);
+    }
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    for (const [id, [, tc]] of Object.entries(expected)) {
+        assert.equal(domTw.window.document.getElementById(id).textContent, tc, `TC ${id}`);
+    }
+    // 两侧都是元素（并排按钮）时，中间的空白是分隔用的，不收掉
+    const w2 = await fixture(t, '<div id="pair"><button>Cancel</button> <button>Settings</button></div>');
+    assert.equal(w2.document.getElementById('pair').textContent, '取消 设置');
 });
