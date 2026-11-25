@@ -207,7 +207,17 @@ function patchMenuJs(menuContent, useTw) {
         'Delete': '刪除',
         'Bring All to Front': '將此程式所有視窗移至最前',
         'Close Window': '關閉視窗',
-        'Version': '版本'
+        'Version': '版本',
+        'Reload': '重新載入',
+        'Force Reload': '強制重新載入',
+        'Substitutions': '替代',
+        'Show Substitutions': '顯示替代',
+        'Smart Quotes': '智慧型引號',
+        'Smart Dashes': '智慧型破折號',
+        'Text Replacement': '文字替代',
+        'Speech': '語音',
+        'Start Speaking': '開始朗讀',
+        'Stop Speaking': '停止朗讀'
     }` : `{
         'File': '文件',
         'Edit': '编辑',
@@ -264,7 +274,17 @@ function patchMenuJs(menuContent, useTw) {
         'Delete': '删除',
         'Bring All to Front': '前置全部窗口',
         'Close Window': '关闭窗口',
-        'Version': '版本'
+        'Version': '版本',
+        'Reload': '重新加载',
+        'Force Reload': '强制重新加载',
+        'Substitutions': '替换',
+        'Show Substitutions': '显示替换',
+        'Smart Quotes': '智能引号',
+        'Smart Dashes': '智能破折号',
+        'Text Replacement': '文本替换',
+        'Speech': '语音',
+        'Start Speaking': '开始朗读',
+        'Stop Speaking': '停止朗读'
     }`};
     function translateMenu(items) {
         for (const item of items) {

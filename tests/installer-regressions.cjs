@@ -1061,3 +1061,28 @@ test('Linux native support detects install dirs, wrappers, /proc PIDs, XDG cache
     assert.match(linuxRootOut, /RESULT=false/);
     assert.doesNotMatch(linuxRootOut, /App 管理|Cmd\+Q/);
 });
+test('menu translation covers v2.35.1 View/Edit items (Reload, Substitutions, Speech)', () => {
+    const { patchMenuJs } = require('../src/main_patches');
+    const sample = [
+        "const electron_1 = { Menu: { setApplicationMenu(m) { this.applied = m; } } };",
+        "const menu = { items: [",
+        "  { label: 'View', submenu: { items: [{ label: 'Reload' }, { label: 'Force Reload' }] } },",
+        "  { label: 'Edit', submenu: { items: [",
+        "    { label: 'Substitutions', submenu: { items: [{ label: 'Smart Quotes' }, { label: 'Text Replacement' }] } },",
+        "    { label: 'Speech', submenu: { items: [{ label: 'Start Speaking' }, { label: 'Stop Speaking' }] } }",
+        "  ] } }",
+        "] };",
+        "electron_1.Menu.setApplicationMenu(menu);",
+        "module.exports = menu;"
+    ].join('\n');
+    const labels = useTw => {
+        const mod = { exports: {} };
+        vm.runInNewContext(patchMenuJs(sample, useTw), { module: mod, console: { log() {}, warn() {} } });
+        const out = [];
+        const walk = items => items.forEach(i => { out.push(i.label); if (i.submenu) walk(i.submenu.items); });
+        walk(mod.exports.items);
+        return out;
+    };
+    assert.deepEqual(labels(true), ['檢視', '重新載入', '強制重新載入', '編輯', '替代', '智慧型引號', '文字替代', '語音', '開始朗讀', '停止朗讀']);
+    assert.deepEqual(labels(false), ['视图', '重新加载', '强制重新加载', '编辑', '替换', '智能引号', '文本替换', '语音', '开始朗读', '停止朗读']);
+});

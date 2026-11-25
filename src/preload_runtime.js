@@ -30,8 +30,26 @@
     const SKIP_TAGS = ['SCRIPT', 'STYLE', 'PRE', 'CODE'];
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
-    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .hv-nm, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
+    const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [data-testid="conversation-row-history"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .hv-nm, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
 
+    // 字体图标容器：文本内容是图标名称，不是界面文字
+    const ICON_FONT_SELECTOR = '.google-symbols, .material-symbols-outlined, .material-symbols-rounded, .material-symbols-sharp, .material-icons';
+    // Antigravity 2.35.1 内置 SVG 表缺少、会退回字体渲染的图标（由 main.js 图标组件与 icon 属性比对得出）
+    const ICON_FONT_FALLBACK_PATHS = {
+        restore_page: ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'],
+        comment: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+        format_quote: ['M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z', 'M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z'],
+        laptop_shield: ['M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16', 'M12 8l3 1.2v1.8c0 1.6-1.3 2.7-3 3.2-1.7-.5-3-1.6-3-3.2V9.2z']
+    };
+    // 权限预设胶囊按钮短标签 [简体, 繁体]
+    const PERMISSION_PILL_LABELS = {
+        'Request Review': ['请求审查', '請求審查'],
+        'Default': ['默认', '預設'],
+        'Auto': ['自动', '自動'],
+        'Turbo': ['极速', '極速'],
+        // 「Full machine」的短标签；词典里的 Machine 指云端运行环境，不适用于此
+        'Machine': ['整机', '全機']
+    };
     function isCodeOrEditor(node, forAttribute) {
         try {
             if (!node) return false;
@@ -781,14 +799,16 @@
 
     const DYNAMIC_RULES = [
         // 列表展开 / 收起明细
-        [/^Show\s+(\d+)\s+more(\s+(results?|items?|commands?|options?))?(\.\.\.)?$/i, (m, num, p2, type) => {
+        // 省略号跟着原文：「Show 3 more」不补「...」
+        [/^Show\s+(\d+)\s+more(\s+(results?|items?|commands?|options?))?(\.\.\.|…)?$/i, (m, num, p2, type, ell) => {
+            const tail = ell || '';
             if (type) {
-                if (/result/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個結果...") : ("显示另外 " + num + " 个结果...");
-                if (/command/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個指令...") : ("显示另外 " + num + " 个命令...");
-                if (/item/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個項目...") : ("显示另外 " + num + " 个项目...");
-                if (/option/i.test(type)) return USE_TW ? ("顯示另外 " + num + " 個選項...") : ("显示另外 " + num + " 个选项...");
+                if (/result/i.test(type)) return (USE_TW ? ("顯示另外 " + num + " 個結果") : ("显示另外 " + num + " 个结果")) + tail;
+                if (/command/i.test(type)) return (USE_TW ? ("顯示另外 " + num + " 個指令") : ("显示另外 " + num + " 个命令")) + tail;
+                if (/item/i.test(type)) return (USE_TW ? ("顯示另外 " + num + " 個項目") : ("显示另外 " + num + " 个项目")) + tail;
+                if (/option/i.test(type)) return (USE_TW ? ("顯示另外 " + num + " 個選項") : ("显示另外 " + num + " 个选项")) + tail;
             }
-            return USE_TW ? ("顯示另外 " + num + " 個...") : ("显示另外 " + num + " 个...");
+            return (USE_TW ? ("顯示另外 " + num + " 個") : ("显示另外 " + num + " 个")) + tail;
         }],
         [/^Show\s+(\d+)\s+breakdown(s)?$/i, (m, num) => USE_TW ? ("顯示 " + num + " 項明細") : ("显示 " + num + " 项细目")],
         [/^Hide\s+breakdown(s)?$/i, () => USE_TW ? "收起明細" : "收起细目"],
@@ -1480,7 +1500,7 @@
         // v2.35.0 动态模板规则
         [/^All (.+?) will be revoked\. The plugin will ask before doing this again\.$/, (m, target) => USE_TW ? ('將撤銷全部 ' + target + '。外掛程式在再次執行此操作前會先徵求您的同意。') : ('将撤销全部 ' + target + '。插件在再次执行此操作前会先征求您的同意。')],
         [/^Dismiss:\s*(.+)$/, (m, target) => (USE_TW ? '關閉：' : '忽略：') + target],
-        [/^Move to\s+(.+)$/, (m, dest) => (USE_TW ? '移至 ' : '移动到 ') + (lookupDict(dest) || dest)],
+        [/^Move to\s+(.+)$/, (m, dest) => { const d = lookupDict(dest); return (USE_TW ? '移至' : '移动到') + (d && /^[\u3400-\u9fff]/.test(d) ? '' : ' ') + (d || dest); }],
         [/^New\s+(.+?)\.\.\.$/, (m, kind) => (USE_TW ? '新增' : '新建') + translateNoun(kind) + '...'],
         [/^No matching languages for "(.+)"$/, (m, q) => USE_TW ? ('找不到與「' + q + '」相符的語言') : ('未找到与“' + q + '”匹配的语言')],
         [/^Remove from\s+(.+)$/, (m, target) => (USE_TW ? '從 ' : '从 ') + (lookupDict(target) || target) + ' 移除'],
@@ -2145,15 +2165,15 @@
                             if (v === 'Show ' || norm(v) === 'Show') {
                                 tc.nodeValue = USE_TW ? '顯示另外 ' : '显示另外 ';
                                 translatedValues.set(tc, tc.nodeValue);
-                            } else if (v === ' more...' || v === ' more…' || norm(v) === 'more...') {
-                                tc.nodeValue = USE_TW ? ' 個...' : ' 个...';
+                            } else if (/^more(\.\.\.|…)?$/i.test(v.trim())) {
+                                tc.nodeValue = (USE_TW ? ' 個' : ' 个') + (v.trim().match(/^more(\.\.\.|…)?$/i)[1] || '');
                                 translatedValues.set(tc, tc.nodeValue);
                             }
                         }
                     } else if (textChildren.length === 1 && node.childNodes.length === 1) {
-                        const m = elText.match(/^Show\s+(\d+)\s+more(?:\.\.\.|…)?$/i);
+                        const m = elText.match(/^Show\s+(\d+)\s+more(\.\.\.|…)?$/i);
                         if (m) {
-                            textChildren[0].nodeValue = USE_TW ? ('顯示另外 ' + m[1] + ' 個...') : ('显示另外 ' + m[1] + ' 个...');
+                            textChildren[0].nodeValue = (USE_TW ? ('顯示另外 ' + m[1] + ' 個') : ('显示另外 ' + m[1] + ' 个')) + (m[2] || '');
                             translatedValues.set(textChildren[0], textChildren[0].nodeValue);
                         }
                     }
@@ -2268,8 +2288,9 @@
                         translatedValues.set(node, node.nodeValue);
                         return;
                     }
-                    if (originalVal === ' more...' || originalVal === ' more…' || norm(originalVal) === 'more...') {
-                        node.nodeValue = USE_TW ? ' 個...' : ' 个...';
+                    const moreTail = originalVal.trim().match(/^more(\.\.\.|…)?$/i);
+                    if (moreTail) {
+                        node.nodeValue = (USE_TW ? ' 個' : ' 个') + (moreTail[1] || '');
                         translatedValues.set(node, node.nodeValue);
                         return;
                     }
@@ -2312,18 +2333,27 @@
                 }
                 if (cachedValue === originalVal || unchangedTextValues.get(node) === originalVal) return;
 
-                // Material Symbol 字体缺失图标修复（保留 React TextNode 避免遍历失同步）
-                if (valNorm === 'restore_page' && node.parentElement && (
-                    (typeof node.parentElement.classList?.contains === 'function' && node.parentElement.classList.contains('google-symbols')) ||
-                    (typeof node.parentElement.className === 'string' && node.parentElement.className.includes('google-symbols'))
-                )) {
-                    const iconHost = node.parentElement;
-                    if (!iconHost.querySelector?.('svg[data-ag-restore-icon]') && typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+                // 字体图标（ligature）文字：Antigravity 2.35.1 未加载 Google Symbols 字体，
+                // 内置 SVG 表缺少的图标会以图标名称纯文本显示。已知缺口改画 SVG，
+                // 其余图标名称一律不翻译，避免 "comment" 之类被词典译成中文（保留 React TextNode 避免遍历失同步）
+                const iconHost = node.parentElement && typeof node.parentElement.matches === 'function' && node.parentElement.matches(ICON_FONT_SELECTOR)
+                    ? node.parentElement
+                    : null;
+                if (iconHost) {
+                    const oldSvg = Array.from(iconHost.children || []).find(c => c.hasAttribute && c.hasAttribute('data-ag-icon-fallback'));
+                    if (oldSvg && oldSvg.getAttribute('data-ag-icon-fallback') !== valNorm) oldSvg.remove();
+                    const paths = Object.prototype.hasOwnProperty.call(ICON_FONT_FALLBACK_PATHS, valNorm) ? ICON_FONT_FALLBACK_PATHS[valNorm] : null;
+                    if (!paths || typeof document === 'undefined' || typeof document.createElementNS !== 'function') {
+                        unchangedTextValues.set(node, originalVal);
+                        return;
+                    }
+                    if (!oldSvg || oldSvg.getAttribute('data-ag-icon-fallback') !== valNorm) {
+                        const px = String(parseFloat(iconHost.style?.fontSize) || 16);
                         const svgNs = 'http://www.w3.org/2000/svg';
                         const svg = document.createElementNS(svgNs, 'svg');
-                        svg.setAttribute('data-ag-restore-icon', '1');
-                        svg.setAttribute('width', '16');
-                        svg.setAttribute('height', '16');
+                        svg.setAttribute('data-ag-icon-fallback', valNorm);
+                        svg.setAttribute('width', px);
+                        svg.setAttribute('height', px);
                         svg.setAttribute('viewBox', '0 0 24 24');
                         svg.setAttribute('fill', 'none');
                         svg.setAttribute('stroke', 'currentColor');
@@ -2332,15 +2362,23 @@
                         svg.setAttribute('stroke-linejoin', 'round');
                         svg.setAttribute('class', 'shrink-0');
                         svg.setAttribute('style', 'display:inline-block;vertical-align:middle');
-                        for (const d of ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5']) {
-                            const path = document.createElementNS(svgNs, 'path');
-                            path.setAttribute('d', d);
-                            svg.appendChild(path);
+                        for (const d of paths) {
+                            const pSvg = document.createElementNS(svgNs, 'path');
+                            pSvg.setAttribute('d', d);
+                            svg.appendChild(pSvg);
                         }
                         iconHost.insertBefore(svg, node);
                     }
                     translatedValues.set(node, '');
                     node.nodeValue = '';
+                    return;
+                }
+
+                // 输入框底部权限预设胶囊按钮为 shrink-0 + whitespace-nowrap，双语括号译名会挤压同行的模型选择按钮，改用短标签
+                if (Object.prototype.hasOwnProperty.call(PERMISSION_PILL_LABELS, valNorm) && node.parentElement?.closest?.('[data-testid="permissions-selector-trigger"]')) {
+                    const pillLabel = PERMISSION_PILL_LABELS[valNorm][USE_TW ? 1 : 0];
+                    translatedValues.set(node, pillLabel);
+                    node.nodeValue = pillLabel;
                     return;
                 }
 

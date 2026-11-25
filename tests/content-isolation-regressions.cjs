@@ -650,12 +650,12 @@ test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and han
     const textNodes = Array.from(icon.childNodes).filter(n => n.nodeType === w.Node.TEXT_NODE);
     assert.equal(textNodes.length, 1);
     assert.equal(textNodes[0].nodeValue, '');
-    assert.equal(icon.querySelectorAll('svg[data-ag-restore-icon="1"]').length, 1);
+    assert.equal(icon.querySelectorAll('svg[data-ag-icon-fallback="restore_page"]').length, 1);
 
     textNodes[0].nodeValue = 'restore_page';
     w.__agCnRuntimeStart();
     await settle();
-    assert.equal(icon.querySelectorAll('svg[data-ag-restore-icon="1"]').length, 1);
+    assert.equal(icon.querySelectorAll('svg[data-ag-icon-fallback="restore_page"]').length, 1);
     assert.equal(textNodes[0].nodeValue, '');
 
     assert.equal(w.document.getElementById('badge').textContent, 'Show 5');
@@ -950,7 +950,7 @@ test('v2.35.0 inbox mode, dictation languages, plugin permissions and dynamic te
     assert.equal(w.document.getElementById('revoke-msg').textContent, '将撤销全部 file permissions。插件在再次执行此操作前会先征求您的同意。');
     assert.equal(w.document.getElementById('ai-credits').textContent, '可用 AI 额度：1,250');
     assert.equal(w.document.getElementById('dismiss-btn').getAttribute('aria-label'), '忽略：Update ready');
-    assert.equal(w.document.getElementById('move-to').textContent, '移动到 归档');
+    assert.equal(w.document.getElementById('move-to').textContent, '移动到归档');
     assert.equal(w.document.getElementById('new-ws').textContent, '新建工作区...');
     assert.equal(w.document.getElementById('no-lang').textContent, '未找到与“klingon”匹配的语言');
     assert.equal(w.document.getElementById('rm-from').textContent, '从 Favorites 移除');
@@ -968,7 +968,7 @@ test('v2.35.0 inbox mode, dictation languages, plugin permissions and dynamic te
     assert.equal(domTw.window.document.getElementById('revoke-msg').textContent, '將撤銷全部 file permissions。外掛程式在再次執行此操作前會先徵求您的同意。');
     assert.equal(domTw.window.document.getElementById('ai-credits').textContent, '可用 AI 點數：1,250');
     assert.equal(domTw.window.document.getElementById('dismiss-btn').getAttribute('aria-label'), '關閉：Update ready');
-    assert.equal(domTw.window.document.getElementById('move-to').textContent, '移至 封存');
+    assert.equal(domTw.window.document.getElementById('move-to').textContent, '移至封存');
     assert.equal(domTw.window.document.getElementById('new-ws').textContent, '新增工作區...');
     assert.equal(domTw.window.document.getElementById('no-lang').textContent, '找不到與「klingon」相符的語言');
     assert.equal(domTw.window.document.getElementById('rm-from').textContent, '從 Favorites 移除');
@@ -1107,4 +1107,48 @@ test('PR #68 short words do not pollute lowercase identifiers and Show <host> in
     assert.equal(domTw.window.document.getElementById('lc-self').textContent, 'self');
     assert.equal(domTw.window.document.getElementById('tc-move').textContent, '移動');
     assert.equal(domTw.window.document.getElementById('show-host').getAttribute('aria-label'), '重新在清單中顯示 example.com');
+});
+test('v2.35.1 icon-font fallbacks stay untranslated, permission pill uses short labels, history titles stay isolated, and Show N more keeps the source ellipsis', async t => {
+    const html = `
+        <span id="i-comment" class="google-symbols" style="font-size: 18px">comment</span>
+        <span id="i-quote" class="google-symbols">format_quote</span>
+        <span id="i-laptop" class="google-symbols">laptop_shield</span>
+        <span id="i-unknown" class="google-symbols">settings</span>
+        <button data-testid="permissions-selector-trigger"><span id="pill-turbo">Turbo</span></button>
+        <button data-testid="permissions-selector-trigger"><span id="pill-default">Default</span></button>
+        <span id="plain-default">Default</span>
+        <div data-testid="conversation-row-history"><span id="hist-title" class="truncate">Settings</span></div>
+        <button id="more-plain">Show 3 more</button>
+        <button id="more-ell">Show 3 more...</button>
+        <button id="move-cn">Move to Archive</button>
+    `;
+    const w = await fixture(t, html);
+    const doc = w.document;
+    for (const [id, name] of [['i-comment', 'comment'], ['i-quote', 'format_quote'], ['i-laptop', 'laptop_shield']]) {
+        const el = doc.getElementById(id);
+        assert.equal(el.querySelectorAll(`svg[data-ag-icon-fallback="${name}"]`).length, 1, name);
+        assert.equal(el.textContent, '', `${name} 的图标名称不应以文字显示或被翻译`);
+    }
+    assert.equal(doc.querySelector('#i-comment svg').getAttribute('width'), '18');
+    assert.equal(doc.getElementById('i-unknown').textContent, 'settings');
+    assert.equal(doc.getElementById('pill-turbo').textContent, '极速');
+    assert.equal(doc.getElementById('pill-default').textContent, '默认');
+    assert.equal(doc.getElementById('plain-default').textContent, '默认 (Default)');
+    assert.equal(doc.getElementById('hist-title').textContent, 'Settings');
+    assert.equal(doc.getElementById('more-plain').textContent, '显示另外 3 个');
+    assert.equal(doc.getElementById('more-ell').textContent, '显示另外 3 个...');
+
+    // React 复用同一个图标节点改成别的图标时，替换 SVG 而不是叠加
+    const quoteText = Array.from(doc.getElementById('i-quote').childNodes).find(n => n.nodeType === w.Node.TEXT_NODE);
+    quoteText.nodeValue = 'comment';
+    await settle();
+    assert.equal(doc.querySelectorAll('#i-quote svg').length, 1);
+    assert.equal(doc.querySelector('#i-quote svg').getAttribute('data-ag-icon-fallback'), 'comment');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('pill-turbo').textContent, '極速');
+    assert.equal(domTw.window.document.getElementById('more-plain').textContent, '顯示另外 3 個');
 });
