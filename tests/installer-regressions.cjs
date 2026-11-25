@@ -378,6 +378,37 @@ test('ensureWritePermission returns false on EPERM/EACCES and true on writable d
     assert.equal(runProbe(null), 'true');
 });
 
+test('ensureWritePermission tells root users on macOS to grant App Management instead of retrying sudo', () => {
+    const engineDir = path.resolve(__dirname, '..');
+    const runDarwinRootProbe = (errCode, extraArg = '') => {
+        const script = [
+            "const fs = require('fs');",
+            extraArg ? `process.argv.push(${JSON.stringify(extraArg)});` : '',
+            "Object.defineProperty(process, 'platform', { value: 'darwin' });",
+            "Object.defineProperty(process, 'getuid', { value: () => 0, configurable: true });",
+            `fs.accessSync = () => { const e = new Error('denied'); e.code = ${JSON.stringify(errCode)}; throw e; };`,
+            "const { ensureWritePermission } = require('./localization_engine');",
+            "process.stdout.write('RESULT=' + ensureWritePermission('/Applications/Antigravity.app/Contents/Resources'));"
+        ].filter(Boolean).join('\n');
+        const res = childProcess.spawnSync(process.execPath, ['-e', script], { cwd: engineDir, encoding: 'utf8' });
+        assert.equal(res.status, 0, res.stderr);
+        return `${res.stdout}\n${res.stderr}`;
+    };
+
+    for (const code of ['EPERM', 'EACCES']) {
+        const output = runDarwinRootProbe(code);
+        assert.match(output, /RESULT=false/);
+        assert.match(output, /App 管理/);
+        assert.match(output, /Cmd\+Q/);
+    }
+
+    const twOutput = runDarwinRootProbe('EPERM', '--tw');
+    assert.match(twOutput, /RESULT=false/);
+    assert.match(twOutput, /終端機應用程式/);
+    assert.match(twOutput, /指令碼/);
+    assert.doesNotMatch(twOutput, /腳本/);
+});
+
 test('resignAppOnMac and canRestartApp skip non-bundle staging dirs while preserving rollback on real bundle failure', t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-mac-bundle-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
