@@ -64,7 +64,28 @@ function getLanguageServerCandidates() {
                         if (Number.isInteger(portNum) && portNum > 0 && !ports.includes(portNum)) ports.push(portNum);
                     }
                 } catch (portErr) {
-                    console.warn(`[!] 查询进程 ${pid} 监听端口失败: ${portErr.message}`);
+                    let fallbackOk = false;
+                    if (process.platform === 'linux') {
+                        try {
+                            const ssOut = child_process.execSync('ss -H -ltnp', { encoding: 'utf-8', stdio: 'pipe', timeout: 5000 });
+                            const pidToken = `pid=${pid},`;
+                            const pidTokenEnd = `pid=${pid})`;
+                            for (const ssLine of ssOut.split(/\r?\n/)) {
+                                if (!ssLine.includes(pidToken) && !ssLine.includes(pidTokenEnd)) continue;
+                                const cols = ssLine.trim().split(/\s+/);
+                                const localAddr = cols[3] || '';
+                                const portMatch = localAddr.match(/:(\d+)$/);
+                                if (portMatch) {
+                                    const portNum = parseInt(portMatch[1], 10);
+                                    if (Number.isInteger(portNum) && portNum > 0 && !ports.includes(portNum)) ports.push(portNum);
+                                }
+                            }
+                            fallbackOk = true;
+                        } catch (_ssErr) {}
+                    }
+                    if (!fallbackOk) {
+                        console.warn(`[!] 查询进程 ${pid} 监听端口失败: ${portErr.message}`);
+                    }
                 }
                 candidates.push({ pid, csrfToken, ports, cmd });
             }

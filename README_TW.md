@@ -2,7 +2,7 @@
 
 👉 **[簡體中文版說明文件 (Simplified Chinese README)](README.md)**
 
-> **支援系統**：Windows & macOS (均已內建一鍵指令碼)  
+> **支援系統**：Windows / macOS / Linux (均已內建一鍵指令碼)  
 > **匹配版本**：Antigravity v2.35.1+  
 
 > **核心引擎**：Node.js (無需安裝 Python，零依賴，極速極穩)  
@@ -25,8 +25,8 @@
 ---
 
 ## 📂 專案檔案結構
-- **`双击安装繁体中文.bat`** / **`.command`**：Windows / macOS 一鍵繁體中文化執行入口（另有對應簡體中文版指令碼）。
-- **`双击卸载还原官方英文.bat`** / **`.command`**：Windows / macOS 一鍵完美恢復原版入口。
+- **`双击安装繁体中文.bat`** / **`.command`** / **`install_linux.sh`**：Windows / macOS / Linux 一鍵繁體中文化執行入口（Linux 請附加 `--tw` 參數）。
+- **`双击卸载还原官方英文.bat`** / **`.command`** / **`uninstall_linux.sh`**：Windows / macOS / Linux 一鍵完美恢復原版入口。
 - **`localization_engine.js`**：核心中文化排程引擎，負責環境偵測、進程鎖釋放、詞典編譯、快取清除及 macOS `Info.plist` 校驗與自動重新簽名。
 - **`src/`**：模組化核心原始碼：
   - `preload_runtime.js`：前端 DOM 動態隔離與表驅動正規表達式引擎（含內容隔離、Shadow DOM 穿透與原生右鍵選單掛鉤）。
@@ -96,6 +96,7 @@
 2. 進入您解壓縮或複製出來的 `antigravity2-cn` 資料夾：
    - **Windows**：按兩下執行 **`双击安装繁体中文.bat`**。
    - **macOS**：按兩下執行 **`双击安装繁体中文.command`**。
+   - **Linux**：在終端機執行 **`./install_linux.sh --tw`**（若目標目錄如 `/opt/antigravity` 需要管理員權限，會自動透過 `sudo` 提權並正確清除目前使用者的 Electron 快取）。
 3. 依提示選擇左上角品牌顯示方式：顯示英文 Antigravity（預設推薦）、不顯示品牌名稱、或顯示繁體中文品牌名。
 4. 執行完成後，重新啟動 Antigravity 軟體，即可暢享全繁體中文介面！
 
@@ -121,6 +122,7 @@ node localization_engine.js --tw --brand-title translated
 2. 在目前資料夾下：
    - **Windows**：按兩下執行 **`双击卸载还原官方英文.bat`**。
    - **macOS**：按兩下執行 **`双击卸载还原官方英文.command`**。
+   - **Linux**：在終端機執行 **`./uninstall_linux.sh --tw`**。
 3. 執行完成後，軟體將自動清除所有中文化注入，無痕恢復至官方原版英文狀態。
 
 ---

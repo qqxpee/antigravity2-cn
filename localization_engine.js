@@ -16,26 +16,81 @@ const {
     MAIN_PROCESS_PATCH_TARGETS
 } = require('./src/main_patches');
 
-// macOS 环境下自动补全 PATH，确保 codesign 等工具能被顺利找到
-if (process.platform === 'darwin') {
-    let realHome = os.homedir();
-    if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
-        const sudoHome = path.join('/Users', process.env.SUDO_USER);
-        if (fs.existsSync(sudoHome)) realHome = sudoHome;
+function resolveSudoUserInfo() {
+    const sudoUser = process.env.SUDO_USER;
+    if (!sudoUser || sudoUser === 'root') return null;
+    let home = null;
+    let uid = /^\d+$/.test(String(process.env.SUDO_UID || '')) ? Number(process.env.SUDO_UID) : null;
+    let gid = /^\d+$/.test(String(process.env.SUDO_GID || '')) ? Number(process.env.SUDO_GID) : null;
+
+    if (process.platform === 'linux') {
+        try {
+            const passwd = fs.readFileSync('/etc/passwd', 'utf8');
+            for (const line of passwd.split(/\r?\n/)) {
+                if (!line || line.startsWith('#')) continue;
+                const fields = line.split(':');
+                if (fields[0] === sudoUser && fields.length >= 6) {
+                    if (fields[5] && fs.existsSync(fields[5])) home = fields[5];
+                    if (uid === null && /^\d+$/.test(fields[2])) uid = Number(fields[2]);
+                    if (gid === null && /^\d+$/.test(fields[3])) gid = Number(fields[3]);
+                    break;
+                }
+            }
+        } catch (e) {}
+        if (!home) {
+            const fallbackHome = path.join('/home', sudoUser);
+            if (fs.existsSync(fallbackHome)) home = fallbackHome;
+        }
+    } else if (process.platform === 'darwin') {
+        const macHome = path.join('/Users', sudoUser);
+        if (fs.existsSync(macHome)) home = macHome;
     }
-    const extraPaths = [
-        '/usr/local/bin',
-        '/opt/homebrew/bin',
-        '/opt/homebrew/sbin',
-        '/opt/local/bin',
-        path.join(realHome, '.volta', 'bin'),
-        path.join(realHome, '.asdf', 'shims'),
-        path.join(realHome, '.local', 'share', 'mise', 'shims'),
-        path.join(realHome, '.local', 'bin'),
-        path.join(realHome, '.fnm', 'current', 'bin'),
-        path.join(realHome, '.local', 'share', 'fnm', 'aliases', 'default', 'bin'),
-        path.join(realHome, 'Library', 'Application Support', 'fnm', 'aliases', 'default', 'bin')
-    ];
+    return { user: sudoUser, home, uid, gid };
+}
+
+function resolveRealHome() {
+    const sudoInfo = resolveSudoUserInfo();
+    if (sudoInfo && sudoInfo.home) return sudoInfo.home;
+    return os.homedir();
+}
+
+function resolveLinuxConfigBaseDir() {
+    const sudoInfo = resolveSudoUserInfo();
+    const xdg = process.env.XDG_CONFIG_HOME;
+    if (xdg && (!sudoInfo || !xdg.startsWith('/root/'))) {
+        return xdg;
+    }
+    return path.join(resolveRealHome(), '.config');
+}
+
+// macOS / Linux 环境下自动补全 PATH，确保系统工具与 Node 版本管理器路径可被找到
+if (process.platform === 'darwin' || process.platform === 'linux') {
+    const realHome = resolveRealHome();
+    const extraPaths = process.platform === 'darwin'
+        ? [
+            '/usr/local/bin',
+            '/opt/homebrew/bin',
+            '/opt/homebrew/sbin',
+            '/opt/local/bin',
+            path.join(realHome, '.volta', 'bin'),
+            path.join(realHome, '.asdf', 'shims'),
+            path.join(realHome, '.local', 'share', 'mise', 'shims'),
+            path.join(realHome, '.local', 'bin'),
+            path.join(realHome, '.fnm', 'current', 'bin'),
+            path.join(realHome, '.local', 'share', 'fnm', 'aliases', 'default', 'bin'),
+            path.join(realHome, 'Library', 'Application Support', 'fnm', 'aliases', 'default', 'bin')
+        ]
+        : [
+            '/usr/local/bin',
+            '/usr/bin',
+            '/bin',
+            path.join(realHome, '.volta', 'bin'),
+            path.join(realHome, '.asdf', 'shims'),
+            path.join(realHome, '.local', 'share', 'mise', 'shims'),
+            path.join(realHome, '.local', 'bin'),
+            path.join(realHome, '.fnm', 'current', 'bin'),
+            path.join(realHome, '.local', 'share', 'fnm', 'aliases', 'default', 'bin')
+        ];
     const nvmVersionsDir = path.join(realHome, '.nvm', 'versions', 'node');
     if (fs.existsSync(nvmVersionsDir)) {
         try {
@@ -45,7 +100,7 @@ if (process.platform === 'darwin') {
             }
         } catch (e) {}
     }
-    const currentPaths = (process.env.PATH || '').split(':');
+    const currentPaths = (process.env.PATH || '').split(':').filter(Boolean);
     for (const p of extraPaths) {
         if (!currentPaths.includes(p) && fs.existsSync(p)) {
             currentPaths.unshift(p);
@@ -122,6 +177,7 @@ if (USE_TW) {
         "[!] 未找到备份文件 app.asar.bak，可能尚未安装过汉化或备份被删除。": "[!] 未找到備份檔案 app.asar.bak，可能尚未安裝過繁中化或備份已被刪除。",
         "[还原] 正在用官方备份文件恢复...": "[還原] 正在使用官方備份檔案還原...",
         "[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...": "[權限] 偵測到目前使用者對 macOS 應用程式目錄缺少寫入權限，正在嘗試請求管理員權限 (sudo) 重新執行...",
+        "[权限] 检测到当前用户对应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...": "[權限] 偵測到目前使用者對應用程式目錄缺少寫入權限，正在嘗試請求管理員權限 (sudo) 重新執行...",
         "[√] 官方 app.asar 已成功恢复！": "[√] 官方 app.asar 已成功還原！",
         "[错误] --install-dir 缺少有效的路径参数！": "[錯誤] --install-dir 缺少有效的路徑參數！",
         "[错误] --install-dir= 路径不能为空！": "[錯誤] --install-dir= 路徑不能為空！",
@@ -253,7 +309,158 @@ function generateJs() {
 
 let wasAppRunning = false;
 
-function checkIfAppIsRunning() {
+function resolveLinuxAppRoot(installDir) {
+    if (!installDir) return null;
+    let resolved = path.resolve(installDir);
+    if (path.basename(resolved).toLowerCase() === 'resources' && fs.existsSync(path.join(resolved, 'app.asar'))) {
+        resolved = path.dirname(resolved);
+    }
+    return resolved;
+}
+
+function findLinuxExecutable(installDir) {
+    const appRoot = resolveLinuxAppRoot(installDir);
+    if (!appRoot) return null;
+    for (const name of ['antigravity', 'Antigravity', 'antigravity-bin']) {
+        const candidate = path.join(appRoot, name);
+        try {
+            if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                return candidate;
+            }
+        } catch (e) {}
+    }
+    return null;
+}
+
+function extractLinuxDirsFromWrapper(scriptPath) {
+    const dirs = [];
+    try {
+        const stat = fs.statSync(scriptPath);
+        if (!stat.isFile() || stat.size === 0 || stat.size > 32768) return dirs;
+        const buf = fs.readFileSync(scriptPath);
+        if (!buf.subarray(0, 2).equals(Buffer.from('#!'))) return dirs;
+        const text = buf.toString('utf8');
+        const pathRegex = /(["'])(\/[^"'\r\n]*antigravity[^"'\r\n]*)\1|(?:^|[\s=])(\/[^\s"'`$;|&<>()]*antigravity[^\s"'`$;|&<>()]*)/gim;
+        let m;
+        while ((m = pathRegex.exec(text)) !== null) {
+            const raw = (m[2] || m[3] || '').replace(/\/+$/, '');
+            if (!raw || raw.includes('$')) continue;
+            dirs.push(raw);
+            const parent = path.dirname(raw);
+            if (parent && parent !== '/' && parent !== raw) dirs.push(parent);
+        }
+    } catch (e) {}
+    return dirs;
+}
+
+function extractLinuxDirsFromDesktopFile(desktopPath) {
+    const dirs = [];
+    try {
+        if (!fs.existsSync(desktopPath) || !fs.statSync(desktopPath).isFile()) return dirs;
+        const text = fs.readFileSync(desktopPath, 'utf8');
+        for (const line of text.split(/\r?\n/)) {
+            const m = line.match(/^\s*Exec\s*=\s*(.+)$/);
+            if (!m) continue;
+            const execVal = m[1].trim();
+            const firstTokenMatch = execVal.match(/^"([^"]+)"|^'([^']+)'|^(\S+)/);
+            const bin = firstTokenMatch ? (firstTokenMatch[1] || firstTokenMatch[2] || firstTokenMatch[3]) : '';
+            if (!bin || !path.isAbsolute(bin)) continue;
+            try {
+                const real = fs.realpathSync(bin);
+                dirs.push(path.dirname(real));
+                dirs.push(path.dirname(path.dirname(real)));
+                for (const d of extractLinuxDirsFromWrapper(real)) dirs.push(d);
+            } catch (e) {
+                dirs.push(path.dirname(bin));
+            }
+        }
+    } catch (e) {}
+    return dirs;
+}
+
+function findLinuxLauncher(installDir) {
+    const appRoot = resolveLinuxAppRoot(installDir);
+    if (!appRoot) return null;
+    const realHome = resolveRealHome();
+    const binCandidates = [
+        '/usr/local/bin/antigravity',
+        '/usr/bin/antigravity',
+        path.join(realHome, '.local', 'bin', 'antigravity')
+    ];
+    for (const binPath of binCandidates) {
+        try {
+            if (!fs.existsSync(binPath) || !fs.statSync(binPath).isFile()) continue;
+            const real = fs.realpathSync(binPath);
+            if (real === appRoot || real.startsWith(appRoot + path.sep)) {
+                return binPath;
+            }
+            const referencedDirs = extractLinuxDirsFromWrapper(real).map(d => path.resolve(d));
+            if (referencedDirs.some(d => d === appRoot || d.startsWith(appRoot + path.sep))) {
+                return binPath;
+            }
+        } catch (e) {}
+    }
+    return findLinuxExecutable(installDir);
+}
+
+function getAncestorPids() {
+    const ancestors = new Set([process.pid]);
+    if (process.ppid) ancestors.add(process.ppid);
+    if (process.platform !== 'linux') return ancestors;
+    let current = process.ppid;
+    for (let depth = 0; depth < 32 && current > 1; depth++) {
+        try {
+            const stat = fs.readFileSync(`/proc/${current}/stat`, 'utf8');
+            const closeParen = stat.lastIndexOf(')');
+            if (closeParen === -1) break;
+            const fields = stat.slice(closeParen + 2).trim().split(/\s+/);
+            const ppid = Number(fields[1]);
+            if (!Number.isInteger(ppid) || ppid <= 1 || ancestors.has(ppid)) break;
+            ancestors.add(ppid);
+            current = ppid;
+        } catch (e) {
+            break;
+        }
+    }
+    return ancestors;
+}
+
+function findLinuxAppPids(installDir, procDir = '/proc') {
+    const pids = [];
+    if (!fs.existsSync(procDir)) return pids;
+    const ancestors = getAncestorPids();
+    const appRoot = resolveLinuxAppRoot(installDir);
+    let entries;
+    try {
+        entries = fs.readdirSync(procDir);
+    } catch (e) {
+        return pids;
+    }
+    for (const entry of entries) {
+        if (!/^\d+$/.test(entry)) continue;
+        const pid = Number(entry);
+        if (!Number.isInteger(pid) || pid <= 1 || ancestors.has(pid)) continue;
+        let exePath = '';
+        try {
+            exePath = fs.readlinkSync(path.join(procDir, entry, 'exe')).replace(/ \(deleted\)$/, '');
+        } catch (e) {
+            continue;
+        }
+        if (!exePath) continue;
+        const base = path.basename(exePath).toLowerCase();
+        if (base !== 'antigravity' && base !== 'antigravity-bin') continue;
+        if (appRoot) {
+            if (exePath === appRoot || exePath.startsWith(appRoot + path.sep)) {
+                pids.push(pid);
+            }
+        } else {
+            pids.push(pid);
+        }
+    }
+    return pids;
+}
+
+function checkIfAppIsRunning(installDir) {
     try {
         if (process.platform === 'win32') {
             const stdout = child_process.execSync('tasklist /fi "imagename eq Antigravity.exe" /nh', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -261,6 +468,8 @@ function checkIfAppIsRunning() {
         } else if (process.platform === 'darwin') {
             const stdout = child_process.execSync('pgrep -x Antigravity || pgrep -f "/Antigravity\\.app/Contents/MacOS/Antigravity"', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
             return stdout.trim().length > 0;
+        } else if (process.platform === 'linux') {
+            return findLinuxAppPids(installDir).length > 0;
         }
     } catch (e) {
         // ignore
@@ -277,12 +486,16 @@ function sleepSync(ms) {
     }
 }
 
-function closeAntigravityProcesses() {
+function closeAntigravityProcesses(installDir) {
     console.log("[1] 检测到 Antigravity 客户端正在运行，正在关闭以解除文件锁...");
     try {
         // 第一阶段：尝试发送温和退出信号 (WM_CLOSE / SIGTERM)，让客户端有机会触发 before-quit 优雅落盘
         if (process.platform === 'win32') {
             child_process.execSync('taskkill /im Antigravity.exe >nul 2>nul');
+        } else if (process.platform === 'linux') {
+            for (const pid of findLinuxAppPids(installDir)) {
+                try { process.kill(pid, 'SIGTERM'); } catch (e) {}
+            }
         } else {
             child_process.execSync('killall -TERM Antigravity >/dev/null 2>&1; pkill -TERM -x Antigravity >/dev/null 2>&1');
         }
@@ -292,13 +505,17 @@ function closeAntigravityProcesses() {
     const waitStart = Date.now();
     while (Date.now() - waitStart < 2500) {
         sleepSync(250);
-        if (!checkIfAppIsRunning()) break;
+        if (!checkIfAppIsRunning(installDir)) break;
     }
 
-    // 第二阶段：无论主窗口是否已关闭，都必须执行 /f /t 彻底清理所有残余的 Electron GPU/渲染子进程，彻底释放 app.asar 文件锁
+    // 第二阶段：无论主窗口是否已关闭，都必须彻底清理所有残余的 Electron GPU/渲染子进程，彻底释放 app.asar 文件锁
     try {
         if (process.platform === 'win32') {
             child_process.execSync('taskkill /f /im Antigravity.exe /t >nul 2>nul');
+        } else if (process.platform === 'linux') {
+            for (const pid of findLinuxAppPids(installDir)) {
+                try { process.kill(pid, 'SIGKILL'); } catch (e) {}
+            }
         } else {
             child_process.execSync('killall Antigravity >/dev/null 2>&1; killall "Antigravity Helper" >/dev/null 2>&1; pkill -x Antigravity >/dev/null 2>&1; pkill -f "/Antigravity\\.app/Contents/MacOS/Antigravity" >/dev/null 2>&1');
         }
@@ -325,7 +542,7 @@ function detectInstallationDir(manualDir) {
     const addCandidate = (candidate) => {
         if (!candidate) return;
         const normalized = path.resolve(candidate);
-        const key = normalized.toLowerCase();
+        const key = process.platform === 'win32' ? normalized.toLowerCase() : normalized;
         if (!seenCandidates.has(key)) {
             candidates.push(normalized);
             seenCandidates.add(key);
@@ -373,12 +590,67 @@ function detectInstallationDir(manualDir) {
             addCandidate(path.join(localAppdata, 'Programs', 'antigravity'));
         }
     } else if (process.platform === 'darwin') {
+        addCandidate(process.env.ANTIGRAVITY_INSTALL_DIR);
+        addCandidate(process.env.ANTIGRAVITY_HOME);
         addCandidate("/Applications/Antigravity.app");
         if (process.env.HOME) {
             addCandidate(path.join(process.env.HOME, 'Applications', 'Antigravity.app'));
         }
         if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
             addCandidate(path.join('/Users', process.env.SUDO_USER, 'Applications', 'Antigravity.app'));
+        }
+    } else if (process.platform === 'linux') {
+        addCandidate(process.env.ANTIGRAVITY_INSTALL_DIR);
+        addCandidate(process.env.ANTIGRAVITY_HOME);
+
+        const realHome = resolveRealHome();
+        const binDirs = new Set([
+            '/usr/local/bin',
+            '/usr/bin',
+            path.join(realHome, '.local', 'bin'),
+            ...(process.env.PATH || '').split(':').filter(Boolean)
+        ]);
+        for (const binDir of binDirs) {
+            for (const binName of ['antigravity', 'Antigravity']) {
+                const binPath = path.join(binDir, binName);
+                try {
+                    if (!fs.existsSync(binPath) || !fs.statSync(binPath).isFile()) continue;
+                    const real = fs.realpathSync(binPath);
+                    addCandidate(path.dirname(real));
+                    addCandidate(path.dirname(path.dirname(real)));
+                    for (const d of extractLinuxDirsFromWrapper(real)) {
+                        addCandidate(d);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        for (const desktopPath of [
+            '/usr/share/applications/antigravity.desktop',
+            '/usr/local/share/applications/antigravity.desktop',
+            path.join(realHome, '.local', 'share', 'applications', 'antigravity.desktop')
+        ]) {
+            for (const d of extractLinuxDirsFromDesktopFile(desktopPath)) {
+                addCandidate(d);
+            }
+        }
+
+        for (const linuxCandidate of [
+            '/opt/antigravity',
+            '/opt/Antigravity',
+            '/usr/share/antigravity',
+            '/usr/share/Antigravity',
+            '/usr/lib/antigravity',
+            '/usr/lib/Antigravity',
+            '/usr/local/lib/antigravity',
+            '/usr/local/share/antigravity',
+            path.join(realHome, '.local', 'share', 'antigravity'),
+            path.join(realHome, '.local', 'share', 'Antigravity'),
+            path.join(realHome, '.local', 'opt', 'antigravity'),
+            path.join(realHome, 'Applications', 'Antigravity'),
+            path.join(realHome, 'antigravity')
+        ]) {
+            addCandidate(linuxCandidate);
         }
     }
 
@@ -404,18 +676,11 @@ function spawnCommandSync(cmd, args) {
 function cleanElectronCache() {
     let baseAppSupportDir = "";
     if (process.platform === 'darwin') {
-        let userHome = os.homedir();
-        if (process.env.SUDO_USER && process.env.SUDO_USER !== 'root') {
-            const sudoHome = path.join('/Users', process.env.SUDO_USER);
-            if (fs.existsSync(sudoHome)) {
-                userHome = sudoHome;
-            }
-        }
-        baseAppSupportDir = path.join(userHome, 'Library', 'Application Support');
+        baseAppSupportDir = path.join(resolveRealHome(), 'Library', 'Application Support');
     } else if (process.platform === 'win32') {
         baseAppSupportDir = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
     } else {
-        baseAppSupportDir = path.join(os.homedir(), '.config');
+        baseAppSupportDir = resolveLinuxConfigBaseDir();
     }
 
     const cacheDirNames = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnWebGPUCache', 'DawnGraphiteCache']);
@@ -447,7 +712,10 @@ function cleanElectronCache() {
         }
     }
 
-    for (const appDirName of ['Antigravity', 'Antigravity IDE']) {
+    const appDirNames = process.platform === 'linux'
+        ? ['Antigravity', 'Antigravity IDE', 'antigravity']
+        : ['Antigravity', 'Antigravity IDE'];
+    for (const appDirName of appDirNames) {
         walkCacheDirs(path.join(baseAppSupportDir, appDirName), 0);
     }
 
@@ -546,17 +814,40 @@ function ensureWritePermission(targetDir) {
             return true;
         }
     }
-    if (process.platform !== 'darwin') return true;
+    if (process.platform !== 'darwin' && process.platform !== 'linux') return true;
     try {
         fs.accessSync(targetDir, fs.constants.W_OK);
         return true;
     } catch (err) {
         if (process.getuid && process.getuid() !== 0) {
-            console.log("[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...");
+            if (process.platform === 'linux' && !(process.stdin && process.stdin.isTTY)) {
+                return false;
+            }
+            if (process.platform === 'darwin') {
+                console.log("[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...");
+            } else {
+                console.log("[权限] 检测到当前用户对应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...");
+            }
             const args = process.argv.slice(1);
-            const res = child_process.spawnSync('sudo', [process.execPath, ...args], {
+            const hasBrandArg = args.some(a => a === '--brand-title' || a.startsWith('--brand-title='));
+            const forwardArgs = hasBrandArg ? args : [...args, '--brand-title', BRAND_TITLE_MODE];
+            const sudoArgs = [];
+            if (process.platform === 'linux') {
+                const preservedVars = [];
+                for (const k of ['PATH', 'DISPLAY', 'WAYLAND_DISPLAY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_CONFIG_HOME', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) {
+                    if (process.env[k]) preservedVars.push(`${k}=${process.env[k]}`);
+                }
+                if (preservedVars.length > 0) {
+                    sudoArgs.push('env', ...preservedVars);
+                }
+            }
+            sudoArgs.push(process.execPath, ...forwardArgs);
+            const res = child_process.spawnSync('sudo', sudoArgs, {
                 stdio: 'inherit'
             });
+            if (res.error) {
+                return false;
+            }
             if (res.status === 0) {
                 process.exit(0);
             } else {
@@ -823,7 +1114,9 @@ function restoreProxyIfNeeded(installDir) {
 function getPrefsFilePath() {
     const baseDir = process.platform === 'win32'
         ? (process.env.APPDATA || process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
-        : (process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'));
+        : (process.platform === 'linux'
+            ? resolveLinuxConfigBaseDir()
+            : (process.env.XDG_CONFIG_HOME || path.join(resolveRealHome(), '.config')));
     return path.join(baseDir, 'Antigravity', 'localization-prefs.json');
 }
 
@@ -843,8 +1136,19 @@ function saveLocalizationPref(installDir, pref) {
             brandTitle: String(pref.brandTitle || 'english'),
             updatedAt: new Date().toISOString()
         };
-        fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
+        const prefsDir = path.dirname(prefsPath);
+        const dirExisted = fs.existsSync(prefsDir);
+        fs.mkdirSync(prefsDir, { recursive: true });
         fs.writeFileSync(prefsPath, JSON.stringify(data, null, 2), 'utf8');
+        if (process.platform !== 'win32' && process.getuid && process.getuid() === 0) {
+            const sudoInfo = resolveSudoUserInfo();
+            if (sudoInfo && sudoInfo.uid !== null && sudoInfo.gid !== null) {
+                try {
+                    if (!dirExisted) fs.chownSync(prefsDir, sudoInfo.uid, sudoInfo.gid);
+                    fs.chownSync(prefsPath, sudoInfo.uid, sudoInfo.gid);
+                } catch (e) {}
+            }
+        }
     } catch (e) {
         console.warn(`[警告] 保存汉化偏好配置失败: ${e.message}`);
     }
@@ -856,6 +1160,9 @@ function canRestartApp(installDir) {
     }
     if (process.platform === 'darwin') {
         return isValidMacAppBundle(resolveMacAppBundle(installDir));
+    }
+    if (process.platform === 'linux') {
+        return Boolean(findLinuxExecutable(installDir));
     }
     return false;
 }
@@ -974,11 +1281,11 @@ async function main() {
     const installDir = detectInstallationDir(manualDir);
 
     // 2. 检测客户端是否正在运行，并根据参数决定是否关闭以解除文件锁定
-    wasAppRunning = checkIfAppIsRunning();
+    wasAppRunning = checkIfAppIsRunning(installDir);
     if (noKill) {
         console.log("[跳过] 检测到 --no-kill 参数，跳过关闭 Antigravity 运行进程。");
     } else if (wasAppRunning) {
-        closeAntigravityProcesses();
+        closeAntigravityProcesses(installDir);
     }
 
     // 3. 找到 resources 资源目录
@@ -1047,6 +1354,32 @@ async function main() {
                 } else {
                     console.warn(`[警告] 客户端启动失败: ${openRes.stderr || openRes.stdout}`);
                 }
+            } else if (process.platform === 'linux') {
+                if (process.env.DISPLAY || process.env.WAYLAND_DISPLAY) {
+                    const launcher = findLinuxLauncher(installDir) || findLinuxExecutable(installDir);
+                    if (launcher) {
+                        const sudoInfo = resolveSudoUserInfo();
+                        let child;
+                        if (process.getuid && process.getuid() === 0 && sudoInfo) {
+                            const userEnv = [];
+                            if (sudoInfo.home) userEnv.push(`HOME=${sudoInfo.home}`);
+                            for (const k of ['DISPLAY', 'WAYLAND_DISPLAY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_CONFIG_HOME', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) {
+                                if (process.env[k]) userEnv.push(`${k}=${process.env[k]}`);
+                            }
+                            child = child_process.spawn('sudo', ['-u', sudoInfo.user, 'env', ...userEnv, launcher], {
+                                detached: true,
+                                stdio: 'ignore'
+                            });
+                        } else {
+                            child = child_process.spawn(launcher, [], {
+                                detached: true,
+                                stdio: 'ignore'
+                            });
+                        }
+                        child.unref();
+                        console.log("[启动] 客户端启动成功！");
+                    }
+                }
             }
         } catch (e) {
             console.warn(`[警告] 客户端启动失败: ${e.message}`);
@@ -1073,7 +1406,17 @@ if (typeof module !== 'undefined' && module.exports) {
         isValidMacAppBundle,
         canRestartApp,
         resolveBrandTitleChoice,
-        promptBrandTitleMode
+        promptBrandTitleMode,
+        resolveRealHome,
+        resolveLinuxConfigBaseDir,
+        resolveLinuxAppRoot,
+        findLinuxExecutable,
+        findLinuxLauncher,
+        findLinuxAppPids,
+        extractLinuxDirsFromWrapper,
+        extractLinuxDirsFromDesktopFile,
+        detectInstallationDir,
+        cleanElectronCache
     };
 }
 
