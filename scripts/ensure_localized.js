@@ -19,6 +19,7 @@ const { readAsarLayout } = require('../src/asar_patcher');
 
 const ROOT = path.resolve(__dirname, '..');
 const SIGNATURE_START = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
+const SIGNATURE_END = '/* --- ANTIGRAVITY CHINESE LOCALIZATION END --- */';
 
 const BRAND_TITLE_ALIASES = {
     english: 'english',
@@ -37,6 +38,7 @@ const LOG_TRANSLATIONS_TW = [
     ['[提示] 自检启动器目前仅支持 Windows；macOS 请在更新后重新运行 双击安装中文汉化.command。', '[提示] 自檢啟動器目前僅支援 Windows；macOS 請在更新後重新執行 双击安装繁体中文.command。'],
     ['[错误] 未找到 Antigravity 安装目录，可用 --install-dir 指定。', '[錯誤] 找不到 Antigravity 安裝目錄，可用 --install-dir 指定。'],
     ['[检测] 安装目录: ', '[偵測] 安裝目錄: '],
+    ['[检测] 汉化状态: 已汉化（检测到本地词库或引擎已更新，需同步刷新）', '[偵測] 漢化狀態: 已漢化（偵測到本機詞庫或引擎已更新，需同步重新整理）'],
     ['[检测] 汉化状态: 已汉化', '[偵測] 漢化狀態: 已漢化'],
     ['[检测] 汉化状态: 未汉化（可能已被官方自动更新覆盖）', '[偵測] 漢化狀態: 未漢化（可能已被官方自動更新覆蓋）'],
     ['[检测] 运行状态: 正在运行', '[偵測] 執行狀態: 正在執行'],
@@ -424,6 +426,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
     const asarPath = path.join(installDir, 'resources', 'app.asar');
     let localized = isLocalized(asarPath);
     const prefs = resolveEffectivePrefs({ parsed, installDir, asarPath, localized });
+    let upToDate = localized && isLocalizationCurrent(asarPath, prefs);
     const logger = createLogger(prefs.useTw);
 
     if (prefs.inherited) {
@@ -442,8 +445,11 @@ function main(argv = process.argv.slice(2), deps = {}) {
     }
 
     const pending = pendingUpdate();
+    const statusText = !localized
+        ? '未汉化（可能已被官方自动更新覆盖）'
+        : (upToDate ? '已汉化' : '已汉化（检测到本地词库或引擎已更新，需同步刷新）');
     logger.log(`[检测] 安装目录: ${installDir}`);
-    logger.log(`[检测] 汉化状态: ${localized ? '已汉化' : '未汉化（可能已被官方自动更新覆盖）'}`);
+    logger.log(`[检测] 汉化状态: ${statusText}`);
     logger.log(`[检测] 运行状态: ${running ? '正在运行' : '未运行'}`);
     if (pending) {
         logger.log(`[提示] 检测到已下载的官方更新包: ${pending}`);
@@ -451,7 +457,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
     }
 
     let fixFailed = false;
-    if (!localized && parsed.fix) {
+    if ((!localized || !upToDate) && parsed.fix) {
         if (running) {
             logger.log('[跳过] Antigravity 正在运行，为避免强制关闭您的会话，本次不自动修复。请完全退出后再运行。');
         } else {
@@ -473,6 +479,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
                 { stdio: 'inherit', cwd: ROOT }
             );
             localized = res.status === 0 && isLocalized(asarPath);
+            upToDate = localized && isLocalizationCurrent(asarPath, prefs);
             if (localized) {
                 saveLocalizationPref(installDir, prefs);
                 logger.log('[√] 汉化已恢复。');
@@ -495,7 +502,63 @@ function main(argv = process.argv.slice(2), deps = {}) {
         }
     }
 
-    return localized ? 0 : 2;
+    return (localized && upToDate) ? 0 : 2;
+}
+
+function normalizeDictKey(text) {
+    if (!text) return '';
+    return text.replace(/\s+/g, ' ')
+        .trim()
+        .replace(/’/g, "'")
+        .replace(/‘/g, "'")
+        .replace(/“/g, '"')
+        .replace(/”/g, '"')
+        .replace(/…/g, '...');
+}
+
+function buildExpectedInjectedBlock(prefs) {
+    const useTw = Boolean(prefs && prefs.useTw);
+    const brandTitle = String((prefs && prefs.brandTitle) || 'english');
+    const dictsDir = path.join(ROOT, useTw ? 'dicts_tw' : 'dicts');
+    const totalMap = {};
+    const files = fs.readdirSync(dictsDir).filter(f => f.endsWith('.json')).sort();
+    for (const file of files) {
+        const data = JSON.parse(fs.readFileSync(path.join(dictsDir, file), 'utf8'));
+        for (const [k, v] of Object.entries(data)) {
+            const normK = normalizeDictKey(k);
+            if (normK) totalMap[normK] = v;
+        }
+    }
+    if (brandTitle === 'english') {
+        delete totalMap[normalizeDictKey('Antigravity')];
+    } else if (brandTitle === 'hidden') {
+        totalMap[normalizeDictKey('Antigravity')] = '';
+    }
+    const dictJson = JSON.stringify(totalMap);
+    const runtimeTemplate = fs.readFileSync(path.join(ROOT, 'src', 'preload_runtime.js'), 'utf8');
+    const body = runtimeTemplate
+        .replace('__USE_TW_PLACEHOLDER__', () => (useTw ? 'true' : 'false'))
+        .replace('DICT_PLACEHOLDER', () => dictJson);
+    return `${SIGNATURE_START}\n${body}\n${SIGNATURE_END}`;
+}
+
+function isLocalizationCurrent(asarPath, prefs) {
+    try {
+        const layout = readAsarLayout(asarPath);
+        const preload = layout.files.get('dist/preload.js');
+        if (!preload || !preload.body) return false;
+        const text = preload.body.toString('utf8');
+        const startIdx = text.indexOf(SIGNATURE_START);
+        if (startIdx === -1) return false;
+        const endIdx = text.indexOf(SIGNATURE_END, startIdx);
+        if (endIdx === -1) {
+            return !text.slice(startIdx).includes('__agCnRuntimeStart');
+        }
+        const actualBlock = text.slice(startIdx, endIdx + SIGNATURE_END.length);
+        return actualBlock === buildExpectedInjectedBlock(prefs);
+    } catch (e) {
+        return false;
+    }
 }
 
 if (require.main === module) {
@@ -514,6 +577,8 @@ module.exports = {
     detectInstallDir,
     isRunning,
     isLocalized,
+    buildExpectedInjectedBlock,
+    isLocalizationCurrent,
     getPrefsFilePath,
     loadLocalizationPref,
     saveLocalizationPref,

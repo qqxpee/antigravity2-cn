@@ -3860,5 +3860,20 @@
   "Waiting for approval to grant administrator access": "正在等待批准授予管理员权限",
   "Waiting for the agents' windows...": "正在等待智能体窗口…",
   "Workspace > Restore to Snapshot": "工作区 > 还原到快照",
-  "Your agent's ability to execute commands is also controlled by enterprise security policies.": "您的智能体执行命令的能力同时受企业安全策略控制。"
+  "Your agent's ability to execute commands is also controlled by enterprise security policies.": "您的智能体执行命令的能力同时受企业安全策略控制。",
+  "Leaving Soon": "即将下线",
+  "For most deep reasoning and complex problems": "适用于大多数深度推理与复杂问题",
+  "Offloads routine steps to a faster executor. Same quality, fewer tokens used.": "将常规步骤交由更快的执行模型处理。同等质量，消耗更少 Token。",
+  "Use Hydrogen for better quality with lower quota usage.": "建议使用 Hydrogen，以更低的配额消耗获得更佳质量。",
+  "Model cannot be changed while the agent is running": "智能体运行时无法更改模型",
+  "Permissions cannot be changed while the agent is running": "智能体运行时无法更改权限",
+  "Cannot start best-of-N mode while the agent is running": "智能体运行时无法启动多候选对决模式 (Best-of-N)",
+  "Cannot start best-of-N mode: some subagents are still running.": "无法启动多候选对决模式 (Best-of-N)：部分子代理仍在运行中。",
+  "Cannot start best-of-N mode: background tasks are still running.": "无法启动多候选对决模式 (Best-of-N)：后台任务仍在运行中。",
+  "The Orchestrator's own planner": "Orchestrator 自带规划器",
+  "Not PII/NTK": "非 PII/NTK",
+  "Do not use for PII/NTK data.": "请勿用于 PII/NTK 敏感数据。",
+  "Send a message in the main conversation first to start a side question": "请先在主会话中发送一条消息，再发起侧边提问",
+  "For your hardest, long-horizon tasks": "适用于最具挑战性的长周期复杂任务",
+  "For speed and efficiency in execution tasks": "兼顾速度与效率，适用于执行类任务"
 }

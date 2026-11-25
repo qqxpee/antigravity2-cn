@@ -202,3 +202,74 @@ test('v2.34.0 Swarm Hive map, GIF export, and live timer/subagent counters trans
     assert.equal(docTw.getElementById('bee-work').getAttribute('title'), '@worker-1 · Codebase Researcher · 為 @coordinator 執行中');
     assert.equal(docTw.getElementById('exp-done').textContent, '已匯出 swarm-graph.gif（12 格 · 1.2 MB）');
 });
+
+test('v2.35.1 model hover descriptions, deprecation notices, and locked-while-running tooltips localize while preserving effort labels', async t => {
+    const html = [
+        '<div data-testid="model-selector-panel">',
+        '  <div id="hdr" data-testid="model-selector-header">Model</div>',
+        '  <div id="row-neon"><span id="name-neon">Gemini 4 Neon</span> <span id="eff-med">Medium</span> <span id="badge-new">New</span></div>',
+        '  <div id="row-flash"><span id="name-flash">Gemini 3.8 Flash</span> <span id="eff-high">High</span> <span id="badge-ls">Leaving Soon</span></div>',
+        '  <div id="row-orch"><span id="name-orch">Orchestrator</span> <span id="sub-orch">Gemini 4 Neon High</span></div>',
+        '  <div id="eff-low" data-testid="model-selector-effort-option">Low</div>',
+        '  <div id="eff-xhigh" data-testid="model-selector-effort-option">Extra High</div>',
+        '</div>',
+        '<div id="tip-neon">For most deep reasoning and complex problems</div>',
+        '<div id="tip-carbon">For your hardest, long-horizon tasks</div>',
+        '<div id="tip-hydrogen">For speed and efficiency in execution tasks</div>',
+        '<div id="tip-orch">Offloads routine steps to a faster executor. Same quality, fewer tokens used.</div>',
+        '<div id="tip-flash">Use Hydrogen for better quality with lower quota usage. Leaving on Nov 30.</div>',
+        '<div id="tip-argon">Use Carbon for better quality with lower quota usage. Leaving on Dec 15, 2026.</div>',
+        '<div id="tip-leave-only">Leaving on Nov 30.</div>',
+        '<div id="tip-lock-model">Model cannot be changed while the agent is running</div>',
+        '<div id="tip-lock-perm">Permissions cannot be changed while the agent is running</div>',
+        '<div id="tip-lock-bon">Cannot start best-of-N mode while the agent is running</div>',
+        '<button id="btn-lock-model" aria-label="Model: Gemini 4 Carbon Medium, Model cannot be changed while the agent is running"><span id="trig-label">Gemini 4 Carbon Medium</span></button>',
+        '<button id="btn-sel-model" aria-label="Select model, current: Gemini 4 Carbon Medium"></button>',
+        '<button id="btn-lock-perm" aria-label="Agent permissions preset: Auto, Permissions cannot be changed while the agent is running"></button>',
+        '<span id="bon-count">3 models selected</span>',
+        '<div id="tip-credits">You need at least 10 AI Credits to send messages. To continue using Claude Opus 5.5 now, purchase more AI Credits. Your plan\'s baseline quota will refresh on 2026/11/26 23:16:45.</div>',
+        '<div id="tip-reset">Your quota for Gemini 4 Argon will reset on 2026/11/26 23:16:45. Switch to another available model to continue.</div>'
+    ].join('');
+
+    const docSc = await render(t, html);
+    assert.equal(docSc.getElementById('hdr').textContent, '模型');
+    assert.equal(docSc.getElementById('badge-new').textContent, '新');
+    assert.equal(docSc.getElementById('badge-ls').textContent, '即将下线');
+    // Thinking effort labels & model names stay in English
+    assert.equal(docSc.getElementById('eff-low').textContent, 'Low');
+    assert.equal(docSc.getElementById('eff-med').textContent, 'Medium');
+    assert.equal(docSc.getElementById('eff-high').textContent, 'High');
+    assert.equal(docSc.getElementById('eff-xhigh').textContent, 'Extra High');
+    assert.equal(docSc.getElementById('name-orch').textContent, 'Orchestrator');
+    assert.equal(docSc.getElementById('trig-label').textContent, 'Gemini 4 Carbon Medium');
+    // Hover descriptions & locked-while-running tooltips
+    assert.equal(docSc.getElementById('tip-neon').textContent, '适用于大多数深度推理与复杂问题');
+    assert.equal(docSc.getElementById('tip-carbon').textContent, '适用于最具挑战性的长周期复杂任务');
+    assert.equal(docSc.getElementById('tip-hydrogen').textContent, '兼顾速度与效率，适用于执行类任务');
+    assert.equal(docSc.getElementById('tip-orch').textContent, '将常规步骤交由更快的执行模型处理。同等质量，消耗更少 Token。');
+    assert.equal(docSc.getElementById('tip-flash').textContent, '建议使用 Hydrogen，以更低的配额消耗获得更佳质量。将于 11 月 30 日下线。');
+    assert.equal(docSc.getElementById('tip-argon').textContent, '建议使用 Carbon，以更低的配额消耗获得更佳质量。将于 2026 年 12 月 15 日下线。');
+    assert.equal(docSc.getElementById('tip-leave-only').textContent, '将于 11 月 30 日下线。');
+    assert.equal(docSc.getElementById('tip-lock-model').textContent, '智能体运行时无法更改模型');
+    assert.equal(docSc.getElementById('tip-lock-perm').textContent, '智能体运行时无法更改权限');
+    assert.equal(docSc.getElementById('tip-lock-bon').textContent, '智能体运行时无法启动多候选对决模式 (Best-of-N)');
+    assert.equal(docSc.getElementById('btn-lock-model').getAttribute('aria-label'), '模型：Gemini 4 Carbon Medium，智能体运行时无法更改模型');
+    assert.equal(docSc.getElementById('btn-sel-model').getAttribute('aria-label'), '选择模型，当前：Gemini 4 Carbon Medium');
+    assert.equal(docSc.getElementById('btn-lock-perm').getAttribute('aria-label'), '智能体权限预设：自动 (Auto)，智能体运行时无法更改权限');
+    assert.equal(docSc.getElementById('bon-count').textContent, '已选择 3 个模型');
+    assert.equal(docSc.getElementById('tip-credits').textContent, '您需要至少 10 AI 额度才能发送消息。要立即继续使用 Claude Opus 5.5，请购买更多 AI 额度。您方案的基础配额将于 2026/11/26 23:16:45 刷新。');
+    assert.equal(docSc.getElementById('tip-reset').textContent, '您的 Gemini 4 Argon 配额将于 2026/11/26 23:16:45 重置。请切换至其他可用模型以继续。');
+
+    const docTw = await render(t, html, { traditional: true });
+    assert.equal(docTw.getElementById('badge-ls').textContent, '即將下線');
+    assert.equal(docTw.getElementById('eff-med').textContent, 'Medium');
+    assert.equal(docTw.getElementById('eff-xhigh').textContent, 'Extra High');
+    assert.equal(docTw.getElementById('tip-neon').textContent, '適用於大多數深度推理與複雜問題');
+    assert.equal(docTw.getElementById('tip-orch').textContent, '將常規步驟交由更快的執行模型處理。同等品質，消耗更少 Token。');
+    assert.equal(docTw.getElementById('tip-flash').textContent, '建議使用 Hydrogen，以更低的配額消耗獲得更佳品質。將於 11 月 30 日下線。');
+    assert.equal(docTw.getElementById('tip-lock-model').textContent, '代理執行時無法變更模型');
+    assert.equal(docTw.getElementById('tip-lock-perm').textContent, '代理執行時無法變更權限');
+    assert.equal(docTw.getElementById('btn-lock-model').getAttribute('aria-label'), '模型：Gemini 4 Carbon Medium，代理執行時無法變更模型');
+    assert.equal(docTw.getElementById('tip-credits').textContent, '您需要至少 10 AI 點數才能傳送訊息。若要立即繼續使用 Claude Opus 5.5，請購買更多 AI 點數。您方案的基準配額將於 2026/11/26 23:16:45 重設。');
+    assert.equal(docTw.getElementById('tip-reset').textContent, '您的 Gemini 4 Argon 配額將於 2026/11/26 23:16:45 重設。請切換至其他可用模型以繼續。');
+});

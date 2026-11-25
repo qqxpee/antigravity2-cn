@@ -771,3 +771,54 @@ test('main-process patches cover v2.35.1 remote disconnectedPage and signInCallb
     assert.match(cbTw, /您已成功完成身分驗證。/);
     assert.match(cbTw, /登入未完成/);
 });
+
+test('ensure_localized detects outdated injected preload payload and refreshes localization when --fix is set', t => {
+    const ensure = require('../scripts/ensure_localized');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-outdated-'));
+    const prevAppData = process.env.APPDATA;
+    const prevXdg = process.env.XDG_CONFIG_HOME;
+    process.env.APPDATA = path.join(root, 'AppData');
+    process.env.XDG_CONFIG_HOME = path.join(root, 'AppData');
+    t.after(() => {
+        process.env.APPDATA = prevAppData;
+        process.env.XDG_CONFIG_HOME = prevXdg;
+        fs.rmSync(root, { recursive: true, force: true });
+    });
+
+    const fakeInstall = path.join(root, 'Antigravity');
+    const fakeRes = path.join(fakeInstall, 'resources');
+    fs.mkdirSync(fakeRes, { recursive: true });
+    fs.writeFileSync(path.join(fakeInstall, 'Antigravity.exe'), '');
+
+    const staleBlock = [
+        '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */',
+        '(() => { window.__agCnRuntimeStart = () => {}; const USE_TW = false; const map = new Map(Object.entries({"Model":"模型"})); })();',
+        '/* --- ANTIGRAVITY CHINESE LOCALIZATION END --- */'
+    ].join('\n');
+    const asarPath = path.join(fakeRes, 'app.asar');
+    writeArchive(asarPath, { 'dist/preload.js': { body: '// base\n' + staleBlock } });
+
+    assert.equal(ensure.isLocalized(asarPath), true);
+    assert.equal(ensure.isLocalizationCurrent(asarPath, { useTw: false, brandTitle: 'english' }), false);
+
+    const freshBlock = ensure.buildExpectedInjectedBlock({ useTw: false, brandTitle: 'english' });
+    let reInjected = false;
+    let launched = false;
+    const code = ensure.main(['--fix', '--launch', `--install-dir=${fakeInstall}`, '--sc', '--brand-title=english'], {
+        platform: 'win32',
+        execFileSync: () => 'INFO: No tasks.\r\n',
+        spawnSync: () => {
+            reInjected = true;
+            writeArchive(asarPath, { 'dist/preload.js': { body: '// base\n' + freshBlock } });
+            return { status: 0 };
+        },
+        spawn: () => {
+            launched = true;
+            return { unref() {} };
+        }
+    });
+    assert.equal(code, 0);
+    assert.equal(reInjected, true);
+    assert.equal(launched, true);
+    assert.equal(ensure.isLocalizationCurrent(asarPath, { useTw: false, brandTitle: 'english' }), true);
+});
