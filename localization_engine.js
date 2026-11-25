@@ -16,6 +16,41 @@ const {
     MAIN_PROCESS_PATCH_TARGETS
 } = require('./src/main_patches');
 
+// 比较形如 v8.17.0 / v24.22.2 的 Node 版本目录名，按数值升序排列（字典序会把 v8 误排在 v24 之后）
+function compareNodeVersions(a, b) {
+    const parse = v => String(v).replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+    const pa = parse(a);
+    const pb = parse(b);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const diff = (pa[i] || 0) - (pb[i] || 0);
+        if (diff !== 0) return diff;
+    }
+    return 0;
+}
+
+// 选取一个支持现代语法（可选链 ?. 等，Node >= 14）的解释器用于 --check 校验。
+// Antigravity 自带的 dist 源码使用可选链，若用过旧的 Node（如 v8）校验会误报“语法校验失败”。
+function resolveCheckNode() {
+    const majorOf = out => {
+        const m = String(out).trim().match(/v?(\d+)\./);
+        return m ? parseInt(m[1], 10) : 0;
+    };
+    if (majorOf(process.versions.node) >= 14) return process.execPath;
+    const exeName = process.platform === 'win32' ? 'node.exe' : 'node';
+    const seen = new Set();
+    for (const dir of (process.env.PATH || '').split(path.delimiter)) {
+        if (!dir || seen.has(dir)) continue;
+        seen.add(dir);
+        const candidate = path.join(dir, exeName);
+        if (!fs.existsSync(candidate)) continue;
+        try {
+            const ver = child_process.execFileSync(candidate, ['-v'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            if (majorOf(ver) >= 14) return candidate;
+        } catch (e) {}
+    }
+    return null;
+}
+
 // macOS 环境下自动补全 PATH，确保 codesign 等工具能被顺利找到
 if (process.platform === 'darwin') {
     let realHome = os.homedir();
@@ -39,7 +74,9 @@ if (process.platform === 'darwin') {
     const nvmVersionsDir = path.join(realHome, '.nvm', 'versions', 'node');
     if (fs.existsSync(nvmVersionsDir)) {
         try {
-            const versions = fs.readdirSync(nvmVersionsDir).sort();
+            // 按版本号升序排序（而非字典序），确保最新版本最后被 unshift，从而排在 PATH 最前面。
+            // 字典序会把 v8.x 排在 v24.x 之后，导致旧版 Node 被优先选用。
+            const versions = fs.readdirSync(nvmVersionsDir).sort(compareNodeVersions);
             for (const v of versions) {
                 extraPaths.push(path.join(nvmVersionsDir, v, 'bin'));
             }
@@ -642,11 +679,16 @@ function install20(resourcesDir, noKill = false) {
         }
 
         validateAsarCandidate(sourceArchive, candidatePath, SIGNATURE_START);
+        const checkNode = resolveCheckNode();
+        if (!checkNode) {
+            console.warn(`[警告] 当前 Node (${process.versions.node}) 过旧且未找到 Node >= 14，已跳过候选包语法校验。建议升级 Node 后重试以获得完整校验。`);
+        }
         for (const [relPath, buf] of modifiedFiles.entries()) {
             const checkFile = path.join(buildDir, path.basename(relPath));
             fs.writeFileSync(checkFile, buf);
+            if (!checkNode) continue;
             try {
-                child_process.execFileSync(process.execPath, ['--check', checkFile], { stdio: 'pipe' });
+                child_process.execFileSync(checkNode, ['--check', checkFile], { stdio: 'pipe' });
             } catch (syntaxErr) {
                 const detail = syntaxErr.stderr ? String(syntaxErr.stderr).trim() : syntaxErr.message;
                 throw new Error(`语法校验失败 (${relPath}): ${detail}`);

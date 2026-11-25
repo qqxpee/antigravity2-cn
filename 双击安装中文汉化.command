@@ -19,9 +19,10 @@ export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/opt/local/bin:
 for p in "$REAL_HOME/.volta/bin" "$REAL_HOME/.asdf/shims" "$REAL_HOME/.local/share/mise/shims" "$REAL_HOME/.local/bin" "$REAL_HOME/.fnm/current/bin" "$REAL_HOME/.local/share/fnm/aliases/default/bin" "$REAL_HOME/Library/Application Support/fnm/aliases/default/bin"; do
     [ -d "$p" ] && export PATH="$p:$PATH"
 done
-for p in "$REAL_HOME"/.nvm/versions/node/*/bin /opt/homebrew/opt/node@*/bin /usr/local/opt/node@*/bin; do
+# 按版本号排序后再加入 PATH，确保优先使用最新版 Node（避免 v8 等旧版排在最前导致语法校验失败）
+while IFS= read -r p; do
     [ -d "$p" ] && export PATH="$p:$PATH"
-done
+done < <(printf '%s\n' "$REAL_HOME"/.nvm/versions/node/*/bin /opt/homebrew/opt/node@*/bin /usr/local/opt/node@*/bin | sort -V)
 
 # 检查管理员权限，若不是 root 则自动通过 sudo 提权并保留环境变量
 if [ "$EUID" -ne 0 ]; then
