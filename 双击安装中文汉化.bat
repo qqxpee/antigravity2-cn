@@ -10,4 +10,4 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-timeout /t 5 >nul 2>&1 || exit /b 0
+timeout /t 5 2>nul || exit /b 0

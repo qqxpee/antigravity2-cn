@@ -1424,6 +1424,174 @@
         [/^Revoke all:\s*(.+)$/, (m, target) => (USE_TW ? '全部撤銷：' : '全部撤销：') + target],
         [/^Revoke:\s*(.+)$/, (m, target) => (USE_TW ? '撤銷：' : '撤销：') + target],
 
+        // v2.35.1 全面审计补充动态模板规则（配额、排程、时间、计数、Git/MCP/浏览器提示）
+        [/^You need (at least \d+|more) AI Credits to send messages\. To continue using (.+?) now, purchase more AI Credits\.$/i, (m, amt, target) => {
+            const amtZh = /^more$/i.test(amt) ? '更多' : amt.replace(/^at least\s+/i, '至少 ');
+            const tZh = /^this model$/i.test(target.trim()) ? '此模型' : target.trim();
+            return USE_TW
+                ? ('您需要' + amtZh + ' AI 點數才能傳送訊息。若要立即繼續使用 ' + tZh + '，請購買更多 AI 點數。')
+                : ('您需要' + amtZh + ' AI 额度才能发送消息。要立即继续使用 ' + tZh + '，请购买更多 AI 额度。');
+        }],
+        [/^Your quota for (.+?) will reset on (.+?)\. Switch to another available model to continue\.$/i, (m, model, when) => {
+            const mZh = /^this model$/i.test(model.trim()) ? '此模型' : model.trim();
+            return USE_TW
+                ? ('您的 ' + mZh + ' 配額將於 ' + when + ' 重設。請切換至其他可用模型以繼續。')
+                : ('您的 ' + mZh + ' 配额将于 ' + when + ' 重置。请切换至其他可用模型以继续。');
+        }],
+        [/^Your quota for (.+?) has been reached\. Switch to another available model to continue\.$/i, (m, model) => {
+            const mZh = /^this model$/i.test(model.trim()) ? '此模型' : model.trim();
+            return USE_TW
+                ? ('您的 ' + mZh + ' 配額已用盡。請切換至其他可用模型以繼續。')
+                : ('您的 ' + mZh + ' 配额已用完。请切换至其他可用模型以继续。');
+        }],
+        [/^Your plan's baseline quota will refresh on (.+?)\.?$/i, (m, when) => USE_TW ? ('您方案的基準配額將於 ' + when + ' 重設。') : ('您方案的基础配额将于 ' + when + ' 刷新。')],
+        [/^Your plan:\s*(.+)$/i, (m, plan) => (USE_TW ? '您的方案：' : '您的方案：') + plan],
+        [/^Telemetry is turned off for your account\. This means (.+?) does not collect any of your prompts, content, or model responses, but will still collect general usage patterns \(e\.g\., feature adoption, active user counts\)\.?$/i, (m, app) => USE_TW
+            ? ('您的帳戶已關閉遙測資料收集。這表示 ' + app + ' 不會收集您的任何提示詞、內容或模型回覆，但仍會收集一般使用模式（例如功能採用率、活躍使用者數）。')
+            : ('您的账户已关闭遥测数据收集。这意味着 ' + app + ' 不会收集您的任何提示词、内容或模型回复，但仍会收集一般使用模式（例如功能采用率、活跃用户数）。')],
+        [/^Model unavailable,\s*retrying(?:\s+in\s+(\d+)s)?(?:\s*\(attempt\s+(\d+)\/(\d+)\))?$/i, (m, sec, att, max) => {
+            const attZh = att ? (USE_TW ? ('（第 ' + att + '/' + max + ' 次嘗試）') : ('（第 ' + att + '/' + max + ' 次尝试）')) : '';
+            if (sec) return USE_TW ? ('模型暫時無法使用，' + sec + ' 秒後重試' + attZh) : ('模型暂不可用，' + sec + ' 秒后重试' + attZh);
+            return USE_TW ? ('模型暫時無法使用，正在重試' + attZh) : ('模型暂不可用，正在重试' + attZh);
+        }],
+        [/^Waiting for command completion\s*\(up to (\d+) seconds\)$/i, (m, s) => USE_TW ? ('正在等待指令完成（最多 ' + s + ' 秒）') : ('正在等待命令完成（最多 ' + s + ' 秒）')],
+        [/^Thinking \((\d+)s\)\.\.\.$/i, (m, s) => '正在思考 (' + s + ' 秒)...'],
+        [/^Still thinking,\s*(\d+) seconds$/i, (m, s) => '仍在思考，' + s + ' 秒'],
+        [/^Working\s*·\s*(\d+)s$/i, (m, s) => '工作中 · ' + s + ' 秒'],
+        [/^Using browser(?:\s*·\s*(.+?))?(?:\s*\((\d+)s\))?$/i, (m, action, s) => {
+            const act = action ? (' · ' + (lookupDict(action) || action)) : '';
+            const dur = s ? (' (' + s + ' 秒)') : '';
+            return (USE_TW ? '正在使用瀏覽器' : '正在使用浏览器') + act + dur;
+        }],
+        [/^(Started|Stopped) voice chat\s*·\s*(.+)$/i, (m, act, rest) => {
+            const verb = /^Started/i.test(act) ? (USE_TW ? '已開始語音對話 · ' : '已开始语音对话 · ') : (USE_TW ? '已結束語音對話 · ' : '已结束语音对话 · ');
+            return verb + rest;
+        }],
+        [/^Turns?\s+(\d+)(?:[–-](\d+))?$/i, (m, a, b) => b ? ('第 ' + a + '–' + b + (USE_TW ? ' 輪' : ' 轮')) : ('第 ' + a + (USE_TW ? ' 輪' : ' 轮'))],
+        [/^(Turn|Tot):\s*(\d+)\/(\d+)$/i, (m, kind, a, b) => (/^Turn/i.test(kind) ? (USE_TW ? '輪次：' : '轮次：') : (USE_TW ? '總計：' : '总计：')) + a + '/' + b],
+        [/^(Today|Tomorrow|Yesterday)\s+(.+)$/i, (m, day, time) => {
+            const dLow = day.toLowerCase();
+            const dZh = dLow === 'today' ? '今天' : (dLow === 'tomorrow' ? '明天' : '昨天');
+            return dZh + ' ' + time;
+        }],
+        [/^Daily at\s+(.+)$/i, (m, t) => '每天 ' + t],
+        [/^Monthly on the\s+(.+?)\s+at\s+(.+)$/i, (m, d, t) => (USE_TW ? '每月 ' : '每月 ') + d + ' ' + t],
+        [/^Every\s+(\d+)\s+(hours?|minutes?)(.*)$/i, (m, n, unit, rest) => {
+            const uZh = /^hour/i.test(unit) ? (USE_TW ? ' 小時' : ' 小时') : (USE_TW ? ' 分鐘' : ' 分钟');
+            return '每 ' + n + uZh + (rest || '');
+        }],
+        [/^(?:(\d+)d\s+)?(?:(\d+)h\s+)?(?:(\d+)m|(\d+)s)\s+left$/i, (m, d, h, min, sec) => {
+            const parts = [];
+            if (d) parts.push(d + ' 天');
+            if (h) parts.push(h + (USE_TW ? ' 小時' : ' 小时'));
+            if (min) parts.push(min + (USE_TW ? ' 分鐘' : ' 分钟'));
+            if (sec) parts.push(sec + ' 秒');
+            return (USE_TW ? '剩餘 ' : '剩余 ') + parts.join(' ');
+        }],
+        [/^(\d+)\s+(image|video|audio)\s+attachments?$/i, (m, n, kind) => {
+            const kZh = kind.toLowerCase() === 'image' ? (USE_TW ? '張圖片附件' : '张图片附件')
+                : kind.toLowerCase() === 'video' ? (USE_TW ? '個影片附件' : '个视频附件')
+                : (USE_TW ? '個音訊附件' : '个音频附件');
+            return n + ' ' + kZh;
+        }],
+        [/^(\d+)\s+attachment\(s\)$/i, (m, n) => n + (USE_TW ? ' 個附件' : ' 个附件')],
+        [/^(\d+)\s+archived conversations?$/i, (m, n) => n + (USE_TW ? ' 個已封存對話' : ' 个已归档会话')],
+        [/^(\d+)\s+background tasks?$/i, (m, n) => n + (USE_TW ? ' 個背景任務' : ' 个后台任务')],
+        [/^(\d+)\s+browser steps?$/i, (m, n) => n + (USE_TW ? ' 個瀏覽器步驟' : ' 个浏览器步骤')],
+        [/^(\d+)\s+models?\s+selected$/i, (m, n) => USE_TW ? ('已選取 ' + n + ' 個模型') : ('已选择 ' + n + ' 个模型')],
+        [/^(\d+)\s+waiting on you$/i, (m, n) => n + (USE_TW ? ' 項待您處理' : ' 项待您处理')],
+        [/^(\d+)\s+Files?\s+With Changes$/i, (m, n) => n + (USE_TW ? ' 個檔案有變更' : ' 个文件有更改')],
+        [/^(\d+)\s+lines?\s+added,\s*(\d+)\s+lines?\s+removed$/i, (m, a, b) => USE_TW ? ('新增 ' + a + ' 行，移除 ' + b + ' 行') : ('新增 ' + a + ' 行，删除 ' + b + ' 行')],
+        [/^(\d+)\s+(questions?|turns?|comments?|subagents?|chunks?|accounts?|rows?)$/i, (m, n, kind) => {
+            const k = kind.toLowerCase();
+            const mapZh = USE_TW
+                ? { question: '個問題', questions: '個問題', turn: '輪', turns: '輪', comment: '則評論', comments: '則評論', subagent: '個子代理', subagents: '個子代理', chunk: '個區塊', chunks: '個區塊', account: '個帳戶', accounts: '個帳戶', row: '列', rows: '列' }
+                : { question: '个问题', questions: '个问题', turn: '轮', turns: '轮', comment: '条评论', comments: '条评论', subagent: '个子智能体', subagents: '个子智能体', chunk: '个区块', chunks: '个区块', account: '个账户', accounts: '个账户', row: '行', rows: '行' };
+            return n + ' ' + (mapZh[k] || kind);
+        }],
+        [/^(\d+)\s+tasks?\s+running$/i, (m, n) => n + (USE_TW ? ' 個任務執行中' : ' 个任务运行中')],
+        [/^(\d+)\s+MCP servers? failed to start$/i, (m, n) => n + (USE_TW ? ' 個 MCP 伺服器啟動失敗' : ' 个 MCP 服务器启动失败')],
+        [/^Added MCP server "(.+?)",\s*but it failed to start:\s*(.+)$/i, (m, name, err) => USE_TW ? ('已新增 MCP 伺服器「' + name + '」，但啟動失敗：' + err) : ('已添加 MCP 服务器“' + name + '”，但启动失败：' + err)],
+        [/^MCP server (.+?) requires authentication:\s*sign in to "(.+?)" in the Accounts section of plugin "(.+?)"$/i, (m, srv, acc, plug) => USE_TW
+            ? ('MCP 伺服器 ' + srv + ' 需要身分驗證：請在「' + plug + '」外掛程式的「帳戶」區段中登入「' + acc + '」')
+            : ('MCP 服务器 ' + srv + ' 需要身份验证：请在“' + plug + '”插件的“账户”部分登录“' + acc + '”')],
+        [/^MCP server (.+?) requires authentication$/i, (m, srv) => USE_TW ? ('MCP 伺服器 ' + srv + ' 需要身分驗證') : ('MCP 服务器 ' + srv + ' 需要身份验证')],
+        [/^(\d+)\s+customizations? failed to load$/i, (m, n) => n + (USE_TW ? ' 項自訂項目載入失敗' : ' 项自定义项加载失败')],
+        [/^(\d+)\s+folders? in this project could not be loaded because their locations are invalid\.$/i, (m, n) => USE_TW ? ('此專案中有 ' + n + ' 個資料夾因位置無效而無法載入。') : ('此项目中有 ' + n + ' 个文件夹因位置无效而无法加载。')],
+        [/^(.+?) file uploads are not currently supported in remote mode$/i, (m, ext) => USE_TW ? ('遠端模式目前不支援上傳 ' + ext + ' 檔案') : ('远程模式暂不支持上传 ' + ext + ' 文件')],
+        [/^Pushed (\d+) commits? to (.+?)\.?$/i, (m, n, br) => USE_TW ? ('已推送 ' + n + ' 筆提交至 ' + br + '。') : ('已推送 ' + n + ' 个提交到 ' + br + '。')],
+        [/^Pushed to (.+?)\.?$/i, (m, br) => (USE_TW ? '已推送至 ' : '已推送到 ') + br + '。'],
+        [/^Published (.+?) to origin\.?$/i, (m, ref) => (USE_TW ? '已發佈 ' : '已发布 ') + ref + ' 至 origin。'],
+        [/^Committed to (.+?)\.?$/i, (m, ref) => (USE_TW ? '已提交至 ' : '已提交到 ') + ref + '。'],
+        [/^Amended commit on (.+?)\.?$/i, (m, ref) => (USE_TW ? '已修訂 ' : '已修订 ') + ref + (USE_TW ? ' 上的提交。' : ' 上的提交。')],
+        [/^Checked out in (.+)$/i, (m, loc) => (USE_TW ? '已於 ' : '已在 ') + loc + (USE_TW ? ' 簽出' : ' 检出')],
+        [/^(Generating|Generated|Generate) with (.+?) 🍌$/i, (m, verb, model) => {
+            const vZh = /^Generating/i.test(verb) ? (USE_TW ? '正在使用 ' : '正在使用 ') : (/^Generated/i.test(verb) ? '已使用 ' : '使用 ');
+            return vZh + model + (USE_TW ? ' 產生 🍌' : ' 生成 🍌');
+        }],
+        [/^Ran command:\s*(.+)$/i, (m, cmd) => (USE_TW ? '已執行指令：' : '已运行命令：') + cmd],
+        [/^Used MCP tool:\s*(.+)$/i, (m, tool) => (USE_TW ? '已使用 MCP 工具：' : '已使用 MCP 工具：') + tool],
+        [/^Used tool:\s*(.+)$/i, (m, tool) => (USE_TW ? '已使用工具：' : '已使用工具：') + tool],
+        [/^(?:Searched web|Searched for|Internal search|Code search|Browser task):\s*"(.+)"$/i, (m, q) => {
+            const prefix = /^Searched web/i.test(m) ? (USE_TW ? '已搜尋網頁：' : '已搜索网页：')
+                : /^Searched for/i.test(m) ? (USE_TW ? '已搜尋：' : '已搜索：')
+                : /^Internal search/i.test(m) ? (USE_TW ? '內部搜尋：' : '内部搜索：')
+                : /^Code search/i.test(m) ? (USE_TW ? '程式碼搜尋：' : '代码搜索：')
+                : (USE_TW ? '瀏覽器任務：' : '浏览器任务：');
+            return prefix + (USE_TW ? ('「' + q + '」') : ('“' + q + '”'));
+        }],
+        [/^Searched for files:\s*(.+)$/i, (m, q) => (USE_TW ? '已搜尋檔案：' : '已搜索文件：') + q],
+        [/^Opened browser:\s*(.+)$/i, (m, u) => (USE_TW ? '已開啟瀏覽器：' : '已打开浏览器：') + u],
+        [/^Viewed (.+)$/i, (m, target) => (USE_TW ? '已檢視 ' : '已查看 ') + target],
+        [/^Listed directory (.+)$/i, (m, dir) => (USE_TW ? '已列出目錄 ' : '已列出目录 ') + dir],
+        [/^Read URL:\s*(.+)$/i, (m, u) => (USE_TW ? '已讀取網址：' : '已读取 URL：') + u],
+        [/^Invoked subagent:\s*(.+)$/i, (m, name) => (USE_TW ? '已呼叫子代理：' : '已调用子代理：') + name],
+        [/^Generated image:\s*"(.+)"$/i, (m, p) => (USE_TW ? '已產生圖片：「' : '已生成图片：“') + p + (USE_TW ? '」' : '”')],
+        [/^Agent finished:\s*(.+)$/i, (m, summary) => (USE_TW ? '代理已完成：' : '智能体已完成：') + summary],
+        [/^Side question failed:\s*(.+)$/i, (m, err) => (USE_TW ? '側邊提問失敗：' : '侧边提问失败：') + err],
+        [/^Side question \(conversation (.+?)\):\s*(.+)$/i, (m, cid, title) => (USE_TW ? '側邊提問（對話 ' : '侧边提问（会话 ') + cid + '）：' + title],
+        [/^Credentials expire in (.+?)\. Refresh credentials to keep this automation running$/i, (m, dur) => USE_TW ? ('憑證將於 ' + (formatUsageDuration(dur) || dur) + ' 後過期。請重新整理憑證以維持此自動化任務執行') : ('凭据将在 ' + (formatUsageDuration(dur) || dur) + ' 后过期。请刷新凭据以保持此自动化任务运行')],
+        [/^Connect an account for (.+?) so the agent can run automations\.$/i, (m, prov) => USE_TW ? ('請為 ' + prov + ' 連結帳戶，以便代理執行自動化任務。') : ('请为 ' + prov + ' 连接账户，以便智能体运行自动化任务。')],
+        [/^Runs even when your computer is off\.\s*(Schedules and events\.|Schedules only\.)$/i, (m, kind) => (USE_TW ? '即使電腦關機也會執行。' : '即使计算机关闭也会运行。') + (/events/i.test(kind) ? (USE_TW ? '排程與事件。' : '定时与事件。') : (USE_TW ? '僅排程。' : '仅定时。'))],
+        [/^The selected (.+?) can't be found\. Pick another (.+?) from the (.+?) selector to send\.$/i, (m, n1, n2, n3) => USE_TW
+            ? ('找不到所選的' + translateNoun(n1) + '。請從' + translateNoun(n3) + '選擇器選取其他' + translateNoun(n2) + '以傳送。')
+            : ('找不到所选的' + translateNoun(n1) + '。请从' + translateNoun(n3) + '选择器中选择其他' + translateNoun(n2) + '以发送。')],
+        [/^This (.+?) overrides your global permission settings\.$/i, (m, kind) => USE_TW ? ('此' + translateNoun(kind) + '會覆寫您的全域權限設定。') : ('此' + translateNoun(kind) + '会覆盖您的全局权限设置。')],
+        [/^(.+?) needs (.+?) to use your computer\.$/i, (m, app, perms) => {
+            const pZh = perms.replace(/Accessibility/gi, USE_TW ? '輔助使用' : '辅助功能').replace(/Screen Recording/gi, USE_TW ? '螢幕錄製' : '屏幕录制').replace(/\bboth\b/gi, USE_TW ? '兩項權限' : '这两项权限');
+            return app + (USE_TW ? ' 需要 ' : ' 需要 ') + pZh + (USE_TW ? ' 權限才能操作您的電腦。' : ' 权限才能控制您的电脑。');
+        }],
+        [/^(.+?) needs you to sign in before it can be used\.$/i, (m, name) => name + (USE_TW ? ' 需要您先登入後才能使用。' : ' 需要您先登录后才能使用。')],
+        [/^No messages in last (\d+) steps\s*(?:·|—|,)\s*load (?:more|older)$/i, (m, n) => USE_TW ? ('最近 ' + n + ' 步沒有訊息 · 載入更早訊息') : ('最近 ' + n + ' 步无消息 · 加载更早消息')],
+        [/^No visible messages in last (\d+) steps\. Activate Load older messages to continue\.$/i, (m, n) => USE_TW ? ('最近 ' + n + ' 步沒有可見訊息。請啟用「載入更早的訊息」以繼續。') : ('最近 ' + n + ' 步没有可见消息。请激活“加载更早的消息”以继续。')],
+        [/^File exceeds the (\d+)MB display limit \((\d+)MB\), so it can't be opened or downloaded here\.$/i, (m, lim, sz) => USE_TW ? ('檔案超過 ' + lim + 'MB 顯示上限（' + sz + 'MB），因此無法在此開啟或下載。') : ('文件超过 ' + lim + 'MB 显示上限（' + sz + 'MB），因此无法在此打开或下载。')],
+        [/^File exceeds (\d+) bytes \((\d+) bytes\)$/i, (m, lim, sz) => USE_TW ? ('檔案超過 ' + lim + ' 位元組（' + sz + ' 位元組）') : ('文件超过 ' + lim + ' 字节（' + sz + ' 字节）')],
+        [/^Recording exceeds 15MB limit \((\d+)MB\)$/i, (m, sz) => USE_TW ? ('錄音超過 15MB 上限（' + sz + 'MB）') : ('录音超过 15MB 上限（' + sz + 'MB）')],
+        [/^Total media size exceeds (\d+)MB limit$/i, (m, lim) => USE_TW ? ('媒體總大小超過 ' + lim + 'MB 上限') : ('媒体总大小超过 ' + lim + 'MB 上限')],
+        [/^(.+?)'s server IP address could not be found\.$/i, (m, h) => (USE_TW ? '找不到 ' + h + ' 的伺服器 IP 位址。' : '找不到 ' + h + ' 的服务器 IP 地址。')],
+        [/^(.+?) refused to connect\.$/i, (m, h) => h + (USE_TW ? ' 拒絕連線。' : ' 拒绝连接。')],
+        [/^(.+?) took too long to respond\.$/i, (m, h) => h + (USE_TW ? ' 回應時間過長。' : ' 响应时间过长。')],
+        [/^(.+?) could not find the requested page\.$/i, (m, h) => h + (USE_TW ? ' 找不到所要求的頁面。' : ' 找不到请求的页面。')],
+        [/^(.+?) is currently unable to handle this request\.$/i, (m, h) => h + (USE_TW ? ' 目前無法處理這項要求。' : ' 当前无法处理此请求。')],
+        [/^Check if there is a typo in (.+?), or open the page in your external browser\.$/i, (m, h) => {
+            const hZh = /^the address$/i.test(h.trim()) ? (USE_TW ? '網址' : '地址') : h.trim();
+            return USE_TW ? ('請檢查 ' + hZh + ' 是否有拼字錯誤，或在外部瀏覽器中開啟該頁面。') : ('请检查 ' + hZh + ' 是否有拼写错误，或在外部浏览器中打开该页面。');
+        }],
+        [/^(?:(Open|Reopen)\s+)?(Accessibility|Screen Recording) settings$/i, (m, act, pane) => {
+            const pZh = /^Accessibility/i.test(pane) ? (USE_TW ? '輔助使用' : '辅助功能') : (USE_TW ? '螢幕錄製' : '屏幕录制');
+            if (!act) return pZh + (USE_TW ? '設定' : '设置');
+            return (/^Reopen/i.test(act) ? (USE_TW ? '重新開啟' : '重新打开') : (USE_TW ? '開啟' : '打开')) + pZh + (USE_TW ? '設定' : '设置');
+        }],
+        [/^Deleted cookies for (.+)$/i, (m, site) => USE_TW ? ('已刪除 ' + site + ' 的 Cookie') : ('已删除 ' + site + ' 的 Cookie')],
+        [/^Moved conversation (.+)$/i, (m, target) => (USE_TW ? '已移動對話 ' : '已移动会话 ') + target],
+        [/^Adding plugins from (.+)$/i, (m, src) => (USE_TW ? '正在從 ' : '正在从 ') + src + (USE_TW ? ' 新增外掛程式' : ' 添加插件')],
+        [/^No connectors match "(.+)"$/i, (m, q) => USE_TW ? ('沒有符合「' + q + '」的連接器') : ('没有匹配“' + q + '”的连接器')],
+        [/^View (\d+) help(?: items?)? and (\d+) side questions?$/i, (m, h, s) => USE_TW ? ('檢視 ' + h + ' 項說明與 ' + s + ' 個側邊提問') : ('查看 ' + h + ' 条帮助和 ' + s + ' 个侧边提问')],
+        [/^Work in (.+)$/i, (m, wt) => /^progress$/i.test(wt.trim()) ? m : ((USE_TW ? '在 ' : '在 ') + wt + ' 中工作')],
+        [/^Work locally on (.+)$/i, (m, repos) => (USE_TW ? '在本機處理 ' : '在本地处理 ') + repos],
+        [/^Worktree from (.+)$/i, (m, repos) => (USE_TW ? '建立工作樹：' : '创建工作树：') + repos],
+        [/^Automatically create a new (.+?) workspace when the conversation starts$/i, (m, vcs) => USE_TW ? ('對話開始時自動建立新的 ' + vcs + ' 工作區') : ('会话开始时自动创建新的 ' + vcs + ' 工作区')],
+
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
             const nLow = norm(noun).toLowerCase();
@@ -1738,6 +1906,24 @@
             return valNorm === 'In this case,'
                 ? (USE_TW ? '在此情況下，已將 ' : '在此情况下，已将 ')
                 : (USE_TW ? ' 個區塊合併為單一區塊。此次讀取包含的區塊：' : ' 个区块合并为单个区块。此次读取包含的区块：');
+        }
+        if (valNorm === 'Start Best-of-' && /^Start Best-of-\d+$/i.test(pText.trim())) {
+            return USE_TW ? '啟動 Best-of-' : '启动 Best-of-';
+        }
+        if (valNorm === 'Generation Steps (' && /^Generation Steps \(\d+\)$/.test(pText.trim())) {
+            return USE_TW ? '產生步驟 (' : '生成步骤 (';
+        }
+        if ((valNorm === 'Show more (' && /^Show more \(\d+\)$/.test(pText.trim())) || (valNorm === 'Show submitted (' && /^Show submitted \(\d+\)$/.test(pText.trim()))) {
+            return valNorm === 'Show more ('
+                ? (USE_TW ? '顯示更多 (' : '显示更多 (')
+                : (USE_TW ? '顯示已提交 (' : '显示已提交 (');
+        }
+        if (pText.includes('No MCP servers found for "') || pText.includes('未找到与“') || pText.includes('找不到與「')) {
+            if (valNorm === 'No MCP servers found for "') return USE_TW ? '找不到與「' : '未找到与“';
+            if (valNorm === '"') return USE_TW ? '」相符的 MCP 伺服器' : '”匹配的 MCP 服务器';
+        }
+        if (valNorm === 'If that machine is a cloudtop, reach it via') {
+            return USE_TW ? '如果該機器是 Cloudtop，請透過以下方式連線：' : '如果该机器是 Cloudtop，请通过以下方式访问：';
         }
         return null;
     }

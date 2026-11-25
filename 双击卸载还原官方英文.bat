@@ -18,4 +18,4 @@ echo.
 echo [Note] Antigravity has been restored to its original state.
 echo.
 echo The window will close automatically in 5 seconds...
-timeout /t 5 >nul 2>&1 || exit /b 0
+timeout /t 5 2>nul || exit /b 0

@@ -617,6 +617,30 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["<p>Antigravity has been redesigned to put agents first with new capabilities. If you'd still like a code editor, you can download it as a separate app named <b>Antigravity IDE</b>.</p>", "<p>Antigravity 经过全新设计，以智能体为核心并带来了全新能力。如果您仍需要代码编辑器，可将其作为名为 <b>Antigravity IDE</b> 的独立应用下载。</p>", "<p>Antigravity 經過全新設計，以代理為核心並帶來全新功能。如果您仍需要程式碼編輯器，可將其作為名為 <b>Antigravity IDE</b> 的獨立應用程式下載。</p>"],
         ["<span>Download the Antigravity IDE</span>", "<span>下载 Antigravity IDE</span>", "<span>下載 Antigravity IDE</span>"],
         [">Explore the new Antigravity</button>", ">探索全新 Antigravity</button>", ">探索全新 Antigravity</button>"]
+    ],
+    'dist/remote/disconnectedPage.js': [
+        ["reconnect: 'Reconnect',", "reconnect: '重新连接',", "reconnect: '重新連線',"],
+        ["stop: 'Stop Server',", "stop: '停止服务',", "stop: '停止伺服器',"],
+        ["close: 'Close',", "close: '关闭',", "close: '關閉',"],
+        ["? 'Restarting…'", "? '正在重启…'", "? '正在重新啟動…'"],
+        ["? 'Reconnecting…'", "? '正在重新连接…'", "? '正在重新連線…'"],
+        [": 'Disconnected';", ": '已断开连接';", ": '已中斷連線';"],
+        ["? `Restarting the Antigravity server on ${host}…`", "? `正在重启 ${host} 上的 Antigravity 服务…`", "? `正在重新啟動 ${host} 上的 Antigravity 伺服器…`"],
+        ["? `Reconnecting to ${host}…`", "? `正在重新连接到 ${host}…`", "? `正在重新連線至 ${host}…`"],
+        [": `Disconnected from ${host}`;", ": `已断开与 ${host} 的连接`;", ": `已中斷與 ${host} 的連線`;"],
+        ["? 'This window opens it again once it has started.'", "? '服务启动完成后，此窗口将自动重新打开。'", "? '伺服器啟動完成後，此視窗將自動重新開啟。'"],
+        ["? `Its server on ${host} stopped, and its agents with it.`", "? `其在 ${host} 上的服务已停止，相关的智能体也已随之停止。`", "? `其在 ${host} 上的伺服器已停止，相關的代理也已隨之停止。`"],
+        [": `Agents keep running on ${host}.`", ": `智能体仍在 ${host} 上继续运行。`", ": `代理仍在 ${host} 上繼續執行。`"],
+        ["? `Its agents on ${host} stopped with it.`", "? `其在 ${host} 上的智能体已随之停止。`", "? `其在 ${host} 上的代理已隨之停止。`"],
+        [": `Agents keep running on ${host} unless its server stopped.`;", ": `除非其服务已停止，否则智能体仍在 ${host} 上继续运行。`;", ": `除非其伺服器已停止，否則代理仍在 ${host} 上繼續執行。`;"]
+    ],
+    'dist/remote/signInCallback.js': [
+        ["const SIGNED_IN = page('You have successfully authenticated.', 'You can close this tab and return to Antigravity.');", "const SIGNED_IN = page('您已成功完成身份验证。', '您可以关闭此标签页并返回 Antigravity。');", "const SIGNED_IN = page('您已成功完成身分驗證。', '您可以關閉此分頁並返回 Antigravity。');"],
+        ["return page(\"Sign-in didn't finish\", `Antigravity couldn't reach ${host} to finish signing in. ` +", "return page('登录未完成', `Antigravity 无法连接到 ${host} 以完成登录。` +", "return page('登入未完成', `Antigravity 無法連線至 ${host} 以完成登入。` +"],
+        ["return page(\"Sign-in didn't finish\", 'This sign-in came back from another server than the sign-in page you ' +", "return page('登录未完成', '此登录回调来自与您此前同意的登录页不同的服务器，' +", "return page('登入未完成', '此登入回呼來自與您先前同意的登入頁不同的伺服器，' +"],
+        ["`agreed to, so Antigravity didn't pass it on to ${host}.`);", "`因此 Antigravity 未将其传递给 ${host}。`);", "`因此 Antigravity 未將其傳遞給 ${host}。`);"],
+        ["return page(\"Sign-in didn't finish\", `Antigravity on ${host} couldn't finish signing in (HTTP ${status}). ` +", "return page('登录未完成', `${host} 上的 Antigravity 无法完成登录 (HTTP ${status})。` +", "return page('登入未完成', `${host} 上的 Antigravity 無法完成登入 (HTTP ${status})。` +"],
+        ["'Sign in again from Antigravity.');", "'请从 Antigravity 重新发起登录。');", "'請從 Antigravity 重新進行登入。');"]
     ]
 };
 

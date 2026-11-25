@@ -3,7 +3,7 @@
 👉 **[簡體中文版說明文件 (Simplified Chinese README)](README.md)**
 
 > **支援系統**：Windows & macOS (均已內建一鍵指令碼)  
-> **匹配版本**：Antigravity v2.33.0+  
+> **匹配版本**：Antigravity v2.35.1+  
 
 > **核心引擎**：Node.js (無需安裝 Python，零依賴，極速極穩)  
 > **中文化範圍**：包括軟體介面、滑鼠懸浮提示 (Tooltip)、Sidecar 伴生面板（含 Swarm 面板與 `plugin://` 子框架）、頂部系統功能表、工作列與原生系統右鍵選單 (Context Menu)、主處理程序原生彈出視窗（結束確認、WSL/SSH 提示、裝置與 Passkey 選取等）、更新彈出視窗、載入動畫、設定面板、外掛程式與自訂項目、新手導覽及登入頁。  

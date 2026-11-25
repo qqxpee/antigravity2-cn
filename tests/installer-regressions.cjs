@@ -740,3 +740,34 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
     assert.equal(resExplicit.stdout.includes('请选择左上角品牌显示方式'), false);
     assert.equal(JSON.parse(fs.readFileSync(prefPath, 'utf8'))[installKey].brandTitle, 'translated');
 });
+
+test('main-process patches cover v2.35.1 remote disconnectedPage and signInCallback HTML', () => {
+    const discOrig = [
+        "const BUTTON_LABELS = { reconnect: 'Reconnect', stop: 'Stop Server', close: 'Close', };",
+        "const title = restarting ? 'Restarting…' : connecting ? 'Reconnecting…' : 'Disconnected';",
+        "const heading = restarting ? `Restarting the Antigravity server on ${host}…` : connecting ? `Reconnecting to ${host}…` : `Disconnected from ${host}`;",
+        "const body = restarting ? 'This window opens it again once it has started.' : connecting ? page.serverStopped ? `Its server on ${host} stopped, and its agents with it.` : `Agents keep running on ${host}.` : page.serverStopped ? `Its agents on ${host} stopped with it.` : `Agents keep running on ${host} unless its server stopped.`;"
+    ].join('\n');
+    const discSc = patchMainProcessModule('dist/remote/disconnectedPage.js', discOrig, false);
+    assert.match(discSc, /重新连接/);
+    assert.match(discSc, /停止服务/);
+    assert.match(discSc, /已断开连接/);
+    assert.match(discSc, /已断开与 \$\{host\} 的连接/);
+    const discTw = patchMainProcessModule('dist/remote/disconnectedPage.js', discOrig, true);
+    assert.match(discTw, /重新連線/);
+    assert.match(discTw, /停止伺服器/);
+    assert.match(discTw, /已中斷連線/);
+    assert.match(discTw, /已中斷與 \$\{host\} 的連線/);
+
+    const cbOrig = [
+        "const SIGNED_IN = page('You have successfully authenticated.', 'You can close this tab and return to Antigravity.');",
+        "return page(\"Sign-in didn't finish\", `Antigravity couldn't reach ${host} to finish signing in. ` +",
+        "'Sign in again from Antigravity.');"
+    ].join('\n');
+    const cbSc = patchMainProcessModule('dist/remote/signInCallback.js', cbOrig, false);
+    assert.match(cbSc, /您已成功完成身份验证。/);
+    assert.match(cbSc, /登录未完成/);
+    const cbTw = patchMainProcessModule('dist/remote/signInCallback.js', cbOrig, true);
+    assert.match(cbTw, /您已成功完成身分驗證。/);
+    assert.match(cbTw, /登入未完成/);
+});
