@@ -1086,3 +1086,97 @@ test('menu translation covers v2.35.1 View/Edit items (Reload, Substitutions, Sp
     assert.deepEqual(labels(true), ['檢視', '重新載入', '強制重新載入', '編輯', '替代', '智慧型引號', '文字替代', '語音', '開始朗讀', '停止朗讀']);
     assert.deepEqual(labels(false), ['视图', '重新加载', '强制重新加载', '编辑', '替换', '智能引号', '文本替换', '语音', '开始朗读', '停止朗读']);
 });
+
+test('main-process patches cover v2.35.1 SSH remote flow, passkey window, WSL messages and page lang', () => {
+    const { MAIN_PROCESS_PATCH_TARGETS } = require('../src/main_patches');
+    for (const rel of ['dist/remote/sshArgs.js', 'dist/remote/sshConnection.js', 'dist/remote/sshDestination.js', 'dist/remote/sshConfigHosts.js',
+        'dist/remote/sshBridge.js', 'dist/remote/sshErrorText.js', 'dist/wsl.js', 'dist/cablev2.js', 'dist/qrEncoder.js', 'dist/browserStream/capturePage.js']) {
+        assert.ok(MAIN_PROCESS_PATCH_TARGETS.includes(rel), `${rel} 必须列入主进程补丁目标`);
+    }
+
+    const argsSrc = [
+        "exports.LINUX_HOST_NEEDED = 'Antigravity needs a Linux host on x64 or arm64 with glibc 2.26 or newer.';",
+        'function describe(code, prompts) {',
+        '    switch (code) {',
+        "        case 'CONNECTION_FAILED':",
+        "            return `Couldn't connect to the SSH host. Check its name, your network and ssh config (e.g. a ProxyCommand), and that ssh to it works in a terminal${prompts === 'no' ? ' without a prompt' : ''}.`;",
+        "        case 'UNSUPPORTED_HOST':",
+        "            return `The SSH host isn't supported. ${exports.LINUX_HOST_NEEDED} Windows and macOS hosts aren't supported yet.`;",
+        '        default:',
+        "            return `Couldn't connect to the SSH host (${String(code)}).`;",
+        '    }',
+        '}',
+        'return describe;'
+    ].join('\n');
+    const describeSc = new Function('exports', patchMainProcessModule('dist/remote/sshArgs.js', argsSrc, false))({});
+    assert.equal(describeSc('CONNECTION_FAILED', 'yes'), '无法连接到 SSH 主机。请检查主机名、网络和 ssh 配置（例如 ProxyCommand），并确认在终端中可以用 ssh 连接到该主机。');
+    assert.equal(describeSc('UNSUPPORTED_HOST'), '不支持该 SSH 主机。Antigravity 需要使用 glibc 2.26 或更高版本、x64 或 arm64 架构的 Linux 主机。目前尚不支持 Windows 和 macOS 主机。');
+    assert.equal(describeSc('WEIRD'), '无法连接到 SSH 主机（WEIRD）。');
+    const describeTw = new Function('exports', patchMainProcessModule('dist/remote/sshArgs.js', argsSrc, true))({});
+    assert.equal(describeTw('CONNECTION_FAILED', 'no'), '無法連線至 SSH 主機。請檢查主機名稱、網路與 ssh 設定（例如 ProxyCommand），並確認在終端機中不需任何提示就能用 ssh 連線至該主機。');
+
+    const connSrc = [
+        'function describeExit(code, signal, lastLine) {',
+        '    const how = signal ? `signal ${signal}` : `exit code ${code}`;',
+        '    return lastLine',
+        '        ? `ssh exited (${how}): ${(0, types_1.sanitizeRemoteText)(lastLine, 300)}`',
+        '        : `ssh exited (${how}).`;',
+        '}',
+        'function status(label) { return `Downloading the Antigravity server on ${label}…`; }',
+        'return { describeExit, status };'
+    ].join('\n');
+    const connPatched = patchMainProcessModule('dist/remote/sshConnection.js', connSrc, false);
+    const conn = new Function('types_1', connPatched)({ sanitizeRemoteText: s => s });
+    assert.equal(conn.describeExit(255, null, ''), 'ssh 已退出（退出代码 255）。');
+    assert.equal(conn.describeExit(null, 'SIGTERM', 'Connection reset'), 'ssh 已退出（信号 SIGTERM）：Connection reset');
+    assert.equal(conn.status('devbox'), '正在 devbox 上下载 Antigravity 服务器…');
+    assert.equal(patchMainProcessModule('dist/remote/sshConnection.js', connPatched, false), connPatched, '重复应用不得再改动');
+
+    // SSH 配置文件检查：英文语序 `${file} ${what}: ${why}. ${fix}` 改成中文句式
+    const cfgSrc = [
+        'const invalid = (problem) => new Error(`The SSH config file ${problem}`);',
+        'const NOT_CONFIG = "isn\'t an SSH config file";',
+        "const CHOOSE_CONFIG = 'Choose a file of ssh settings, such as ~/.ssh/config.';",
+        'const notConfig = (why) => ({ what: NOT_CONFIG, why, fix: CHOOSE_CONFIG });',
+        'const BINARY = notConfig("it\'s a binary file");',
+        'function describeSshConfigProblem(file, { what, why, fix }) {',
+        '    return `${file} ${what}: ${why}. ${fix}`;',
+        '}',
+        "const shown = 'cfg';",
+        "return [describeSshConfigProblem('/bin/ls', BINARY), invalid(`must be an absolute path (got ${shown}).`).message, invalid(`${shown} doesn't exist or can't be read.`).message];"
+    ].join('\n');
+    assert.deepEqual(new Function(patchMainProcessModule('dist/remote/sshConfigHosts.js', cfgSrc, false))(), [
+        '/bin/ls 不是 SSH 配置文件：这是二进制文件。请选择 ssh 配置文件，例如 ~/.ssh/config。',
+        'SSH 配置文件必须是绝对路径（当前为 cfg）。',
+        'SSH 配置文件（cfg）不存在或无法读取。'
+    ]);
+
+    const errSrc = [
+        "function logPath() { return '/tmp/main.log'; }",
+        'function codeAndLogs(err) { return `Error code: ${err.code}\\nLogs: ${logPath()}`; }',
+        'function detailOf(err, label) { const text = err.message; return err.reportedByRemote ? `${label} reported: ${text}` : text; }',
+        'return { codeAndLogs, detailOf };'
+    ].join('\n');
+    const errSc = new Function(patchMainProcessModule('dist/remote/sshErrorText.js', errSrc, false))();
+    assert.equal(errSc.codeAndLogs({ code: 'UNKNOWN' }), '错误代码：UNKNOWN\n日志：/tmp/main.log');
+    assert.equal(errSc.detailOf({ reportedByRemote: true, message: 'disk full' }, 'devbox'), 'devbox 报告：disk full');
+
+    const rm = patchMainProcessModule('dist/remote/remoteManager.js', [
+        "title: 'Could not restart the SSH server',",
+        "this.reportError(err, entry.label, 'Could not restart the SSH server', win);",
+        "this.reportError(err, entry.label, 'Could not stop the SSH server', win);",
+        "this.reportError(err, entry.label, 'Sign-in failed', win);",
+        "throw new types_1.RemoteError('CANCELLED', 'Connection cancelled.');"
+    ].join('\n'), false);
+    assert.equal(rm.split('无法重启 SSH 服务器').length - 1, 2);
+    for (const zh of ["'无法停止 SSH 服务器'", "'登录失败'", "'连接已取消。'"]) assert.ok(rm.includes(zh), zh);
+
+    const wslMain = patchMainProcessModule('dist/main.js', 'const msg = `Failed to install the server into WSL distro "${WSL_DISTRO}":\\n${err.message}`;', false);
+    assert.ok(wslMain.includes('`无法将服务器安装到 WSL 发行版“${WSL_DISTRO}”：\\n${err.message}`'));
+    const cable = patchMainProcessModule('dist/cablev2.js', "<html lang=\"en\"><title>Passkeys</title> updateStatus('Connecting to your device…')", true);
+    assert.equal(cable, "<html lang=\"zh-TW\"><title>通行金鑰</title> updateStatus('正在連線至您的裝置…')");
+    assert.equal(patchMainProcessModule('dist/remote/sshPrompts.js', '`<!doctype html><html lang="en"${dark ? \' class="dark"\' : \'\'}>`', false), '`<!doctype html><html lang="zh-CN"${dark ? \' class="dark"\' : \'\'}>`');
+    for (const rel of ['dist/ideInstall/wizardHtml.js', 'dist/remote/disconnectedPage.js', 'dist/remote/signInCallback.js']) {
+        assert.equal(patchMainProcessModule(rel, '<html lang="en">', true), '<html lang="zh-TW">', rel);
+    }
+});

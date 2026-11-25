@@ -503,7 +503,8 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["showErrorBox('Startup failed', msg)", "showErrorBox('启动失败', msg)", "showErrorBox('啟動失敗', msg)"],
         ["title: 'WSL distro not found',", "title: '未找到 WSL 发行版',", "title: '找不到 WSL 發行版',"],
         ['message: `The WSL distro "${WSL_DISTRO}" is no longer installed.`,', 'message: `WSL 发行版 "${WSL_DISTRO}" 已不再安装。`,', 'message: `WSL 發行版 "${WSL_DISTRO}" 已未安裝。`,'],
-        ["detail: 'Antigravity opened on Windows instead.',", "detail: 'Antigravity 已改为在 Windows 上打开。',", "detail: 'Antigravity 已改為在 Windows 上開啟。',"]
+        ["detail: 'Antigravity opened on Windows instead.',", "detail: 'Antigravity 已改为在 Windows 上打开。',", "detail: 'Antigravity 已改為在 Windows 上開啟。',"],
+        ['`Failed to install the server into WSL distro "${WSL_DISTRO}":\\n${err.message}`', '`无法将服务器安装到 WSL 发行版“${WSL_DISTRO}”：\\n${err.message}`', '`無法將伺服器安裝到 WSL 發行版「${WSL_DISTRO}」：\\n${err.message}`']
     ],
     'dist/ipcHandlers.js': [
         ["showErrorBox('Cannot open folder', t.error)", "showErrorBox('无法打开文件夹', t.error)", "showErrorBox('無法開啟資料夾', t.error)"],
@@ -559,9 +560,15 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["buttons: ['Restart', 'Later'],", "buttons: ['重启', '稍后'],", "buttons: ['重新啟動', '稍後'],"],
         ["title: 'Restart SSH server',", "title: '重启 SSH 服务器',", "title: '重新啟動 SSH 伺服器',"],
         ["message: `${label} is running server ${running}; this app is ${expected}. Restart the server now?`,", "message: `${label} 正在运行服务器 ${running}，当前应用版本为 ${expected}。是否立即重启服务器？`,", "message: `${label} 正在執行伺服器 ${running}，目前應用程式版本為 ${expected}。是否立即重新啟動伺服器？`,"],
-        ["detail: `Any ${what} still running on it stops. The server starts again with this app's version.`,", "detail: `其上仍在运行的任何${what}都将停止。服务器将以当前应用版本重新启动。`,", "detail: `其上仍在執行的任何${what}都將停止。伺服器將以目前應用程式版本重新啟動。`,"]
+        ["detail: `Any ${what} still running on it stops. The server starts again with this app's version.`,", "detail: `其上仍在运行的任何${what}都将停止。服务器将以当前应用版本重新启动。`,", "detail: `其上仍在執行的任何${what}都將停止。伺服器將以目前應用程式版本重新啟動。`,"],
+        // reportError() 以参数传入的对话框标题（须排在上面的 title 列之后）
+        ["'Could not restart the SSH server'", "'无法重启 SSH 服务器'", "'無法重新啟動 SSH 伺服器'"],
+        ["'Could not stop the SSH server'", "'无法停止 SSH 服务器'", "'無法停止 SSH 伺服器'"],
+        ["'Sign-in failed'", "'登录失败'", "'登入失敗'"],
+        ["'Connection cancelled.'", "'连接已取消。'", "'已取消連線。'"]
     ],
     'dist/remote/sshPrompts.js': [
+        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
         ["message: confirm ? `${label} asks:` : 'Touch your security key',", "message: confirm ? `${label} 询问：` : '请轻触您的安全密钥',", "message: confirm ? `${label} 詢問：` : '請輕觸您的安全金鑰',"],
         ["const TOUCH_TITLE = 'Touch your security key';", "const TOUCH_TITLE = '请轻触您的安全密钥';", "const TOUCH_TITLE = '請輕觸您的安全金鑰';"],
         ["<p class=\"context\">Connecting to <span id=\"label\"></span></p>", "<p class=\"context\">正在连接到 <span id=\"label\"></span></p>", "<p class=\"context\">正在連線至 <span id=\"label\"></span></p>"],
@@ -631,6 +638,7 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["<div>Setting up WSL: ${escapeHtml(distro)}</div>", "<div>正在初始化 WSL：${escapeHtml(distro)}</div>", "<div>正在設定 WSL：${escapeHtml(distro)}</div>"]
     ],
     'dist/ideInstall/wizardHtml.js': [
+        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
         ["<title>Welcome to Antigravity</title>", "<title>欢迎使用 Antigravity</title>", "<title>歡迎使用 Antigravity</title>"],
         [">Setting up…</div>", ">正在设置…</div>", ">正在設定…</div>"],
         ["<h1>Welcome to the new Antigravity!</h1>", "<h1>欢迎使用全新 Antigravity！</h1>", "<h1>歡迎使用全新 Antigravity！</h1>"],
@@ -639,6 +647,7 @@ const MAIN_PROCESS_TEXT_TABLES = {
         [">Explore the new Antigravity</button>", ">探索全新 Antigravity</button>", ">探索全新 Antigravity</button>"]
     ],
     'dist/remote/disconnectedPage.js': [
+        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
         ["reconnect: 'Reconnect',", "reconnect: '重新连接',", "reconnect: '重新連線',"],
         ["stop: 'Stop Server',", "stop: '停止服务',", "stop: '停止伺服器',"],
         ["close: 'Close',", "close: '关闭',", "close: '關閉',"],
@@ -655,6 +664,7 @@ const MAIN_PROCESS_TEXT_TABLES = {
         [": `Agents keep running on ${host} unless its server stopped.`;", ": `除非其服务已停止，否则智能体仍在 ${host} 上继续运行。`;", ": `除非其伺服器已停止，否則代理仍在 ${host} 上繼續執行。`;"]
     ],
     'dist/remote/signInCallback.js': [
+        ['<html lang="en"', '<html lang="zh-CN"', '<html lang="zh-TW"'],
         ["const SIGNED_IN = page('You have successfully authenticated.', 'You can close this tab and return to Antigravity.');", "const SIGNED_IN = page('您已成功完成身份验证。', '您可以关闭此标签页并返回 Antigravity。');", "const SIGNED_IN = page('您已成功完成身分驗證。', '您可以關閉此分頁並返回 Antigravity。');"],
         ["return page(\"Sign-in didn't finish\", `Antigravity couldn't reach ${host} to finish signing in. ` +", "return page('登录未完成', `Antigravity 无法连接到 ${host} 以完成登录。` +", "return page('登入未完成', `Antigravity 無法連線至 ${host} 以完成登入。` +"],
         ["return page(\"Sign-in didn't finish\", 'This sign-in came back from another server than the sign-in page you ' +", "return page('登录未完成', '此登录回调来自与您此前同意的登录页不同的服务器，' +", "return page('登入未完成', '此登入回呼來自與您先前同意的登入頁不同的伺服器，' +"],
@@ -665,6 +675,158 @@ const MAIN_PROCESS_TEXT_TABLES = {
     'dist/browserStream/capturePage.js': [
         ["<title>Browser Stream Capture</title>", "<title>浏览器串流捕获</title>", "<title>瀏覽器串流擷取</title>"],
         ["'Capture session failed'", "'捕获会话失败'", "'擷取工作階段失敗'"]
+    ],
+    // v2.35.1：SSH 错误对话框的说明与详情栏标签
+    'dist/remote/sshErrorText.js': [
+        ["'The connection was closed before it finished.'", "'连接在完成前被关闭。'", "'連線在完成前即被關閉。'"],
+        ["`Windows SSH hosts aren't supported yet. ${sshArgs_1.LINUX_HOST_NEEDED}`", "`暂不支持 Windows SSH 主机。${sshArgs_1.LINUX_HOST_NEEDED}`", "`尚未支援 Windows SSH 主機。${sshArgs_1.LINUX_HOST_NEEDED}`"],
+        ["`Error code: ${err.code}\\nLogs: ${logPath()}`", "`错误代码：${err.code}\\n日志：${logPath()}`", "`錯誤代碼：${err.code}\\n記錄檔：${logPath()}`"],
+        ["`${text}\\nLogs: ${logPath()}`", "`${text}\\n日志：${logPath()}`", "`${text}\\n記錄檔：${logPath()}`"],
+        ["`${label} reported: ${text}`", "`${label} 报告：${text}`", "`${label} 回報：${text}`"]
+    ],
+    // 通行密钥扫码窗口
+    'dist/cablev2.js': [
+        ["<html lang=\"en\">", "<html lang=\"zh-CN\">", "<html lang=\"zh-TW\">"],
+        ["<title>Passkeys</title>", "<title>通行密钥</title>", "<title>通行金鑰</title>"],
+        ["<h1 class=\"sheet-title\">Passkeys</h1>", "<h1 class=\"sheet-title\">通行密钥</h1>", "<h1 class=\"sheet-title\">通行金鑰</h1>"],
+        ["<p class=\"mechanism-header\">Use your phone or tablet</p>", "<p class=\"mechanism-header\">使用手机或平板电脑</p>", "<p class=\"mechanism-header\">使用手機或平板電腦</p>"],
+        [">Scan this QR code with the camera on the device that has your passkey for ${safeRpId}</p>", ">请使用存有 ${safeRpId} 通行密钥的设备，用摄像头扫描此二维码</p>", ">請使用存有 ${safeRpId} 通行金鑰的裝置，以相機掃描此 QR 碼</p>"],
+        ["onclick=\"window.close()\">Cancel</button>", "onclick=\"window.close()\">取消</button>", "onclick=\"window.close()\">取消</button>"],
+        ["title: 'Passkeys'", "title: '通行密钥'", "title: '通行金鑰'"],
+        ["updateStatus('Connecting to your device…')", "updateStatus('正在连接到您的设备…')", "updateStatus('正在連線至您的裝置…')"],
+        ["updateStatus('Verify on your device to continue…')", "updateStatus('请在您的设备上完成验证以继续…')", "updateStatus('請在您的裝置上完成驗證以繼續…')"]
+    ],
+    'dist/qrEncoder.js': [
+        ["aria-label=\"Passkey QR code\"", "aria-label=\"通行密钥二维码\"", "aria-label=\"通行金鑰 QR 碼\""]
+    ],
+    // SSH 连接失败对话框与断开页面的错误说明（给 AI 代理的错误码消息、只写入日志的字符串保留英文）
+    'dist/remote/sshArgs.js': [
+        ["'Antigravity needs a Linux host on x64 or arm64 with glibc 2.26 or newer.'", "'Antigravity 需要使用 glibc 2.26 或更高版本、x64 或 arm64 架构的 Linux 主机。'", "'Antigravity 需要使用 glibc 2.26 以上版本、x64 或 arm64 架構的 Linux 主機。'"],
+        ["`Couldn't connect to the SSH host (${String(code)}).`", "`无法连接到 SSH 主机（${String(code)}）。`", "`無法連線至 SSH 主機（${String(code)}）。`"],
+        ["'SSH authentication failed. Check your password, code or keys, then try again.'", "'SSH 身份验证失败。请检查密码、验证码或密钥，然后重试。'", "'SSH 驗證失敗。請檢查密碼、驗證碼或金鑰，然後再試一次。'"],
+        ["'SSH authentication failed. Click Reconnect to sign in again.'", "'SSH 身份验证失败。请点击“重新连接”再次登录。'", "'SSH 驗證失敗。請按一下「重新連線」再次登入。'"],
+        ["\"SSH authentication failed. Antigravity can't answer password or code prompts on Windows yet: set up key-based login with ssh-agent, then try again.\"", "'SSH 身份验证失败。Antigravity 目前在 Windows 上还无法应答密码或验证码提示：请用 ssh-agent 设置密钥登录，然后重试。'", "'SSH 驗證失敗。Antigravity 目前在 Windows 上還無法回應密碼或驗證碼提示：請用 ssh-agent 設定金鑰登入，然後再試一次。'"],
+        ["\"That SSH host isn't valid. Enter an alias from your SSH config or a host like user@host or user@host:2222.\"", "'该 SSH 主机无效。请输入 SSH 配置中的别名，或 user@host、user@host:2222 这类主机。'", "'這個 SSH 主機無效。請輸入 SSH 設定中的別名，或 user@host、user@host:2222 這類主機。'"],
+        ["\"The host's SSH key is unknown or has changed. Save it with ssh in a terminal. If it changed, ask the host's owner first: the connection may be intercepted.\"", "'主机的 SSH 密钥未知或已更改。请在终端中用 ssh 保存该密钥。如果密钥已更改，请先询问主机所有者：连接可能已被拦截。'", "'主機的 SSH 金鑰不明或已變更。請在終端機中用 ssh 儲存此金鑰。如果金鑰已變更，請先詢問主機擁有者：連線可能遭到攔截。'"],
+        ["\"The host's SSH key has changed or isn't trusted. If it changed, ask the host's owner first: the connection may be intercepted.\"", "'主机的 SSH 密钥已更改或不受信任。如果密钥已更改，请先询问主机所有者：连接可能已被拦截。'", "'主機的 SSH 金鑰已變更或未受信任。如果金鑰已變更，請先詢問主機擁有者：連線可能遭到攔截。'"],
+        ["`Couldn't connect to the SSH host. Check its name, your network and ssh config (e.g. a ProxyCommand), and that ssh to it works in a terminal${prompts === 'no' ? ' without a prompt' : ''}.`", "`无法连接到 SSH 主机。请检查主机名、网络和 ssh 配置（例如 ProxyCommand），并确认在终端中${prompts === 'no' ? '无需任何提示即可' : '可以'}用 ssh 连接到该主机。`", "`無法連線至 SSH 主機。請檢查主機名稱、網路與 ssh 設定（例如 ProxyCommand），並確認在終端機中${prompts === 'no' ? '不需任何提示就能' : '可以'}用 ssh 連線至該主機。`"],
+        ["\"SSH can't use your SSH config file. Fix the problem ssh reports, or choose another config file.\"", "'SSH 无法使用您的 SSH 配置文件。请修复 ssh 报告的问题，或选择其他配置文件。'", "'SSH 無法使用您的 SSH 設定檔。請修正 ssh 回報的問題，或選擇其他設定檔。'"],
+        ["'SSH port forwarding failed. Make sure the server allows TCP forwarding (AllowTcpForwarding) for your account, then try again.'", "'SSH 端口转发失败。请确认服务器允许您的账户使用 TCP 转发（AllowTcpForwarding），然后重试。'", "'SSH 連接埠轉送失敗。請確認伺服器允許您的帳戶使用 TCP 轉送（AllowTcpForwarding），然後再試一次。'"],
+        ["`The SSH host isn't supported. ${exports.LINUX_HOST_NEEDED} Windows and macOS hosts aren't supported yet.`", "`不支持该 SSH 主机。${exports.LINUX_HOST_NEEDED}目前尚不支持 Windows 和 macOS 主机。`", "`不支援這個 SSH 主機。${exports.LINUX_HOST_NEEDED}目前尚未支援 Windows 與 macOS 主機。`"],
+        ["'Another host that shares your home directory runs the Antigravity server. Connect to that host, or connect again and choose Take Over.'", "'另一台共享您主目录的主机正在运行 Antigravity 服务器。请连接到那台主机，或重新连接并选择“接管”。'", "'另一台共用您家目錄的主機正在執行 Antigravity 伺服器。請連線至那台主機，或重新連線並選擇「接管」。'"],
+        ["\"Couldn't install the Antigravity server on the SSH host. Make sure it has free disk space, and that it or this computer can download from the internet.\"", "'无法在 SSH 主机上安装 Antigravity 服务器。请确认主机有可用的磁盘空间，并且主机或这台电脑能从互联网下载。'", "'無法在 SSH 主機上安裝 Antigravity 伺服器。請確認主機有可用的磁碟空間，且主機或這台電腦能從網際網路下載。'"],
+        ["`The Antigravity server failed to start on the SSH host. See its log in ~/${types_1.REMOTE_INSTALL_ROOT}/data on that host.`", "`Antigravity 服务器无法在 SSH 主机上启动。请查看该主机 ~/${types_1.REMOTE_INSTALL_ROOT}/data 中的日志。`", "`Antigravity 伺服器無法在 SSH 主機上啟動。請查看該主機 ~/${types_1.REMOTE_INSTALL_ROOT}/data 中的記錄檔。`"],
+        ["'The Antigravity server on the SSH host stopped. Reconnect to start it again.'", "'SSH 主机上的 Antigravity 服务器已停止。请重新连接以再次启动。'", "'SSH 主機上的 Antigravity 伺服器已停止。請重新連線以再次啟動。'"],
+        ["'The SSH connection closed. Check your network connection, then reconnect.'", "'SSH 连接已关闭。请检查网络连接，然后重新连接。'", "'SSH 連線已關閉。請檢查網路連線，然後重新連線。'"],
+        ["'The connection was cancelled.'", "'连接已取消。'", "'已取消連線。'"],
+        ["\"Couldn't connect to the SSH host. Try ssh to it in a terminal, and see the Antigravity log for details.\"", "'无法连接到 SSH 主机。请在终端中尝试用 ssh 连接，并查看 Antigravity 日志了解详情。'", "'無法連線至 SSH 主機。請在終端機中試著用 ssh 連線，並查看 Antigravity 記錄檔了解詳情。'"]
+    ],
+    // 连接画面的进度状态与对话框显示的错误消息
+    'dist/remote/sshConnection.js': [
+        ["`Connecting to ${this.label}…`", "`正在连接到 ${this.label}…`", "`正在連線至 ${this.label}…`"],
+        ["'Waiting for your answer…'", "'正在等待您的回答…'", "'正在等待您的回應…'"],
+        ["`Uploading the Antigravity server to ${this.label}…`", "`正在将 Antigravity 服务器上传到 ${this.label}…`", "`正在將 Antigravity 伺服器上傳至 ${this.label}…`"],
+        ["`Connecting to the Antigravity server on ${this.label}…`", "`正在连接 ${this.label} 上的 Antigravity 服务器…`", "`正在連線至 ${this.label} 上的 Antigravity 伺服器…`"],
+        ["`Checking ${label}…`", "`正在检查 ${label}…`", "`正在檢查 ${label}…`"],
+        ["`Waiting for another window to finish installing on ${label}…`", "`正在等待另一个窗口在 ${label} 上完成安装…`", "`正在等待另一個視窗在 ${label} 上完成安裝…`"],
+        ["`Replacing an invalid server binary on ${label}…`", "`正在替换 ${label} 上无效的服务器程序…`", "`正在替換 ${label} 上無效的伺服器執行檔…`"],
+        ["`Downloading the Antigravity server on ${label}…`", "`正在 ${label} 上下载 Antigravity 服务器…`", "`正在 ${label} 上下載 Antigravity 伺服器…`"],
+        ["`Installed the Antigravity server on ${label}.`", "`已在 ${label} 上安装 Antigravity 服务器。`", "`已在 ${label} 上安裝 Antigravity 伺服器。`"],
+        ["`Starting the Antigravity server on ${label}…`", "`正在 ${label} 上启动 Antigravity 服务器…`", "`正在 ${label} 上啟動 Antigravity 伺服器…`"],
+        ["`Connecting to the running server on ${label}…`", "`正在连接 ${label} 上运行中的服务器…`", "`正在連線至 ${label} 上執行中的伺服器…`"],
+        ["`Restarting the Antigravity server on ${label}…`", "`正在重启 ${label} 上的 Antigravity 服务器…`", "`正在重新啟動 ${label} 上的 Antigravity 伺服器…`"],
+        ["`Checking whether another host still runs your Antigravity server…`", "`正在检查是否还有其他主机在运行您的 Antigravity 服务器…`", "`正在檢查是否仍有其他主機在執行您的 Antigravity 伺服器…`"],
+        ["`Moving the Antigravity server to ${label}…`", "`正在将 Antigravity 服务器移至 ${label}…`", "`正在將 Antigravity 伺服器移至 ${label}…`"],
+        ["`Timed out connecting to ${this.label}.`", "`连接 ${this.label} 超时。`", "`連線至 ${this.label} 逾時。`"],
+        ["'Connection cancelled.'", "'连接已取消。'", "'已取消連線。'"],
+        ["'Not connected.'", "'未连接。'", "'尚未連線。'"],
+        ["exports.PROMPT_CANCELLED = 'Sign-in cancelled.';", "exports.PROMPT_CANCELLED = '已取消登录。';", "exports.PROMPT_CANCELLED = '已取消登入。';"],
+        ["`The Antigravity server on ${this.label} has no HTTP port to stop it through.`", "`${this.label} 上的 Antigravity 服务器没有可用于停止它的 HTTP 端口。`", "`${this.label} 上的 Antigravity 伺服器沒有可用來停止它的 HTTP 連接埠。`"],
+        ["`The Antigravity server on ${this.label} refused to stop (HTTP ${status}).`", "`${this.label} 上的 Antigravity 服务器拒绝停止（HTTP ${status}）。`", "`${this.label} 上的 Antigravity 伺服器拒絕停止（HTTP ${status}）。`"],
+        ["`Could not confirm that the Antigravity server on ${this.label} stopped` +", "`无法确认 ${this.label} 上的 Antigravity 服务器已停止` +", "`無法確認 ${this.label} 上的 Antigravity 伺服器已停止` +"],
+        ["(rpcError ? ` (${this.redact((0, types_1.sanitizeRemoteText)(rpcError))}).` : '.')", "(rpcError ? `（${this.redact((0, types_1.sanitizeRemoteText)(rpcError))}）。` : '。')", "(rpcError ? `（${this.redact((0, types_1.sanitizeRemoteText)(rpcError))}）。` : '。')"],
+        ["why = 'it has no HTTP port';", "why = '它没有 HTTP 端口';", "why = '它沒有 HTTP 連接埠';"],
+        ["why = 'an invalid answer';", "why = '响应无效';", "why = '回應無效';"],
+        ["`The Antigravity server on ${this.label} didn't give this window a sign-in token (${why}).`", "`${this.label} 上的 Antigravity 服务器没有给此窗口登录令牌（${why}）。`", "`${this.label} 上的 Antigravity 伺服器沒有提供此視窗的登入權杖（${why}）。`"],
+        ["`${this.label} did not start the setup within ${Math.round(firstLineMs / 1000)} s. ` +", "`${this.label} 未在 ${Math.round(firstLineMs / 1000)} 秒内开始设置。` +", "`${this.label} 未在 ${Math.round(firstLineMs / 1000)} 秒內開始設定。` +"],
+        ["'ssh (e.g. a ProxyCommand or ProxyJump login) or a command in ' +", "'可能是 ssh（例如 ProxyCommand 或 ProxyJump 登录）或 ' +", "'可能是 ssh（例如 ProxyCommand 或 ProxyJump 登入）或 ' +"],
+        ["'your shell startup files (e.g. ~/.bashrc) may be waiting for input.'", "'shell 启动文件（例如 ~/.bashrc）中的命令正在等待输入。'", "'shell 啟動檔（例如 ~/.bashrc）中的指令正在等待輸入。'"],
+        ["\"Couldn't answer ssh's prompt.\"", "'无法应答 ssh 的提示。'", "'無法回應 ssh 的提示。'"],
+        ["`Could not run \"${sshBin}\". Install OpenSSH or set ANTIGRAVITY_SSH_BIN.`", "`无法运行“${sshBin}”。请安装 OpenSSH 或设置 ANTIGRAVITY_SSH_BIN。`", "`無法執行「${sshBin}」。請安裝 OpenSSH 或設定 ANTIGRAVITY_SSH_BIN。`"],
+        ["`Could not run ssh: ${err.message}`", "`无法运行 ssh：${err.message}`", "`無法執行 ssh：${err.message}`"],
+        ["`ssh could not listen on its SOCKS port ${this.socksPort}.`", "`ssh 无法监听其 SOCKS 端口 ${this.socksPort}。`", "`ssh 無法監聽其 SOCKS 連接埠 ${this.socksPort}。`"],
+        ["`${this.label} asked for an upload it can't need.`", "`${this.label} 请求了不必要的上传。`", "`${this.label} 要求了不必要的上傳。`"],
+        ["`${this.label} sent a line longer than ${MAX_LINE_CHARS} characters.`", "`${this.label} 发送的单行超过 ${MAX_LINE_CHARS} 个字符。`", "`${this.label} 傳送的單行超過 ${MAX_LINE_CHARS} 個字元。`"],
+        ["`Neither ${this.label} nor this computer could download the Antigravity server: ${errorMessage(err)}`", "`${this.label} 和这台电脑都无法下载 Antigravity 服务器：${errorMessage(err)}`", "`${this.label} 與這台電腦都無法下載 Antigravity 伺服器：${errorMessage(err)}`"],
+        ["`The Antigravity server on ${this.label} stopped.`", "`${this.label} 上的 Antigravity 服务器已停止。`", "`${this.label} 上的 Antigravity 伺服器已停止。`"],
+        ["`The connection to ${this.label} was lost: ${describeExit(code, signal, this.stderrTail)}`", "`与 ${this.label} 的连接已中断：${describeExit(code, signal, this.stderrTail)}`", "`與 ${this.label} 的連線已中斷：${describeExit(code, signal, this.stderrTail)}`"],
+        ["'The SSH server does not allow port forwarding (AllowTcpForwarding).'", "'SSH 服务器不允许端口转发（AllowTcpForwarding）。'", "'SSH 伺服器不允許連接埠轉送（AllowTcpForwarding）。'"],
+        ["`The Antigravity server on ${this.label} did not respond through the SSH tunnel (${(0, types_1.sanitizeRemoteText)(lastErr, 200)}).`", "`${this.label} 上的 Antigravity 服务器未通过 SSH 隧道响应（${(0, types_1.sanitizeRemoteText)(lastErr, 200)}）。`", "`${this.label} 上的 Antigravity 伺服器未透過 SSH 通道回應（${(0, types_1.sanitizeRemoteText)(lastErr, 200)}）。`"],
+        ["`${this.label} asked to open a sign-in at ${origin} that can't finish on that host, so it was not opened.`", "`${this.label} 要求打开 ${origin} 的登录，但该登录无法在那台主机上完成，因此未打开。`", "`${this.label} 要求開啟 ${origin} 的登入，但該登入無法在那台主機上完成，因此未開啟。`"],
+        ["`The sign-in request of the Antigravity server on ${this.label} doesn't match what this app expects, so it was not opened. ` +", "`${this.label} 上的 Antigravity 服务器发出的登录请求与此应用的预期不符，因此未打开。` +", "`${this.label} 上的 Antigravity 伺服器發出的登入要求與此應用程式的預期不符，因此未開啟。` +"],
+        ["'Update Antigravity, or restart the server on that host.'", "'请更新 Antigravity，或重启那台主机上的服务器。'", "'請更新 Antigravity，或重新啟動那台主機上的伺服器。'"],
+        ["`Local port ${port} is in use, so the sign-in callback can't ` +", "`本地端口 ${port} 已被占用，登录回调无法` +", "`本機連接埠 ${port} 已被占用，登入回呼無法` +"],
+        ["`reach ${this.label}. Close the program using it and sign in again. ` +", "`到达 ${this.label}。请关闭占用该端口的程序，然后重新登录。` +", "`抵達 ${this.label}。請關閉占用該連接埠的程式，然後重新登入。` +"],
+        ["'The connection was closed.'", "'连接已关闭。'", "'連線已關閉。'"],
+        ["'Could not get a free loopback port.'", "'无法取得可用的回环端口。'", "'無法取得可用的回送連接埠。'"],
+        ["const how = signal ? `signal ${signal}` : `exit code ${code}`;", "const how = signal ? `信号 ${signal}` : `退出代码 ${code}`;", "const how = signal ? `訊號 ${signal}` : `結束代碼 ${code}`;"],
+        ["? `ssh exited (${how}): ${(0, types_1.sanitizeRemoteText)(lastLine, 300)}`", "? `ssh 已退出（${how}）：${(0, types_1.sanitizeRemoteText)(lastLine, 300)}`", "? `ssh 已結束（${how}）：${(0, types_1.sanitizeRemoteText)(lastLine, 300)}`"],
+        [": `ssh exited (${how}).`", ": `ssh 已退出（${how}）。`", ": `ssh 已結束（${how}）。`"]
+    ],
+    // SSH 主机输入框的格式校验
+    'dist/remote/sshDestination.js': [
+        ["'The user name before \"@\" is missing.'", "'缺少“@”前面的用户名。'", "'缺少「@」前面的使用者名稱。'"],
+        ["'The user name must not start with \"-\".'", "'用户名不能以“-”开头。'", "'使用者名稱不得以「-」開頭。'"],
+        ["`\"${shown}\" isn't a valid user name.`", "`“${shown}”不是有效的用户名。`", "`「${shown}」不是有效的使用者名稱。`"],
+        ["'The host name is missing.'", "'缺少主机名。'", "'缺少主機名稱。'"],
+        ["'The host name must not start with \"-\".'", "'主机名不能以“-”开头。'", "'主機名稱不得以「-」開頭。'"],
+        ["`\"${host}\" isn't a valid host name.`", "`“${host}”不是有效的主机名。`", "`「${host}」不是有效的主機名稱。`"],
+        ["`Invalid port \"${port}\": use a number from 1 to 65535.`", "`端口“${port}”无效：请使用 1 到 65535 之间的数字。`", "`連接埠「${port}」無效：請使用 1 到 65535 之間的數字。`"],
+        ["`\"${addr}\" isn't a valid IPv6 address. Write an IPv6 address with a port in brackets, for example [::1]:2222.`", "`“${addr}”不是有效的 IPv6 地址。带端口的 IPv6 地址请用方括号括起，例如 [::1]:2222。`", "`「${addr}」不是有效的 IPv6 位址。帶連接埠的 IPv6 位址請用方括號括住，例如 [::1]:2222。`"],
+        ["`Missing \"]\" after the IPv6 address in \"${hostPort}\".`", "`“${hostPort}”中的 IPv6 地址后缺少“]”。`", "`「${hostPort}」中的 IPv6 位址後缺少「]」。`"],
+        ["`Invalid percent-encoding in the user name \"${s}\".`", "`用户名“${s}”中的百分号编码无效。`", "`使用者名稱「${s}」中的百分比編碼無效。`"],
+        ["'Write \"@\" inside the user name of an ssh:// URI as %40.'", "'ssh:// URI 的用户名中如有“@”，请写成 %40。'", "'ssh:// URI 的使用者名稱中若有「@」，請寫成 %40。'"],
+        ["'Write an IPv6 address in an ssh:// URI in brackets, for example ssh://[::1]:2222.'", "'ssh:// URI 中的 IPv6 地址请用方括号括起，例如 ssh://[::1]:2222。'", "'ssh:// URI 中的 IPv6 位址請用方括號括住，例如 ssh://[::1]:2222。'"],
+        ["'Enter an SSH host, for example \"devbox\" or \"user@host:2222\".'", "'请输入 SSH 主机，例如“devbox”或“user@host:2222”。'", "'請輸入 SSH 主機，例如「devbox」或「user@host:2222」。'"],
+        ["`The SSH host is too long (at most ${MAX_DESTINATION_LENGTH} characters).`", "`SSH 主机过长（最多 ${MAX_DESTINATION_LENGTH} 个字符）。`", "`SSH 主機過長（最多 ${MAX_DESTINATION_LENGTH} 個字元）。`"],
+        ["'The SSH host must not start with \"-\".'", "'SSH 主机不能以“-”开头。'", "'SSH 主機不得以「-」開頭。'"],
+        ["'The SSH host must not contain spaces or control characters.'", "'SSH 主机不能包含空格或控制字符。'", "'SSH 主機不得包含空格或控制字元。'"],
+        ["`The SSH host must not contain ${describeChar(bad[0])}.`", "`SSH 主机不能包含 ${describeChar(bad[0])}。`", "`SSH 主機不得包含 ${describeChar(bad[0])}。`"]
+    ],
+    // SSH 配置文件检查结果（按中文语序改写句式）
+    'dist/remote/sshConfigHosts.js': [
+        ["`The SSH config file ${problem}`", "`SSH 配置文件${problem}`", "`SSH 設定檔${problem}`"],
+        ["`${shown} isn't a file.`", "`（${shown}）不是文件。`", "`（${shown}）不是檔案。`"],
+        ["`${shown} can be changed by others: it must be yours or root's, and not group- or world-writable.`", "`（${shown}）可被他人修改：它必须属于您或 root，且不能允许用户组或所有人写入。`", "`（${shown}）可被他人修改：它必須屬於您或 root，且不得開放群組或所有人寫入。`"],
+        ["const NOT_CONFIG = \"isn't an SSH config file\";", "const NOT_CONFIG = '不是 SSH 配置文件';", "const NOT_CONFIG = '不是 SSH 設定檔';"],
+        ["const CHOOSE_CONFIG = 'Choose a file of ssh settings, such as ~/.ssh/config.';", "const CHOOSE_CONFIG = '请选择 ssh 配置文件，例如 ~/.ssh/config。';", "const CHOOSE_CONFIG = '請選擇 ssh 設定檔，例如 ~/.ssh/config。';"],
+        ["const UNREADABLE = \"is saved in a way ssh can't read\";", "const UNREADABLE = '的保存格式 ssh 无法读取';", "const UNREADABLE = '的儲存格式 ssh 無法讀取';"],
+        ["const SAVE_AS_UTF8 = 'Save it as UTF-8 without a byte-order mark.';", "const SAVE_AS_UTF8 = '请另存为不带字节顺序标记（BOM）的 UTF-8。';", "const SAVE_AS_UTF8 = '請另存為不含位元組順序標記（BOM）的 UTF-8。';"],
+        ["notConfig(\"it's a binary file\")", "notConfig('这是二进制文件')", "notConfig('這是二進位檔案')"],
+        ["notConfig('it holds a key or certificate')", "notConfig('其中包含密钥或证书')", "notConfig('其中包含金鑰或憑證')"],
+        ["notConfig('it holds SSH public keys, like a .pub or authorized_keys file')", "notConfig('其中包含 SSH 公钥，例如 .pub 或 authorized_keys 文件')", "notConfig('其中包含 SSH 公開金鑰，例如 .pub 或 authorized_keys 檔案')"],
+        ["notConfig('it lists SSH host keys, like known_hosts')", "notConfig('其中列出 SSH 主机密钥，例如 known_hosts')", "notConfig('其中列出 SSH 主機金鑰，例如 known_hosts')"],
+        ["why: 'it starts with a byte-order mark',", "why: '它以字节顺序标记（BOM）开头',", "why: '它以位元組順序標記（BOM）開頭',"],
+        ["why: \"it's saved as UTF-16\",", "why: '它以 UTF-16 保存',", "why: '它以 UTF-16 儲存',"],
+        ["return `${file} ${what}: ${why}. ${fix}`;", "return `${file} ${what}：${why}。${fix}`;", "return `${file} ${what}：${why}。${fix}`;"],
+        ["invalid('must be a path on one line.')", "invalid('必须是单行路径。')", "invalid('必須是單行路徑。')"],
+        ["`must be an absolute path (got ${shown}).`", "`必须是绝对路径（当前为 ${shown}）。`", "`必須是絕對路徑（目前為 ${shown}）。`"],
+        ["`must be on one of this computer's drives (got ${shown}).`", "`必须位于这台电脑的磁盘上（当前为 ${shown}）。`", "`必須位於這台電腦的磁碟機上（目前為 ${shown}）。`"],
+        ["`can't be on a network share (${shown}).`", "`不能位于网络共享上（${shown}）。`", "`不得位於網路共用資料夾（${shown}）。`"],
+        ["`${shown} doesn't exist or can't be read.`", "`（${shown}）不存在或无法读取。`", "`（${shown}）不存在或無法讀取。`"],
+        ["`${shown} is now a link: choose the file again.`", "`（${shown}）现在是链接：请重新选择文件。`", "`（${shown}）現在是連結：請重新選擇檔案。`"],
+        ["`${shown} is over 4 MiB.`", "`（${shown}）超过 4 MiB。`", "`（${shown}）超過 4 MiB。`"]
+    ],
+    // 连接前的主机与配置文件路径检查
+    'dist/remote/sshBridge.js': [
+        ["'The SSH config file must be a path of at most 4 KiB.'", "'SSH 配置文件路径最长 4 KiB。'", "'SSH 設定檔路徑最長 4 KiB。'"],
+        ["'Enter an SSH host, for example \"devbox\" or \"user@host\".'", "'请输入 SSH 主机，例如“devbox”或“user@host”。'", "'請輸入 SSH 主機，例如「devbox」或「user@host」。'"]
+    ],
+    // Windows：在 WSL 中打开文件夹时的提示
+    'dist/wsl.js': [
+        ["`This folder belongs to the WSL distro \"${unc[1]}\", but this window is connected to \"${distro}\".`", "`此文件夹属于 WSL 发行版“${unc[1]}”，但此窗口连接的是“${distro}”。`", "`此資料夾屬於 WSL 發行版「${unc[1]}」，但此視窗連線的是「${distro}」。`"],
+        ["'This folder is on the Windows filesystem. Accessing it from WSL (via /mnt) can be slow — for best performance keep projects inside the WSL filesystem.'", "'此文件夹位于 Windows 文件系统中。从 WSL（通过 /mnt）访问可能较慢；为获得最佳性能，请将项目放在 WSL 文件系统中。'", "'此資料夾位於 Windows 檔案系統。從 WSL（透過 /mnt）存取可能較慢；為了最佳效能，請將專案放在 WSL 檔案系統中。'"],
+        ["`This location cannot be opened in WSL: ${winPath}`", "`无法在 WSL 中打开此位置：${winPath}`", "`無法在 WSL 中開啟此位置：${winPath}`"]
     ]
 };
 
