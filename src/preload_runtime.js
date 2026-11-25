@@ -1521,7 +1521,7 @@
         [/^(.+?) file uploads are not currently supported in remote mode$/i, (m, ext) => USE_TW ? ('遠端模式目前不支援上傳 ' + ext + ' 檔案') : ('远程模式暂不支持上传 ' + ext + ' 文件')],
         [/^Pushed (\d+) commits? to (.+?)\.?$/i, (m, n, br) => USE_TW ? ('已推送 ' + n + ' 筆提交至 ' + br + '。') : ('已推送 ' + n + ' 个提交到 ' + br + '。')],
         [/^Pushed to (.+?)\.?$/i, (m, br) => (USE_TW ? '已推送至 ' : '已推送到 ') + br + '。'],
-        [/^Published (.+?) to origin\.?$/i, (m, ref) => (USE_TW ? '已發佈 ' : '已发布 ') + ref + ' 至 origin。'],
+        [/^Published (.+?) to origin\.?$/i, (m, ref) => (USE_TW ? '已發布 ' : '已发布 ') + ref + ' 至 origin。'],
         [/^Committed to (.+?)\.?$/i, (m, ref) => (USE_TW ? '已提交至 ' : '已提交到 ') + ref + '。'],
         [/^Amended commit on (.+?)\.?$/i, (m, ref) => (USE_TW ? '已修訂 ' : '已修订 ') + ref + (USE_TW ? ' 上的提交。' : ' 上的提交。')],
         [/^Checked out in (.+)$/i, (m, loc) => (USE_TW ? '已於 ' : '已在 ') + loc + (USE_TW ? ' 簽出' : ' 检出')],
@@ -1589,8 +1589,19 @@
         [/^View (\d+) help(?: items?)? and (\d+) side questions?$/i, (m, h, s) => USE_TW ? ('檢視 ' + h + ' 項說明與 ' + s + ' 個側邊提問') : ('查看 ' + h + ' 条帮助和 ' + s + ' 个侧边提问')],
         [/^Work in (.+)$/i, (m, wt) => /^progress$/i.test(wt.trim()) ? m : ((USE_TW ? '在 ' : '在 ') + wt + ' 中工作')],
         [/^Work locally on (.+)$/i, (m, repos) => (USE_TW ? '在本機處理 ' : '在本地处理 ') + repos],
-        [/^Worktree from (.+)$/i, (m, repos) => (USE_TW ? '建立工作樹：' : '创建工作树：') + repos],
+        [/^Worktree from (.+)$/i, (m, repos) => (USE_TW ? '建立 Worktree：' : '创建工作树：') + repos],
         [/^Automatically create a new (.+?) workspace when the conversation starts$/i, (m, vcs) => USE_TW ? ('對話開始時自動建立新的 ' + vcs + ' 工作區') : ('会话开始时自动创建新的 ' + vcs + ' 工作区')],
+        [/^(.+?)\.\s+(Show|Hide)\s+plan$/i, (m, title, verb) => title + '。' + (/^Hide/i.test(verb) ? (USE_TW ? '隱藏計畫' : '隐藏计划') : (USE_TW ? '顯示計畫' : '显示计划'))],
+        [/^Triggered (.+)$/, (m, name) => (USE_TW ? '已觸發 ' : '已触发 ') + name],
+        [/^(.+?) download progress$/i, (m, name) => name + (USE_TW ? ' 下載進度' : ' 下载进度')],
+        [/^(.+?) color picker$/i, (m, name) => name + (USE_TW ? ' 色彩選擇器' : ' 颜色选择器')],
+        [/^Error:\s*(.+)$/, (m, msg) => (USE_TW ? '錯誤：' : '错误：') + msg],
+        [/^(.+?),\s*showing (\d+) of (\d+)$/i, (m, title, b, c) => title + (USE_TW ? ('，目前顯示 ' + b + ' / ' + c + ' 項') : ('，正在显示第 ' + b + ' / ' + c + ' 项'))],
+        [/^(.+?):\s*([\d,]+)\s+tokens$/i, (m, label, num) => (lookupDict(label) || label) + '：' + num + ' Token'],
+        [/^(.+?)\.\s*View site information$/i, (m, summary) => summary + (USE_TW ? '。檢視網站資訊' : '。查看站点信息')],
+        [/^(\d+)\s+days$/i, (m, d) => d + ' 天'],
+        [/^(.+?) annotation on page (\d+)$/i, (m, kind, p) => USE_TW ? ('第 ' + p + ' 頁的 ' + kind + ' 註解') : ('第 ' + p + ' 页的 ' + kind + ' 批注')],
+        [/^Applied\s+(.+)$/i, (m, target) => (USE_TW ? '已套用 ' : '已应用 ') + target],
 
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
@@ -1987,6 +1998,13 @@
                 if (!newAttr) {
                     if (isFilePathOrUri(t)) continue;
                     newAttr = translateExactOrDynamic(t);
+                    if (!newAttr) {
+                        const showMatch = t.match(/^Show\s+(.+)$/i);
+                        if (showMatch) {
+                            const target = showMatch[1].trim();
+                            newAttr = (USE_TW ? '顯示 ' : '显示 ') + (lookupDict(target) || target);
+                        }
+                    }
                 }
                 if (!newAttr && inSwarmEl) {
                     newAttr = translateSwarmComposite(v);

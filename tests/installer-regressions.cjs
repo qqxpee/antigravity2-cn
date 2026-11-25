@@ -770,4 +770,33 @@ test('main-process patches cover v2.35.1 remote disconnectedPage and signInCallb
     const cbTw = patchMainProcessModule('dist/remote/signInCallback.js', cbOrig, true);
     assert.match(cbTw, /您已成功完成身分驗證。/);
     assert.match(cbTw, /登入未完成/);
+
+    const capOrig = `<title>Browser Stream Capture</title>\nconst err = 'Capture session failed';`;
+    const capSc = patchMainProcessModule('dist/browserStream/capturePage.js', capOrig, false);
+    assert.match(capSc, /<title>浏览器串流捕获<\/title>/);
+    assert.match(capSc, /'捕获会话失败'/);
+    const capTw = patchMainProcessModule('dist/browserStream/capturePage.js', capOrig, true);
+    assert.match(capTw, /<title>瀏覽器串流擷取<\/title>/);
+    assert.match(capTw, /'擷取工作階段失敗'/);
+});
+
+test('checkSupportedNodeVersion rejects Node < 20 and accepts Node >= 20', () => {
+    const { checkSupportedNodeVersion } = require('../localization_engine');
+    assert.equal(typeof checkSupportedNodeVersion, 'function');
+    assert.equal(checkSupportedNodeVersion(), true);
+
+    const nodeDescriptor = Object.getOwnPropertyDescriptor(process.versions, 'node');
+    const origError = console.error;
+    const errors = [];
+    console.error = (...args) => errors.push(args.join(' '));
+    try {
+        Object.defineProperty(process.versions, 'node', { value: '12.22.12', configurable: true });
+        assert.equal(checkSupportedNodeVersion(), false);
+        assert.ok(errors.some(msg => msg.includes('12.22.12')));
+    } finally {
+        console.error = origError;
+        if (nodeDescriptor) {
+            Object.defineProperty(process.versions, 'node', nodeDescriptor);
+        }
+    }
 });

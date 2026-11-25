@@ -641,6 +641,10 @@ const MAIN_PROCESS_TEXT_TABLES = {
         ["`agreed to, so Antigravity didn't pass it on to ${host}.`);", "`因此 Antigravity 未将其传递给 ${host}。`);", "`因此 Antigravity 未將其傳遞給 ${host}。`);"],
         ["return page(\"Sign-in didn't finish\", `Antigravity on ${host} couldn't finish signing in (HTTP ${status}). ` +", "return page('登录未完成', `${host} 上的 Antigravity 无法完成登录 (HTTP ${status})。` +", "return page('登入未完成', `${host} 上的 Antigravity 無法完成登入 (HTTP ${status})。` +"],
         ["'Sign in again from Antigravity.');", "'请从 Antigravity 重新发起登录。');", "'請從 Antigravity 重新進行登入。');"]
+    ],
+    'dist/browserStream/capturePage.js': [
+        ["<title>Browser Stream Capture</title>", "<title>浏览器串流捕获</title>", "<title>瀏覽器串流擷取</title>"],
+        ["'Capture session failed'", "'捕获会话失败'", "'擷取工作階段失敗'"]
     ]
 };
 

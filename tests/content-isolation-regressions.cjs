@@ -1030,3 +1030,51 @@ test('v2.35.1 deep audit strings, dynamic templates and split DOM nodes translat
     assert.equal(domTw.window.document.getElementById('gen-steps').textContent, '產生步驟 (4)');
     assert.equal(domTw.window.document.getElementById('no-mcp').textContent, '找不到與「foo」相符的 MCP 伺服器');
 });
+
+test('v2.35.1 additional UI badges, attributes, plan toggles and TW 已發布 hold in SC and TC', async t => {
+    const html = `
+      <div>
+        <span id="inbox">Inbox</span>
+        <span id="resolved">Resolved</span>
+        <span id="prov">Provisioning</span>
+        <span id="chosen">Chosen</span>
+        <button id="applied-btn" aria-label="Applied DarkTheme">Applied</button>
+        <button id="show-btn" aria-label="Show MyPlugin">x</button>
+        <span id="plan-tog">Build API. Show plan</span>
+        <span id="pub-tw">Published feat/x to origin.</span>
+        <span id="err-line">Error: timeout</span>
+        <span id="trig">Triggered nightly-sync</span>
+        <span id="tok">Rules: 1,200 tokens</span>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('inbox').textContent, '收件箱');
+    assert.equal(w.document.getElementById('resolved').textContent, '已解决');
+    assert.equal(w.document.getElementById('prov').textContent, '正在配置');
+    assert.equal(w.document.getElementById('chosen').textContent, '已选中');
+    assert.equal(w.document.getElementById('applied-btn').getAttribute('aria-label'), '已应用 DarkTheme');
+    assert.equal(w.document.getElementById('applied-btn').textContent, '已应用');
+    assert.equal(w.document.getElementById('show-btn').getAttribute('aria-label'), '显示 MyPlugin');
+    assert.equal(w.document.getElementById('plan-tog').textContent, 'Build API。显示计划');
+    assert.equal(w.document.getElementById('pub-tw').textContent, '已发布 feat/x 至 origin。');
+    assert.equal(w.document.getElementById('err-line').textContent, '错误：timeout');
+    assert.equal(w.document.getElementById('trig').textContent, '已触发 nightly-sync');
+    assert.equal(w.document.getElementById('tok').textContent, '规则：1,200 Token');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('inbox').textContent, '收件匣');
+    assert.equal(domTw.window.document.getElementById('resolved').textContent, '已解決');
+    assert.equal(domTw.window.document.getElementById('prov').textContent, '佈建中');
+    assert.equal(domTw.window.document.getElementById('chosen').textContent, '已選取');
+    assert.equal(domTw.window.document.getElementById('applied-btn').getAttribute('aria-label'), '已套用 DarkTheme');
+    assert.equal(domTw.window.document.getElementById('applied-btn').textContent, '已套用');
+    assert.equal(domTw.window.document.getElementById('show-btn').getAttribute('aria-label'), '顯示 MyPlugin');
+    assert.equal(domTw.window.document.getElementById('plan-tog').textContent, 'Build API。顯示計畫');
+    assert.equal(domTw.window.document.getElementById('pub-tw').textContent, '已發布 feat/x 至 origin。');
+    assert.equal(domTw.window.document.getElementById('err-line').textContent, '錯誤：timeout');
+    assert.equal(domTw.window.document.getElementById('trig').textContent, '已觸發 nightly-sync');
+    assert.equal(domTw.window.document.getElementById('tok').textContent, '規則：1,200 Token');
+});

@@ -3860,5 +3860,19 @@
   "Waiting for approval to grant administrator access": "正在等待批准授予管理员权限",
   "Waiting for the agents' windows...": "正在等待智能体窗口…",
   "Workspace > Restore to Snapshot": "工作区 > 还原到快照",
-  "Your agent's ability to execute commands is also controlled by enterprise security policies.": "您的智能体执行命令的能力同时受企业安全策略控制。"
+  "Your agent's ability to execute commands is also controlled by enterprise security policies.": "您的智能体执行命令的能力同时受企业安全策略控制。",
+  "All caught up": "已全部处理",
+  "Applied": "已应用",
+  "Chosen": "已选中",
+  "Failed": "失败",
+  "Inbox": "收件箱",
+  "Move": "移动",
+  "Never": "从不",
+  "Permission": "权限",
+  "Provisioning": "正在配置",
+  "Resolve": "解决",
+  "Resolved": "已解决",
+  "Self": "自身",
+  "Subtitle": "副标题",
+  "VS Code": "VS Code"
 }
