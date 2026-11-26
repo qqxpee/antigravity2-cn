@@ -400,11 +400,11 @@ test('NUX onboarding split TextNodes and post-onboarding welcome tip translate w
     assert.equal(w.document.getElementById('nux-card3').textContent, 'Antigravity 的智能体功能强大，可帮助您比以往更好、更快地完成更多工作，但仍请务必核验智能体执行的操作。');
     assert.equal(w.document.getElementById('nux-terms-title').textContent, '帮助改进 Antigravity。');
     assert.equal(w.document.getElementById('nux-terms-desc').textContent, '允许 Google 收集并使用您的交互数据，但须遵守Google Antigravity服务条款以及Google 隐私政策。您可以随时在设置中控制此选项。');
-    assert.equal(w.document.getElementById('nux-enterprise').textContent, '对于 您的计划，Antigravity不会收集您的任何提示词、内容或模型响应，但仍会收集一般使用模式（例如功能采用率、活跃用户数）。');
+    assert.equal(w.document.getElementById('nux-enterprise').textContent, '对于您的计划，Antigravity不会收集您的任何提示词、内容或模型响应，但仍会收集一般使用模式（例如功能采用率、活跃用户数）。');
     assert.equal(w.document.getElementById('nux-analytics').textContent, 'Antigravity 不会收集您的任何提示词、内容或模型回复，但会收集功能采用率与活跃用户数等常规使用模式（“产品分析”）。遥测数据将按照 Google 隐私政策处理。');
     assert.equal(w.document.querySelector('li').textContent, '隐私声明（不含产品分析数据）');
     assert.equal(w.document.getElementById('nux-news').textContent, '订阅关于以下内容的新闻通讯、技巧提示及其他通知：Antigravity。');
-    assert.equal(w.document.getElementById('welcome-tip').textContent, '提示： 按 ⌘⇧A 即可切换至 Gemini 应用。您的智能体会在后台继续运行。');
+    assert.equal(w.document.getElementById('welcome-tip').textContent, '提示：按 ⌘⇧A 即可切换至 Gemini 应用。您的智能体会在后台继续运行。');
     assert.equal(w.document.getElementById('random-says').textContent, 'says.');
 
     const reactCard3 = w.document.createElement('span');
@@ -422,7 +422,7 @@ test('NUX onboarding split TextNodes and post-onboarding welcome tip translate w
     await settle();
     assert.equal(domTw.window.document.getElementById('nux-card1-split').textContent, '從設定與市集中自訂您在代理、外掛程式及產品上的各項體驗。我們不會向您顯示廣告，也不會讓廣告客戶影響 Antigravity 所說的內容。');
     assert.equal(domTw.window.document.getElementById('nux-card3').textContent, 'Antigravity 的代理功能強大，能協助您比以往更好、更快地完成更多工作，但仍請務必驗證代理執行的操作。');
-    assert.equal(domTw.window.document.getElementById('welcome-tip').textContent, '提示： 按 ⌘⇧A 即可切換至 Gemini 應用程式。您的代理會在背景繼續執行。');
+    assert.equal(domTw.window.document.getElementById('welcome-tip').textContent, '提示：按 ⌘⇧A 即可切換至 Gemini 應用程式。您的代理會在背景繼續執行。');
     assert.equal(domTw.window.document.getElementById('random-says').textContent, 'says.');
 });
 
@@ -482,10 +482,10 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     assert.equal(w.document.getElementById('ssh-empty').textContent, '在 ~/.ssh/config 中暂未配置主机，请在上方直接输入。');
     assert.equal(w.document.getElementById('ssh-cfg-title').textContent, 'SSH 配置 (~/.ssh/config)');
     assert.equal(w.document.getElementById('ssh-hidden').textContent, '3 个已隐藏的主机');
-    assert.equal(w.document.getElementById('ssh-connecting').textContent, '正在连接到 devbox...');
+    assert.equal(w.document.getElementById('ssh-connecting').textContent, '正在连接到 devbox…');
     assert.equal(w.document.getElementById('perm-badge-miss').textContent, '未授权');
     assert.equal(w.document.getElementById('perm-badge-ok').textContent, '已授权 ✓');
-    assert.equal(w.document.getElementById('perm-tip').textContent, '点击 打开 ↗ 以打开 macOS“隐私与安全性”。');
+    assert.equal(w.document.getElementById('perm-tip').textContent, '点击打开 ↗ 以打开 macOS“隐私与安全性”。');
     assert.equal(w.document.getElementById('layout-label').textContent, '布局');
     assert.equal(w.document.getElementById('layout-select').getAttribute('aria-label'), '布局');
     assert.equal(w.document.getElementById('opt-stage').textContent, '舞台');
@@ -520,7 +520,7 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     domTw.window.eval(loadRuntime({ traditional: true }));
     await settle();
     assert.equal(domTw.window.document.getElementById('perm-badge-miss').textContent, '未授權');
-    assert.equal(domTw.window.document.getElementById('perm-tip').textContent, '按一下 開啟 ↗ 以開啟 macOS「隱私權與安全性」。');
+    assert.equal(domTw.window.document.getElementById('perm-tip').textContent, '按一下開啟 ↗ 以開啟 macOS「隱私權與安全性」。');
     assert.equal(domTw.window.document.getElementById('layout-label').textContent, '版面配置');
     assert.equal(domTw.window.document.getElementById('layout-select').getAttribute('aria-label'), '版面配置');
     assert.equal(domTw.window.document.getElementById('opt-grid').textContent, '網格');
@@ -1184,7 +1184,7 @@ test('v2.35.1 React-split sentences keep CJK spacing, automation hints translate
         relaunch: ['请重新启动 Antigravity 以完成“屏幕录制”设置。', '請重新啟動 Antigravity 以完成「螢幕錄製」設定。'],
         tool1: ['1 个工具', '1 個工具'],
         tool2: ['5 个工具 · 登录以获取更多', '5 個工具 · 登入以取得更多'],
-        conn: ['正在连接到 devbox...', '正在連線至 devbox...'],
+        conn: ['正在连接到 devbox…', '正在連線至 devbox…'],
         conn2: ['正在连接到 devbox', '正在連線至 devbox'],
         sel: ['3 项已选中', '3 項已選取']
     };
