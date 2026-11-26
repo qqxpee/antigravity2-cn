@@ -1129,7 +1129,8 @@ test('v2.35.1 icon-font fallbacks stay untranslated, permission pill uses short 
         assert.equal(el.querySelectorAll(`svg[data-ag-icon-fallback="${name}"]`).length, 1, name);
         assert.equal(el.textContent, '', `${name} 的图标名称不应以文字显示或被翻译`);
     }
-    assert.equal(doc.querySelector('#i-comment svg').getAttribute('width'), '18');
+    // 宽高跟随宿主字号（1em），rem 等非 px 单位也不会算错
+    assert.equal(doc.querySelector('#i-comment svg').getAttribute('width'), '1em');
     assert.equal(doc.getElementById('i-unknown').textContent, 'settings');
     assert.equal(doc.getElementById('pill-turbo').textContent, '极速');
     assert.equal(doc.getElementById('pill-default').textContent, '默认');
@@ -1223,4 +1224,54 @@ test('plugin and feature names stay in the original language in SC and TC (#63)'
     await settle();
     for (const [id, name] of Object.entries(names)) assert.equal(domTw.window.document.getElementById(id).textContent, name, `TC ${name}`);
     assert.equal(domTw.window.document.getElementById('s2').textContent, 'Chief of Staff 語音模式已啟用');
+});
+
+test('CJK gap collapse is undone when React reuses neighbor text nodes, and nested markup is walked once', async t => {
+    const html = '<span id="pair">Settings<!----> <!---->Help</span>';
+    const w = await fixture(t, html);
+    const pair = w.document.getElementById('pair');
+    assert.equal(pair.textContent, '设置帮助');
+    // React 重用同一批文字节点换成英文：收掉的空白要还原；换回可翻译文字时再次收合
+    pair.firstChild.data = 'Alice';
+    pair.lastChild.data = 'Bob';
+    await settle();
+    assert.equal(pair.textContent, 'Alice Bob');
+    pair.firstChild.data = 'Settings';
+    pair.lastChild.data = 'Help';
+    await settle();
+    assert.equal(pair.textContent, '设置帮助');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    const pairTw = domTw.window.document.getElementById('pair');
+    assert.equal(pairTw.textContent, '設定說明');
+    pairTw.firstChild.data = 'Alice';
+    pairTw.lastChild.data = 'Bob';
+    await settle();
+    assert.equal(pairTw.textContent, 'Alice Bob');
+
+    // 判断空白时不翻译相邻子树：嵌套结构每个节点只遍历一次（修正前每多一层调用次数加倍）
+    const vm = require('node:vm');
+    const counter = createDom('');
+    t.after(() => counter.window.close());
+    const js = loadRuntime();
+    const prefix = js.slice(0, js.indexOf('    const observer ='))
+        .replace('function translateNode(node) {', 'function translateNode(node) {globalThis.calls++;');
+    const context = { Node: counter.window.Node, document: counter.window.document, setTimeout, clearTimeout, console, calls: 0 };
+    vm.runInNewContext(prefix + '\n globalThis.hooks = { translateNode }; })();', context);
+    const doc = counter.window.document;
+    let nested = doc.createElement('span');
+    nested.append('X');
+    const depth = 12;
+    for (let i = 0; i < depth; i++) {
+        const parent = doc.createElement('span');
+        parent.append('X甲', ' ', nested);
+        nested = parent;
+    }
+    doc.body.append(nested);
+    context.hooks.translateNode(nested);
+    const nodes = 3 * depth + 2;
+    assert.ok(context.calls <= 2 * nodes, `translateNode called ${context.calls} times for ${nodes} nodes`);
 });

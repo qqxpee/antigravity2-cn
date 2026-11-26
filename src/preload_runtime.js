@@ -2184,9 +2184,12 @@
         return replaced ? out + text.slice(pos) : null;
     }
 
-    // React 会把相邻字符串之间的 " " 拆成独立文字节点；两侧译成中文后收掉这个空白（中文字之间不留空格）
+    // React 会把相邻字符串之间的 " " 拆成独立文字节点；两侧译成中文后收掉这个空白（中文字之间不留空格）。
+    // 收合可逆：React 之后重用两侧节点换成英文时还原空白。判断只读当前 DOM、不在判断时翻译相邻节点
+    // （否则嵌套结构每一层都会把子树多走一遍）；相邻节点翻完后，由父元素遍历结束或 refreshGapsAround 重新判断。
     const CJK_TAIL = /[㐀-鿿　-〿＀-￯]$/;
     const CJK_HEAD = /^[㐀-鿿　-〿＀-￯]/;
+    const collapsedGaps = new WeakMap();
     function gapNeighborText(n) {
         if (!n) return null;
         if (n.nodeType === Node.TEXT_NODE) return n.nodeValue || '';
@@ -2197,24 +2200,52 @@
     function isGapFiller(n) {
         return n && (n.nodeType === Node.COMMENT_NODE || (n.nodeType === Node.TEXT_NODE && !n.nodeValue));
     }
-    function collapseCjkGap(node) {
-        let prev = node.previousSibling;
+    function isCjkGap(n) {
+        return !!n && n.nodeType === Node.TEXT_NODE && (n.nodeValue === ' ' || (n.nodeValue === '' && collapsedGaps.has(n)));
+    }
+    function cjkGapShouldCollapse(gap) {
+        let prev = gap.previousSibling;
         let skippedText = false;
         while (isGapFiller(prev)) {
             if (prev.nodeType === Node.TEXT_NODE) skippedText = true;
             prev = prev.previousSibling;
         }
         const before = gapNeighborText(prev);
-        if (!before || !CJK_TAIL.test(before)) return;
-        let next = node.nextSibling;
+        if (!before || !CJK_TAIL.test(before)) return false;
+        let next = gap.nextSibling;
         while (next && next.nodeType === Node.COMMENT_NODE) next = next.nextSibling;
-        if (!next || gapNeighborText(next) === null) return;
+        const after = gapNeighborText(next);
+        if (!after) return false;
         // 两侧都是元素（例如并排的两个链接或按钮）时，这个空白是分隔用的，保留
-        if (!skippedText && prev.nodeType !== Node.TEXT_NODE && next.nodeType !== Node.TEXT_NODE) return;
-        translateNode(next);
-        if (CJK_HEAD.test(gapNeighborText(next) || '')) {
-            translatedValues.set(node, '');
-            node.nodeValue = '';
+        if (!skippedText && prev.nodeType !== Node.TEXT_NODE && next.nodeType !== Node.TEXT_NODE) return false;
+        return CJK_HEAD.test(after);
+    }
+    function refreshCjkGap(gap) {
+        if (cjkGapShouldCollapse(gap)) {
+            if (gap.nodeValue) {
+                collapsedGaps.set(gap, gap.nodeValue);
+                translatedValues.set(gap, '');
+                gap.nodeValue = '';
+            }
+        } else if (!gap.nodeValue && collapsedGaps.has(gap)) {
+            const original = collapsedGaps.get(gap);
+            collapsedGaps.delete(gap);
+            translatedValues.delete(gap);
+            gap.nodeValue = original;
+        }
+    }
+    // 节点新增或文字变动后，重新判断它两侧的空白；所在元素是行内小元素时，连同元素两侧一起判断（最多三层）
+    function refreshGapsAround(node) {
+        let n = node;
+        for (let depth = 0; n && depth < 3; depth++) {
+            for (const dir of ['previousSibling', 'nextSibling']) {
+                let s = n[dir];
+                while (s && s.nodeType === Node.COMMENT_NODE) s = s[dir];
+                if (isCjkGap(s) && !isCodeOrEditor(s)) refreshCjkGap(s);
+            }
+            const parent = n.parentElement;
+            if (!parent || parent.childElementCount > 2) break;
+            n = parent;
         }
     }
 
@@ -2341,6 +2372,10 @@
                 }
                 try {
                     for (const child of node.childNodes) translateNode(child);
+                    // 子节点都翻完后再判断其间的空白：遍历到空白时，它后面的节点还没翻译
+                    for (const child of node.childNodes) {
+                        if (isCjkGap(child)) refreshCjkGap(child);
+                    }
                 } finally {
                     if (useParentSnapshot) dfsParentTexts.delete(node);
                 }
@@ -2350,7 +2385,7 @@
 
                 let originalVal = node.nodeValue;
                 if (originalVal === ' ') {
-                    collapseCjkGap(node);
+                    refreshCjkGap(node);
                     return;
                 }
                 if (!originalVal || originalVal.trim().length < 1) return;
@@ -2436,12 +2471,12 @@
                         return;
                     }
                     if (!oldSvg || oldSvg.getAttribute('data-ag-icon-fallback') !== valNorm) {
-                        const px = String(parseFloat(iconHost.style?.fontSize) || 16);
                         const svgNs = 'http://www.w3.org/2000/svg';
                         const svg = document.createElementNS(svgNs, 'svg');
                         svg.setAttribute('data-ag-icon-fallback', valNorm);
-                        svg.setAttribute('width', px);
-                        svg.setAttribute('height', px);
+                        // 1em 跟随图标宿主的字号（px、rem 或继承值都适用），与字体图标原本的大小一致
+                        svg.setAttribute('width', '1em');
+                        svg.setAttribute('height', '1em');
                         svg.setAttribute('viewBox', '0 0 24 24');
                         svg.setAttribute('fill', 'none');
                         svg.setAttribute('stroke', 'currentColor');
@@ -2565,6 +2600,7 @@
         }
         for (const n of nodes) {
             translateNode(n);
+            refreshGapsAround(n);
         }
         for (const target of menuTargets) {
             try { refreshMenusLabelledBy(target); } catch (e) {}
