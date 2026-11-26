@@ -134,12 +134,10 @@ node localization_engine.js --tw --brand-title translated
 該代理方案基於開源專案 **[yuaotian/antigravity-proxy](https://github.com/yuaotian/antigravity-proxy)**（基於 MinHook 的 DLL 劫持透明代理）。
 
 ### 使用方法：
-1. 前往 **[yuaotian/antigravity-proxy](https://github.com/yuaotian/antigravity-proxy)** 下載編譯好的檔案：
-   - `version.dll`
-   - `dbghelp.dll`
-   - `config.json`
+1. 前往 **[yuaotian/antigravity-proxy](https://github.com/yuaotian/antigravity-proxy)** 下載最新編譯好的代理檔案（通常包含 `.dll` 劫持模組如 `version.dll` 等，以及設定範本 `config.json`，具體檔名以該版本發布說明為準）。
 2. 在目前中文化專案根目錄新增 `proxy_config` 資料夾（該目錄已設定 `.gitignore` 本機排除，絕不會被 Git 提交污染）。
-3. 將下載的 `version.dll`、`dbghelp.dll` 及依您本機代理連接埠（如 `127.0.0.1:7890` / `18080`）編輯好的 `config.json` 放入 `proxy_config/` 目錄。
+3. 將所需的全部代理檔案（對應的 `.dll` 檔案，以及依您本機代理連接埠如 `127.0.0.1:7890` / `18080` 編輯好的 `config.json`）放入 `proxy_config/` 目錄。
+   > 注意：引擎會將 `proxy_config/` 下的**所有檔案**同步複製到軟體安裝目錄，請勿在此資料夾中放置無關檔案或壓縮檔。
 4. 正常按兩下執行 **`双击安装繁体中文.bat`**：
    - 中文化引擎將**自動偵測** `proxy_config/` 目錄。
    - 一步自動完成 **“介面繁體中文化 + 代理模組注入與同步更新”**，若有代理設定變動會自動覆寫更新，無需再在軟體更新後每次手動複製 DLL 檔案！
