@@ -71,6 +71,8 @@ test('icon fallbacks clean up after the icon class is removed and keep accessibl
     const win = dom.window;
     const doc = win.document;
     const pause = settle;
+    // 停用启动后 100ms～6s 的多阶段全文扫描：慢机器上扫描落在两次断言之间，会改变刻意构造的多文字节点图标宿主等结果
+    win.setTimeout = () => 0;
     win.eval(loadRuntime({ traditional: true }));
     const add = html => { const el = doc.createElement('div'); el.innerHTML = html; doc.body.append(el); return el; };
 
@@ -195,6 +197,8 @@ test('icon fallbacks handle blank text, host label removal and reused text nodes
     const win = dom.window;
     const doc = win.document;
     const pause = settle;
+    // 停用启动后 100ms～6s 的多阶段全文扫描：慢机器上扫描落在两次断言之间，会改变刻意构造的多文字节点图标宿主等结果
+    win.setTimeout = () => 0;
     win.eval(loadRuntime({ traditional: true }));
     const add = html => { const el = doc.createElement('div'); el.innerHTML = html; doc.body.append(el); return el; };
     const textOf = el => Array.from(el.childNodes).find(n => n.nodeType === win.Node.TEXT_NODE);
@@ -248,6 +252,8 @@ test('dictionary fragments drop built-in edge spaces next to Chinese names, rest
     const win = dom.window;
     const doc = win.document;
     const pause = settle;
+    // 停用启动后 100ms～6s 的多阶段全文扫描：慢机器上扫描落在两次断言之间，会改变刻意构造的多文字节点图标宿主等结果
+    win.setTimeout = () => 0;
     win.eval(loadRuntime({ traditional: true }));
     // v2.35.1 声明权限对话框的实际切法：每段字符串是独立文字节点，名称是第 2 个节点
     const sentence = name => {
@@ -278,6 +284,8 @@ test('SC mode: automation sentence fragments drop edge spaces next to Chinese na
     t.after(() => dom.window.close());
     const win = dom.window;
     const doc = win.document;
+    // 停用启动后 100ms～6s 的多阶段全文扫描：慢机器上扫描落在两次断言之间，会改变刻意构造的多文字节点图标宿主等结果
+    win.setTimeout = () => 0;
     win.eval(loadRuntime());
     // v2.35.1 自动化智能体权限说明的实际切法：名称是独立文字节点
     const rest = [' run in a dedicated', ' ', 'workspace', ' with its own permissions, which you can change anytime in the ', 'workspace', ' settings page.'];
