@@ -6,7 +6,7 @@ const os = require('node:os');
 const vm = require('node:vm');
 const childProcess = require('node:child_process');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
-const { patchPreloadJs, patchUtilsJs, patchTrayJs, patchLoadingOverlayJs, patchMainProcessModule } = require('../src/main_patches');
+const { patchPreloadJs, patchUtilsJs, patchMenuJs, patchTrayJs, patchLoadingOverlayJs, patchMainProcessModule } = require('../src/main_patches');
 const { loadEngine } = require('./helpers/runtime-loader.cjs');
 
 const signature = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
@@ -740,6 +740,18 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
     writeArchive(path.join(fakeRes, 'app.asar'), { 'dist/preload.js': { body: '// original' } });
 
     const fakeAppData = path.join(root, 'AppData');
+    const fakeHome = path.join(root, 'UserHome');
+    const isolatedEnv = {
+        ...process.env,
+        APPDATA: fakeAppData,
+        XDG_CONFIG_HOME: fakeAppData,
+        HOME: fakeHome,
+        USERPROFILE: fakeHome
+    };
+    delete isolatedEnv.SUDO_USER;
+    delete isolatedEnv.SUDO_UID;
+    delete isolatedEnv.SUDO_GID;
+
     const resInteractive = childProcess.spawnSync(
         process.execPath,
         [path.join(repoRoot, 'localization_engine.js'), '--interactive', `--install-dir=${fakeInstall}`, '--no-kill'],
@@ -747,7 +759,7 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
             cwd: repoRoot,
             input: '2\n',
             encoding: 'utf8',
-            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData }
+            env: isolatedEnv
         }
     );
     assert.equal(resInteractive.status, 0, resInteractive.stderr || resInteractive.stdout);
@@ -756,6 +768,9 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
     const prefPath = path.join(fakeAppData, 'Antigravity', 'localization-prefs.json');
     const installKey = path.resolve(fakeInstall).toLowerCase();
     assert.equal(JSON.parse(fs.readFileSync(prefPath, 'utf8'))[installKey].brandTitle, 'hidden');
+    const globalAgentsPath = path.join(fakeHome, '.gemini', 'config', 'rules', 'AGENTS.md');
+    assert.equal(fs.existsSync(globalAgentsPath), true);
+    assert.match(fs.readFileSync(globalAgentsPath, 'utf8'), /toolSummary.*Simplified Chinese/);
 
     const resExplicit = childProcess.spawnSync(
         process.execPath,
@@ -764,7 +779,7 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
             cwd: repoRoot,
             input: '',
             encoding: 'utf8',
-            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData }
+            env: isolatedEnv
         }
     );
     assert.equal(resExplicit.status, 0, resExplicit.stderr || resExplicit.stdout);
@@ -1060,4 +1075,112 @@ test('Linux native support detects install dirs, wrappers, /proc PIDs, XDG cache
     const linuxRootOut = `${linuxRootRes.stdout}\n${linuxRootRes.stderr}`;
     assert.match(linuxRootOut, /RESULT=false/);
     assert.doesNotMatch(linuxRootOut, /App 管理|Cmd\+Q/);
+});
+
+test('patchMenuJs translates Unicode ellipsis, Reload, Speech, Fullscreen and Window menu items in SC and TC', () => {
+    const menuOrig = "electron_1.Menu.setApplicationMenu(menu);";
+    const runMenu = (useTw) => {
+        const patched = patchMenuJs(menuOrig, useTw);
+        const menuObj = {
+            items: [
+                { label: 'Settings…' },
+                { label: 'Check for Updates…' },
+                { label: 'Reload' },
+                { label: 'Force Reload' },
+                { label: 'Speech', submenu: { items: [{ label: 'Start Speaking' }, { label: 'Stop Speaking' }] } },
+                { label: 'Toggle Fullscreen' },
+                { label: 'Enter Full Screen' },
+                { label: 'Emoji & Symbols' }
+            ]
+        };
+        const ctx = {
+            menu: menuObj,
+            electron_1: { Menu: { setApplicationMenu() {} } }
+        };
+        vm.runInNewContext(patched, ctx);
+        return menuObj.items;
+    };
+
+    const sc = runMenu(false);
+    assert.equal(sc[0].label, '设置...');
+    assert.equal(sc[1].label, '检查更新...');
+    assert.equal(sc[2].label, '重新加载');
+    assert.equal(sc[3].label, '强制重新加载');
+    assert.equal(sc[4].label, '语音');
+    assert.equal(sc[4].submenu.items[0].label, '开始朗读');
+    assert.equal(sc[4].submenu.items[1].label, '停止朗读');
+    assert.equal(sc[5].label, '切换全屏');
+    assert.equal(sc[6].label, '进入全屏');
+    assert.equal(sc[7].label, '表情与符号');
+
+    const tw = runMenu(true);
+    assert.equal(tw[0].label, '設定...');
+    assert.equal(tw[1].label, '檢查更新...');
+    assert.equal(tw[2].label, '重新載入');
+    assert.equal(tw[3].label, '強制重新載入');
+    assert.equal(tw[4].label, '語音');
+    assert.equal(tw[4].submenu.items[0].label, '開始朗讀');
+    assert.equal(tw[4].submenu.items[1].label, '停止朗讀');
+    assert.equal(tw[5].label, '切換全螢幕');
+    assert.equal(tw[6].label, '進入全螢幕');
+    assert.equal(tw[7].label, '表情符號與符號');
+});
+
+test('ensureGlobalAgentsRule and removeGlobalAgentsRule manage ~/.gemini/config/rules/AGENTS.md idempotently across SC/TC and preserve user rules', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-agents-rule-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const engine = require(path.join(path.resolve(__dirname, '..'), 'localization_engine.js'));
+
+    // 1. Fresh creation in SC, idempotent repeat, switch to TC, and delete on clean uninstall
+    const homeFresh = path.join(root, 'fresh-home');
+    const freshPath = engine.getGlobalAgentsRulesPath(homeFresh);
+    assert.equal(freshPath, path.join(homeFresh, '.gemini', 'config', 'rules', 'AGENTS.md'));
+
+    const resCreate = engine.ensureGlobalAgentsRule({ useTw: false, homeDir: homeFresh });
+    assert.equal(resCreate.ok, true);
+    assert.equal(resCreate.action, 'created');
+    const firstBody = fs.readFileSync(freshPath, 'utf8');
+    assert.match(firstBody, /Simplified Chinese/);
+
+    const resRepeat = engine.ensureGlobalAgentsRule({ useTw: false, homeDir: homeFresh });
+    assert.equal(resRepeat.ok, true);
+    assert.equal(resRepeat.action, 'unchanged');
+    assert.equal(fs.readFileSync(freshPath, 'utf8'), firstBody);
+
+    const resSwitchTw = engine.ensureGlobalAgentsRule({ useTw: true, homeDir: homeFresh });
+    assert.equal(resSwitchTw.ok, true);
+    assert.equal(resSwitchTw.action, 'updated');
+    const twBody = fs.readFileSync(freshPath, 'utf8');
+    assert.match(twBody, /Traditional Chinese/);
+    assert.doesNotMatch(twBody, /Simplified Chinese/);
+
+    const resRmFresh = engine.removeGlobalAgentsRule({ homeDir: homeFresh });
+    assert.equal(resRmFresh.ok, true);
+    assert.equal(resRmFresh.changed, true);
+    assert.equal(fs.existsSync(freshPath), false);
+
+    // 2. Existing AGENTS.md with user rules + unmarked rule line is deduplicated and user rules survive uninstall
+    const homeExisting = path.join(root, 'existing-home');
+    const existingPath = engine.getGlobalAgentsRulesPath(homeExisting);
+    fs.mkdirSync(path.dirname(existingPath), { recursive: true });
+    fs.writeFileSync(
+        existingPath,
+        '# Custom Rules\r\n- **Output**: Concise.\r\n- **Chinese Tool UI Metadata**: Old line.\r\n',
+        'utf8'
+    );
+
+    const resUpdateExisting = engine.ensureGlobalAgentsRule({ useTw: false, homeDir: homeExisting });
+    assert.equal(resUpdateExisting.ok, true);
+    assert.equal(resUpdateExisting.action, 'updated');
+    const updatedRaw = fs.readFileSync(existingPath, 'utf8');
+    assert.match(updatedRaw, /\r\n/);
+    assert.equal((updatedRaw.match(/Chinese Tool UI Metadata/g) || []).length, 1);
+    assert.match(updatedRaw, /# Custom Rules\r\n- \*\*Output\*\*: Concise\./);
+
+    const resRmExisting = engine.removeGlobalAgentsRule({ homeDir: homeExisting });
+    assert.equal(resRmExisting.ok, true);
+    assert.equal(resRmExisting.changed, true);
+    assert.equal(fs.existsSync(existingPath), true);
+    const restoredRaw = fs.readFileSync(existingPath, 'utf8');
+    assert.equal(restoredRaw, '# Custom Rules\r\n- **Output**: Concise.\r\n');
 });

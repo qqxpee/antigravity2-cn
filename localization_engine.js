@@ -1235,6 +1235,128 @@ function saveLocalizationPref(installDir, pref) {
     }
 }
 
+const AGENTS_RULE_START = "<!-- ANTIGRAVITY CHINESE LOCALIZATION RULES START -->";
+const AGENTS_RULE_END = "<!-- ANTIGRAVITY CHINESE LOCALIZATION RULES END -->";
+
+function getGlobalAgentsRulesPath(homeDir = resolveRealHome()) {
+    return path.join(homeDir, '.gemini', 'config', 'rules', 'AGENTS.md');
+}
+
+function buildGlobalAgentsRuleBlock(useTw = USE_TW) {
+    const langName = useTw ? 'Traditional Chinese' : 'Simplified Chinese';
+    return [
+        AGENTS_RULE_START,
+        `- **Chinese Tool UI Metadata**: When responding in Chinese, always write \`toolSummary\`, \`update_focus\` (\`focus\`), and \`update_steps\` (\`title\`) in ${langName} (keep code identifiers, file paths, and command names verbatim).`,
+        AGENTS_RULE_END
+    ].join('\n');
+}
+
+function chownCreatedPathsIfSudo(createdDirs, filePath) {
+    if (process.platform !== 'win32' && process.getuid && process.getuid() === 0) {
+        const sudoInfo = resolveSudoUserInfo();
+        if (sudoInfo && sudoInfo.uid !== null && sudoInfo.gid !== null) {
+            for (const dir of createdDirs) {
+                try { fs.chownSync(dir, sudoInfo.uid, sudoInfo.gid); } catch (_e) {}
+            }
+            if (filePath) {
+                try { fs.chownSync(filePath, sudoInfo.uid, sudoInfo.gid); } catch (_e) {}
+            }
+        }
+    }
+}
+
+function ensureGlobalAgentsRule({ useTw = USE_TW, homeDir = resolveRealHome() } = {}) {
+    const agentsPath = getGlobalAgentsRulesPath(homeDir);
+    try {
+        const geminiDir = path.join(homeDir, '.gemini');
+        const configDir = path.join(geminiDir, 'config');
+        const rulesDir = path.join(configDir, 'rules');
+        const candidateDirs = [geminiDir, configDir, rulesDir];
+        const createdDirs = candidateDirs.filter(d => !fs.existsSync(d));
+        fs.mkdirSync(rulesDir, { recursive: true });
+
+        const block = buildGlobalAgentsRuleBlock(useTw);
+        let action = 'created';
+        if (fs.existsSync(agentsPath)) {
+            const raw = fs.readFileSync(agentsPath, 'utf8');
+            const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+            const normalizedBlock = block.replace(/\n/g, eol);
+            const startIdx = raw.indexOf(AGENTS_RULE_START);
+            const endIdx = startIdx !== -1 ? raw.indexOf(AGENTS_RULE_END, startIdx + AGENTS_RULE_START.length) : -1;
+            let nextContent;
+            if (startIdx !== -1 && endIdx !== -1) {
+                nextContent = raw.slice(0, startIdx) + normalizedBlock + raw.slice(endIdx + AGENTS_RULE_END.length);
+                action = nextContent === raw ? 'unchanged' : 'updated';
+            } else if (/^- \*\*Chinese Tool UI Metadata\*\*:.*$/m.test(raw)) {
+                nextContent = raw.replace(/^- \*\*Chinese Tool UI Metadata\*\*:.*$/m, () => normalizedBlock);
+                action = 'updated';
+            } else {
+                const base = raw.replace(/(?:\r?\n)+$/, '');
+                nextContent = base ? `${base}${eol}${normalizedBlock}${eol}` : `${normalizedBlock}${eol}`;
+                action = 'appended';
+            }
+            if (nextContent !== raw) {
+                fs.writeFileSync(agentsPath, nextContent, 'utf8');
+                chownCreatedPathsIfSudo(createdDirs, agentsPath);
+            } else if (createdDirs.length > 0) {
+                chownCreatedPathsIfSudo(createdDirs, null);
+            }
+        } else {
+            const eol = process.platform === 'win32' ? '\r\n' : '\n';
+            const content = block.replace(/\n/g, eol) + eol;
+            fs.writeFileSync(agentsPath, content, 'utf8');
+            chownCreatedPathsIfSudo(createdDirs, agentsPath);
+        }
+
+        console.log(useTw
+            ? `[設定] 已寫入全域規則 (AGENTS.md): ${agentsPath}`
+            : `[配置] 已写入全局规则 (AGENTS.md): ${agentsPath}`);
+        return { ok: true, path: agentsPath, action };
+    } catch (e) {
+        console.warn(useTw
+            ? `[警告] 寫入全域規則 (AGENTS.md) 失敗: ${e.message}`
+            : `[警告] 写入全局规则 (AGENTS.md) 失败: ${e.message}`);
+        return { ok: false, path: agentsPath, error: e.message };
+    }
+}
+
+function removeGlobalAgentsRule({ useTw = USE_TW, homeDir = resolveRealHome() } = {}) {
+    const agentsPath = getGlobalAgentsRulesPath(homeDir);
+    try {
+        if (!fs.existsSync(agentsPath)) {
+            return { ok: true, path: agentsPath, changed: false };
+        }
+        const raw = fs.readFileSync(agentsPath, 'utf8');
+        const startIdx = raw.indexOf(AGENTS_RULE_START);
+        const endIdx = startIdx !== -1 ? raw.indexOf(AGENTS_RULE_END, startIdx + AGENTS_RULE_START.length) : -1;
+        if (startIdx === -1 || endIdx === -1) {
+            return { ok: true, path: agentsPath, changed: false };
+        }
+        const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+        const before = raw.slice(0, startIdx).replace(/(?:\r?\n)+$/, '');
+        const after = raw.slice(endIdx + AGENTS_RULE_END.length).replace(/^(?:\r?\n)+/, '');
+        const parts = [];
+        if (before) parts.push(before);
+        if (after) parts.push(after);
+        const remaining = parts.join(eol);
+        if (!remaining.trim()) {
+            fs.unlinkSync(agentsPath);
+        } else {
+            fs.writeFileSync(agentsPath, remaining.replace(/(?:\r?\n)+$/, '') + eol, 'utf8');
+            chownCreatedPathsIfSudo([], agentsPath);
+        }
+        console.log(useTw
+            ? '[清理] 已從全域規則 (AGENTS.md) 移除中文化工具提示規則。'
+            : '[清理] 已从全局规则 (AGENTS.md) 移除汉化工具提示规则。');
+        return { ok: true, path: agentsPath, changed: true };
+    } catch (e) {
+        console.warn(useTw
+            ? `[警告] 移除全域規則 (AGENTS.md) 失敗: ${e.message}`
+            : `[警告] 移除全局规则 (AGENTS.md) 失败: ${e.message}`);
+        return { ok: false, path: agentsPath, error: e.message };
+    }
+}
+
 function canRestartApp(installDir) {
     if (process.platform === 'win32') {
         return fs.existsSync(path.join(installDir, 'Antigravity.exe'));
@@ -1423,6 +1545,7 @@ async function main() {
         success = restore20(resourcesDir, noKill);
         if (success) {
             restoreProxyIfNeeded(installDir);
+            removeGlobalAgentsRule({ useTw: USE_TW });
         }
     } else {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
@@ -1430,6 +1553,7 @@ async function main() {
         if (success) {
             saveLocalizationPref(installDir, { useTw: USE_TW, brandTitle: BRAND_TITLE_MODE });
             injectProxyIfNeeded(installDir);
+            ensureGlobalAgentsRule({ useTw: USE_TW });
         }
     }
 
@@ -1518,7 +1642,11 @@ if (typeof module !== 'undefined' && module.exports) {
         extractLinuxDirsFromWrapper,
         extractLinuxDirsFromDesktopFile,
         detectInstallationDir,
-        cleanElectronCache
+        cleanElectronCache,
+        getGlobalAgentsRulesPath,
+        buildGlobalAgentsRuleBlock,
+        ensureGlobalAgentsRule,
+        removeGlobalAgentsRule
     };
 }
 

@@ -7,10 +7,10 @@
     const USE_TW = __USE_TW_PLACEHOLDER__;
     const map = new Map(Object.entries(DICT_PLACEHOLDER));
     const lowerMap = new Map();
-    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator', 'verify', 'applied', 'chosen', 'failed', 'move', 'never', 'resolve', 'self']);
+    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator', 'verify', 'applied', 'chosen', 'failed', 'move', 'never', 'resolve', 'self', 'context usage']);
     for (const [k, v] of map.entries()) {
         const lowerK = k.toLowerCase();
-        if (LOWER_WORDS_EXCLUDE.has(lowerK) && k !== lowerK) {
+        if (k !== lowerK && (LOWER_WORDS_EXCLUDE.has(lowerK) || !/\s/.test(k))) {
             continue;
         }
         lowerMap.set(lowerK, v);
@@ -31,6 +31,9 @@
 
     // 代码、富文本输入框及对话内容隔离选择器：排除 Lexical 输入框、用户消息、AI 响应正文、思考内容、代码块、终端及文件路径
     const CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .code-block, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], .font-mono, [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, [translate="no"], .notranslate, .md-divider-spacing, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], [data-testid="thinking-collapsible-trigger"] + div, [data-testid="thinking-collapsible-trigger"] ~ div, .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .hv-nm, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
+    const HARD_CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [data-file-uri], [data-uri], [class*="diffEditor"], .token, .hljs, [class*="mtk"], [data-quotable-inline="true"], .context-scope-mention, [data-testid="file-title-name"], [data-testid="entity-pill"], [data-project-card="true"], [data-testid="conversation-row-sidebar"] span.truncate, .cursor-edit, [data-testid="user-input-step"] [data-quotable="true"], [data-testid="user-input-step"] .whitespace-pre-wrap, [data-testid="planner-response-text"], .msg-body, .sys-text, .node-label, .raw-meta .path, .o2-mauth, .hv-nm, .o2-wchip.bee > span:last-child, .o2-m[data-o2who]:not(.all) > span:last-child';
+    const RAW_CODE_ISOLATION_SELECTOR = 'script, style, pre, code, .monaco-editor, .cm-editor, .cm-line, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [data-lexical-editor], .terminal, .xterm, .code-line, .line-content, [aria-label="File Viewer"], [aria-label="文件查看器"], [aria-label="檔案檢視器"], [class*="diffEditor"], .token, .hljs, [class*="mtk"]';
+    const TOOL_CODE_BOX_SELECTOR = 'pre, code, .code-block, .hljs, .code-line, .line-content, .cm-editor, .monaco-editor, .font-mono, .terminal, .xterm, [class*="language-"], [class*="mtk"]';
 
     function isCodeOrEditor(node, forAttribute) {
         try {
@@ -94,6 +97,31 @@
     // ==========================================
     // 原生系统右键菜单 (Native Context Menu) 汉化拦截
     // ==========================================
+    const CONTEXT_MENU_EXTRA_MAP = {
+        remove: ['移除', '移除'],
+        replace: ['替换', '取代'],
+        hide: ['隐藏', '隱藏'],
+        show: ['显示', '顯示'],
+        create: ['创建', '建立'],
+        apply: ['应用', '套用'],
+        reply: ['回复', '回覆'],
+        duplicate: ['创建副本', '建立副本'],
+        inspect: ['检查', '檢查'],
+        'inspect element': ['检查元素', '檢查元素'],
+        find: ['查找', '尋找'],
+        cut: ['剪切', '剪下'],
+        paste: ['粘贴', '貼上'],
+        'paste and match style': ['粘贴并匹配样式', '貼上並符合樣式'],
+        'select all': ['全选', '全選'],
+        open: ['打开', '開啟'],
+        'open in terminal': ['在终端中打开', '在終端機中開啟'],
+        'copy relative path': ['复制相对路径', '複製相對路徑'],
+        'move to trash': ['移至废纸篓', '移至垃圾桶'],
+        'close others': ['关闭其他标签页', '關閉其他分頁'],
+        'close all': ['关闭全部', '全部關閉'],
+        'close to the right': ['关闭右侧标签页', '關閉右側分頁']
+    };
+
     function translateContextMenuLabel(label) {
         if (!label || typeof label !== 'string') return label;
         let trimmed = norm(label);
@@ -107,12 +135,17 @@
 
         let translated = null;
         const shortcutTrans = translateWithShortcut(trimmed);
+        const lowTrimmed = trimmed.toLowerCase();
         if (shortcutTrans) {
             translated = shortcutTrans;
         } else if (map.has(trimmed)) {
             translated = map.get(trimmed);
-        } else if (lowerMap.has(trimmed.toLowerCase())) {
-            translated = lowerMap.get(trimmed.toLowerCase());
+        } else if (lowerMap.has(lowTrimmed)) {
+            translated = lowerMap.get(lowTrimmed);
+        } else if (Object.prototype.hasOwnProperty.call(CONTEXT_MENU_EXTRA_MAP, lowTrimmed)) {
+            translated = CONTEXT_MENU_EXTRA_MAP[lowTrimmed][USE_TW ? 1 : 0];
+        } else {
+            translated = translateExactOrDynamic(trimmed);
         }
 
         if (translated) {
@@ -362,6 +395,177 @@
     };
 
     const SWARM_UI_SELECTOR = '[data-testid^="swarm-"], .o2, .player, .graph-legend, .raw-toolbar, #tab-overview, #tab-hive, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label';
+    const BUILTIN_SIDECAR_SELECTOR = '[data-testid^="swarm-"], .o2, .graph-legend, .raw-toolbar, #tab-overview, #tab-hive, #tab-body-feed, #tab-body-graph, #tab-body-raw, #swarm-title, #replay-label, #ov-notice, #ov-ack';
+    let subframeActivated = false;
+
+    function isSubframeWindow() {
+        try {
+            return typeof window !== 'undefined' && Boolean(window.top) && window !== window.top;
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function isBuiltInSidecarDocument() {
+        try {
+            if (typeof location !== 'undefined' && location && /^plugin:$/i.test(location.protocol || '') && /^swarm(?:-|$)/i.test(location.hostname || '')) {
+                return true;
+            }
+        } catch (e) {}
+        if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return false;
+        if (document.querySelector(BUILTIN_SIDECAR_SELECTOR)) return true;
+        const emptyBody = document.querySelector('#empty-body');
+        if (emptyBody && /swarm/i.test(emptyBody.textContent || '')) return true;
+        return false;
+    }
+
+    const TOOL_CALL_SECTION_LABELS = {
+        'arguments': ['参数', '參數'],
+        'output': ['输出', '輸出'],
+        'result': ['结果', '結果'],
+        'response': ['响应', '回應'],
+        'input': ['输入', '輸入'],
+        'parameters': ['参数', '參數'],
+        'tool arguments': ['工具参数', '工具參數'],
+        'tool output': ['工具输出', '工具輸出'],
+        'tool result': ['工具结果', '工具結果'],
+        'return value': ['返回值', '傳回值'],
+        'tool response': ['工具响应', '工具回應'],
+        'command output': ['命令输出', '指令輸出']
+    };
+
+    function lookupToolCallSectionLabel(valNorm) {
+        if (!valNorm) return null;
+        const hasColon = valNorm.endsWith(':');
+        const base = (hasColon ? valNorm.slice(0, -1) : valNorm).trim().toLowerCase();
+        if (!Object.prototype.hasOwnProperty.call(TOOL_CALL_SECTION_LABELS, base)) return null;
+        const pair = TOOL_CALL_SECTION_LABELS[base];
+        return pair[USE_TW ? 1 : 0] + (hasColon ? '：' : '');
+    }
+
+    function translateTruncatedNotice(valNorm) {
+        if (!valNorm) return null;
+        const mMore = valNorm.match(/^(\.\.\.\s*)?([\d,]+)\s+more\s+(lines?|characters?|chars?|bytes?|items?),\s*truncated for display\.?$/i);
+        if (mMore) {
+            const uLow = mMore[3].toLowerCase();
+            const uZh = uLow.startsWith('line') ? '行'
+                : (uLow.startsWith('char') ? (USE_TW ? '個字元' : '个字符')
+                : (uLow.startsWith('byte') ? (USE_TW ? '個位元組' : '个字节')
+                : (USE_TW ? '項' : '项')));
+            return (mMore[1] ? '... ' : '') + (USE_TW ? ('還有 ' + mMore[2] + ' ' + uZh + '，已截斷顯示。') : ('还有 ' + mMore[2] + ' ' + uZh + '，已截断显示。'));
+        }
+        const mBare = valNorm.match(/^(\.\.\.\s*)?truncated for display\.?$/i);
+        if (mBare) {
+            return (mBare[1] ? '... ' : '') + (USE_TW ? '已截斷顯示。' : '已截断显示。');
+        }
+        return null;
+    }
+
+    function isInsideActualThinkingBody(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+        let cur = el;
+        while (cur && typeof document !== 'undefined' && cur !== document.body && cur !== document.documentElement) {
+            const prev = cur.previousElementSibling;
+            if (cur.tagName === 'DIV' && prev && typeof prev.matches === 'function' && prev.matches('[data-testid="thinking-collapsible-trigger"]')) {
+                const trigText = norm(prev.textContent || '');
+                if (/^(?:Thought|Thinking|已思考|正在思考)\b/i.test(trigText)) {
+                    return true;
+                }
+            }
+            cur = cur.parentElement;
+        }
+        return false;
+    }
+
+    function isCodeBoxNode(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+        return (typeof el.matches === 'function' && el.matches(TOOL_CODE_BOX_SELECTOR)) ||
+            (typeof el.querySelector === 'function' && Boolean(el.querySelector(TOOL_CODE_BOX_SELECTOR)));
+    }
+
+    function hasAdjacentCodeBlock(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+        if ((typeof el.closest === 'function' && el.closest(HARD_CODE_ISOLATION_SELECTOR)) || isInsideActualThinkingBody(el)) return false;
+        let cur = el;
+        for (let d = 0; cur && d < 3 && typeof document !== 'undefined' && cur !== document.body && cur !== document.documentElement; d++, cur = cur.parentElement) {
+            if (d > 0) {
+                const chCount = cur.children ? cur.children.length : Array.from(cur.childNodes || []).filter(c => c.nodeType === Node.ELEMENT_NODE).length;
+                if (isCodeBoxNode(cur) || norm(cur.textContent || '').length > 48 || chCount > 4) break;
+            }
+            if (isCodeBoxNode(cur.nextElementSibling)) return true;
+        }
+        const parent = el.parentElement;
+        if (parent && typeof document !== 'undefined' && parent !== document.body && parent !== document.documentElement) {
+            if ((typeof parent.closest === 'function' && parent.closest(HARD_CODE_ISOLATION_SELECTOR)) || isInsideActualThinkingBody(parent)) return false;
+            const siblings = parent.children || Array.from(parent.childNodes || []).filter(c => c.nodeType === Node.ELEMENT_NODE);
+            if (siblings.length <= 6) {
+                for (const sib of siblings) {
+                    if (sib !== el && typeof sib.matches === 'function' && sib.matches('pre, code, .code-block, .hljs, .cm-editor, .monaco-editor')) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function replaceElementTextNodes(el, newText) {
+        if (!el || !newText) return false;
+        const tNodes = Array.from(el.childNodes || []).filter(c => c.nodeType === Node.TEXT_NODE);
+        if (tNodes.length === 0) return false;
+        const elChildrenCount = el.children ? el.children.length : Array.from(el.childNodes || []).filter(c => c.nodeType === Node.ELEMENT_NODE).length;
+        if (tNodes.length === 1) {
+            if (norm(tNodes[0].nodeValue) !== norm(el.textContent || '')) return false;
+            if (tNodes[0].nodeValue !== newText) {
+                tNodes[0].nodeValue = newText;
+                translatedValues.set(tNodes[0], newText);
+            }
+            return true;
+        }
+        if (elChildrenCount === 0) {
+            for (let i = 0; i < tNodes.length; i++) {
+                const targetVal = i === 0 ? newText : '';
+                if (tNodes[i].nodeValue !== targetVal) {
+                    tNodes[i].nodeValue = targetVal;
+                }
+                translatedValues.set(tNodes[i], targetVal);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    function translateIsolatedToolCallChrome(container) {
+        if (!container || container.nodeType !== Node.ELEMENT_NODE || container.isContentEditable) return;
+        if (typeof container.closest === 'function' && container.closest(RAW_CODE_ISOLATION_SELECTOR)) return;
+        if (isInsideActualThinkingBody(container)) return;
+
+        const candidates = [container];
+        if (typeof container.querySelectorAll === 'function') {
+            for (const sub of container.querySelectorAll('div, span, p, em, i, strong, b, h1, h2, h3, h4, h5, h6, label, summary, button, dt, dd')) {
+                candidates.push(sub);
+            }
+        }
+        const strictCodeSel = 'pre, code, .code-block, .hljs, .code-line, .line-content, .cm-editor, .monaco-editor, .terminal, .xterm';
+        for (const el of candidates) {
+            if (!el || el.isContentEditable) continue;
+            if (typeof el.closest === 'function' && el.closest(RAW_CODE_ISOLATION_SELECTOR)) continue;
+            if (isInsideActualThinkingBody(el)) continue;
+            if (typeof el.querySelector === 'function' && el.querySelector(strictCodeSel)) continue;
+            const fullNorm = norm(el.textContent || '');
+            if (!fullNorm) continue;
+            const truncZh = translateTruncatedNotice(fullNorm);
+            if (truncZh) {
+                replaceElementTextNodes(el, truncZh);
+                continue;
+            }
+            if (typeof el.closest === 'function' && el.closest(HARD_CODE_ISOLATION_SELECTOR)) continue;
+            const secZh = lookupToolCallSectionLabel(fullNorm);
+            if (secZh && hasAdjacentCodeBlock(el)) {
+                replaceElementTextNodes(el, secZh);
+            }
+        }
+    }
 
     function isSwarmUiContext(el) {
         try {
@@ -896,7 +1100,17 @@
             return USE_TW ? (prefix + " " + uTw) : (prefix + " " + uSc);
         }],
         [/^For paid Pro plans,\s*(.+?)\s+quota is separate\.\s*Higher\s+\1\s+quota\s*\(included as part of the larger\s+(.+?)\s+quota bucket\)\s*is available on Ultra plans\.?$/i, (m, model, bucket) => USE_TW ? ("在 Pro 付費方案中，" + model + " 配額會獨立計算。Ultra 方案則提供更高的 " + model + " 配額（納入較大的 " + bucket + " 配額池中）。") : ("在 Pro 付费方案中，" + model + " 配额独立计算。Ultra 方案提供更高的 " + model + " 配额（包含在更大的 " + bucket + " 配额池中）。")],
-        [/^You can upgrade to a\s+(.+?)\s+plan to receive higher rate limits\.?$/i, (m, plan) => USE_TW ? ("您可以升級至 " + plan + " 方案以獲得更高的速率限制。") : ("您可以升级到 " + plan + " 计划以获得更高的速率限制。")],
+        [/^You can upgrade to (?:a|the)\s+(higher\s+)?(.+?)\s+plan to receive (?:(the highest)|higher) rate limits\.?$/i, (m, higherAdj, plan, highest) => {
+            const ratePart = highest ? '最高的速率限制。' : '更高的速率限制。';
+            if (USE_TW) {
+                return higherAdj
+                    ? ('您可以升級至更高等級的 ' + plan + ' 方案以獲得' + ratePart)
+                    : ('您可以升級至 ' + plan + ' 方案以獲得' + ratePart);
+            }
+            return higherAdj
+                ? ('您可以升级到更高级别的 ' + plan + ' 计划以获得' + ratePart)
+                : ('您可以升级到 ' + plan + ' 计划以获得' + ratePart);
+        }],
         [/^The original\s+(.+?)\s+model for advanced workflows\.?$/i, (m, model) => USE_TW ? ("適合進階工作流程的初代 " + model + " 模型") : ("适用于高级工作流的初代 " + model + " 模型")],
         [/^Waiting for (\d+) timers$/i, (m, n) => USE_TW ? ("正在等待 " + n + " 個計時器") : ("正在等待 " + n + " 个计时器")],
         [/^Waiting for timer$/i, () => USE_TW ? "正在等待計時器" : "正在等待计时器"],
@@ -912,11 +1126,11 @@
         [/^Learn more about (.+)$/i, (m, p) => {
             let translatedPreset = p;
             const pLow = p.toLowerCase();
-            if (pLow === 'default' || pLow.includes('默认') || pLow.includes('預設')) translatedPreset = USE_TW ? "預設 (Default)" : "默认 (Default)";
-            else if (pLow === 'inherit global' || pLow.includes('继承全局') || pLow.includes('繼承全域')) translatedPreset = USE_TW ? "繼承全域 (Inherit Global)" : "继承全局 (Inherit Global)";
-            else if (pLow === 'full machine' || pLow.includes('全机') || pLow.includes('全機')) translatedPreset = USE_TW ? "全機存取 (Full Machine)" : "全机访问 (Full Machine)";
-            else if (pLow === 'turbo mode' || pLow.includes('极速') || pLow.includes('極速')) translatedPreset = USE_TW ? "極速模式 (Turbo Mode)" : "极速模式 (Turbo Mode)";
-            else if (pLow === 'custom' || pLow.includes('自定义') || pLow.includes('自訂')) translatedPreset = USE_TW ? "自訂 (Custom)" : "自定义 (Custom)";
+            if (pLow === 'default' || pLow.includes('默认') || pLow.includes('預設')) translatedPreset = USE_TW ? "預設" : "默认";
+            else if (pLow === 'inherit global' || pLow.includes('继承全局') || pLow.includes('繼承全域')) translatedPreset = USE_TW ? "繼承全域" : "继承全局";
+            else if (pLow === 'full machine' || pLow.includes('全机') || pLow.includes('全機')) translatedPreset = USE_TW ? "全機存取" : "全机访问";
+            else if (pLow === 'turbo mode' || pLow.includes('极速') || pLow.includes('極速')) translatedPreset = USE_TW ? "極速模式" : "极速模式";
+            else if (pLow === 'custom' || pLow.includes('自定义') || pLow.includes('自訂')) translatedPreset = USE_TW ? "自訂" : "自定义";
             return USE_TW ? ("瞭解更多關於 " + translatedPreset + " 的詳細資訊") : ("了解更多关于 " + translatedPreset + " 的信息");
         }],
         [/^Yes, allow downloads from (.+) for this run$/i, (m, site) => USE_TW ? ("是，本次執行允許從 " + site + " 下載") : ("是，本次运行允许从 " + site + " 下载")],
@@ -942,8 +1156,8 @@
             const pair = UNIT_MAP[unit.toLowerCase()];
             return num + (pair ? pair[USE_TW ? 1 : 0] : unit) + "前";
         }],
-        [/^(.+?): context deadline exceeded$/i, (m, prefix) => prefix + (USE_TW ? ": 要求逾時 (context deadline exceeded)" : ": 请求超时 (context deadline exceeded)")],
-        [/^(.+?): i\/o timeout$/i, (m, prefix) => prefix + (USE_TW ? ": I/O 逾時 (i/o timeout)" : ": I/O 超时 (i/o timeout)")],
+        [/^(.+?): context deadline exceeded$/i, (m, prefix) => prefix + (USE_TW ? "：要求逾時" : "：请求超时")],
+        [/^(.+?): i\/o timeout$/i, (m, prefix) => prefix + (USE_TW ? "：I/O 逾時" : "：I/O 超时")],
 
         // 远程 MCP 通用描述句式
         [/^The (.+?) remote MCP server lets you access and run (.+?) tools to (.+)$/i, (m, name, tools, purpose) => name + (USE_TW ? " 遠端 MCP 伺服器可讓您存取並執行 " : " 远程 MCP 服务器可让您访问并运行 ") + tools + (USE_TW ? " 工具，用於 " : " 工具，用于 ") + purpose],
@@ -1057,6 +1271,37 @@
                 return v + pm[2] + ' ' + n;
             }).join('，');
         }],
+        [/^(?:(?:Exploring|Explored|Editing|Edited|Running|Ran|Searching|Searched|Using|Used|Reading|Read|Writing|Wrote|Viewing|Viewed|Checking|Checked)(?:\s+(?:(?:\d+\s+)?(?:files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|web|mcp tools?)))?|\d+\s+(?:files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|mcp tools?))(?:\s*,\s*(?:(?:Exploring|Explored|Editing|Edited|Running|Ran|Searching|Searched|Using|Used|Reading|Read|Writing|Wrote|Viewing|Viewed|Checking|Checked)(?:\s+(?:(?:\d+\s+)?(?:files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|web|mcp tools?)))?|\d+\s+(?:files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|mcp tools?)))*$/i, (m) => {
+            if (!m.includes(',') && !/\s+(?:files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|web|mcp tools?)$/i.test(m)) {
+                return m;
+            }
+            const verbMap = USE_TW
+                ? { exploring: '正在探索', explored: '已探索', editing: '正在編輯', edited: '已編輯', running: '正在執行', ran: '已執行', searching: '正在搜尋', searched: '已搜尋', using: '正在使用', used: '已使用', reading: '正在讀取', read: '已讀取', writing: '正在寫入', wrote: '已寫入', viewing: '正在檢視', viewed: '已檢視', checking: '正在檢查', checked: '已檢查' }
+                : { exploring: '正在探索', explored: '已探索', editing: '正在编辑', edited: '已编辑', running: '正在运行', ran: '已运行', searching: '正在搜索', searched: '已搜索', using: '正在使用', used: '已使用', reading: '正在读取', read: '已读取', writing: '正在写入', wrote: '已写入', viewing: '正在查看', viewed: '已查看', checking: '正在检查', checked: '已检查' };
+            const nounMap = USE_TW
+                ? { file: '檔案', files: '檔案', folder: '資料夾', folders: '資料夾', search: '搜尋', searches: '搜尋', command: '指令', commands: '指令', task: '任務', tasks: '任務', page: '網頁', pages: '網頁', browser: '瀏覽器', browsers: '瀏覽器', image: '圖片', images: '圖片', action: '操作', actions: '操作', artifact: '成品', artifacts: '成品', tool: '工具', tools: '工具', web: '網頁', 'mcp tool': 'MCP 工具', 'mcp tools': 'MCP 工具' }
+                : { file: '文件', files: '文件', folder: '文件夹', folders: '文件夹', search: '搜索', searches: '搜索', command: '命令', commands: '命令', task: '任务', tasks: '任务', page: '网页', pages: '网页', browser: '浏览器', browsers: '浏览器', image: '图片', images: '图片', action: '操作', actions: '操作', artifact: '工件', artifacts: '工件', tool: '工具', tools: '工具', web: '网页', 'mcp tool': 'MCP 工具', 'mcp tools': 'MCP 工具' };
+            const countNounMap = USE_TW
+                ? { file: '個檔案', files: '個檔案', folder: '個資料夾', folders: '個資料夾', search: '次搜尋', searches: '次搜尋', command: '個指令', commands: '個指令', task: '個任務', tasks: '個任務', page: '個網頁', pages: '個網頁', browser: '次瀏覽器操作', browsers: '次瀏覽器操作', image: '張圖片', images: '張圖片', action: '項操作', actions: '項操作', artifact: '個成品', artifacts: '個成品', tool: '個工具', tools: '個工具', 'mcp tool': '個 MCP 工具', 'mcp tools': '個 MCP 工具' }
+                : { file: '个文件', files: '个文件', folder: '个文件夹', folders: '个文件夹', search: '次搜索', searches: '次搜索', command: '个命令', commands: '个命令', task: '个任务', tasks: '个任务', page: '个网页', pages: '个网页', browser: '次浏览器操作', browsers: '次浏览器操作', image: '张图片', images: '张图片', action: '项操作', actions: '项操作', artifact: '个工件', artifacts: '个工件', tool: '个工具', tools: '个工具', 'mcp tool': '个 MCP 工具', 'mcp tools': '个 MCP 工具' };
+            return m.split(/\s*,\s*/).map(part => {
+                const pm = part.trim().match(/^(?:(Exploring|Explored|Editing|Edited|Running|Ran|Searching|Searched|Using|Used|Reading|Read|Writing|Wrote|Viewing|Viewed|Checking|Checked)(?:\s+(?:(\d+)\s+)?(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|web|mcp tools?))?|(\d+)\s+(files?|folders?|searches?|commands?|tasks?|pages?|browsers?|images?|actions?|artifacts?|tools?|mcp tools?))$/i);
+                if (!pm) return part;
+                if (pm[4]) {
+                    return pm[4] + ' ' + (countNounMap[pm[5].toLowerCase()] || pm[5]);
+                }
+                const v = verbMap[pm[1].toLowerCase()] || pm[1];
+                if (pm[2]) {
+                    return v + ' ' + pm[2] + ' ' + (countNounMap[pm[3].toLowerCase()] || pm[3]);
+                }
+                if (pm[3]) {
+                    return v + (nounMap[pm[3].toLowerCase()] || pm[3]);
+                }
+                return v;
+            }).join('，');
+        }],
+        [/^exit_plan_mode$/, () => USE_TW ? '退出規劃模式' : '退出规划模式'],
+        [/^enter_plan_mode$/, () => USE_TW ? '進入規劃模式' : '进入规划模式'],
 
         // Swarm 伴生面板 (Sidecar) 动态消息、回放、关系图与概览状态
         [/^(\d+)\s+posts?$/i, (m, n) => n + (USE_TW ? " 則訊息" : " 条消息")],
@@ -1557,19 +1802,34 @@
             if (sec) parts.push(sec + ' 秒');
             return (USE_TW ? '剩餘 ' : '剩余 ') + parts.join(' ');
         }],
-        [/^(\d+)\s+(image|video|audio)\s+attachments?$/i, (m, n, kind) => {
-            const kZh = kind.toLowerCase() === 'image' ? (USE_TW ? '張圖片附件' : '张图片附件')
-                : kind.toLowerCase() === 'video' ? (USE_TW ? '個影片附件' : '个视频附件')
-                : (USE_TW ? '個音訊附件' : '个音频附件');
+        [/^(\d+)\s+(image|video|audio|file)\s+attachments?$/i, (m, n, kind) => {
+            const kLow = kind.toLowerCase();
+            const kZh = kLow === 'image' ? (USE_TW ? '張圖片附件' : '张图片附件')
+                : kLow === 'video' ? (USE_TW ? '個影片附件' : '个视频附件')
+                : kLow === 'audio' ? (USE_TW ? '個音訊附件' : '个音频附件')
+                : (USE_TW ? '個檔案附件' : '个文件附件');
             return n + ' ' + kZh;
         }],
+        [/^(\d+)\s+attachments?$/i, (m, n) => n + (USE_TW ? ' 個附件' : ' 个附件')],
+        [/^(?:(.+?)\s+)?\((\d+)\s+(?:(image|video|audio|file)\s+)?attachments?\)$/i, (m, prefix, n, kind) => {
+            const kLow = kind ? kind.toLowerCase() : '';
+            const kZh = kLow === 'image' ? (USE_TW ? '張圖片附件' : '张图片附件')
+                : kLow === 'video' ? (USE_TW ? '個影片附件' : '个视频附件')
+                : kLow === 'audio' ? (USE_TW ? '個音訊附件' : '个音频附件')
+                : kLow === 'file' ? (USE_TW ? '個檔案附件' : '个文件附件')
+                : (USE_TW ? '個附件' : '个附件');
+            return (prefix ? prefix + ' ' : '') + '(' + n + ' ' + kZh + ')';
+        }],
         [/^(\d+)\s+attachment\(s\)$/i, (m, n) => n + (USE_TW ? ' 個附件' : ' 个附件')],
+        [/^(\d+)\s+of\s+(\d+)$/i, (m, a, b) => a + ' / ' + b],
         [/^(\d+)\s+archived conversations?$/i, (m, n) => n + (USE_TW ? ' 個已封存對話' : ' 个已归档会话')],
         [/^(\d+)\s+background tasks?$/i, (m, n) => n + (USE_TW ? ' 個背景任務' : ' 个后台任务')],
         [/^(\d+)\s+browser steps?$/i, (m, n) => n + (USE_TW ? ' 個瀏覽器步驟' : ' 个浏览器步骤')],
         [/^(\d+)\s+models?\s+selected$/i, (m, n) => USE_TW ? ('已選取 ' + n + ' 個模型') : ('已选择 ' + n + ' 个模型')],
         [/^(\d+)\s+waiting on you$/i, (m, n) => n + (USE_TW ? ' 項待您處理' : ' 项待您处理')],
         [/^(\d+)\s+Files?\s+With Changes$/i, (m, n) => n + (USE_TW ? ' 個檔案有變更' : ' 个文件有更改')],
+        [/^(\d+)\s+files?\s+changed(?:\s+([+-]\d+(?:\s*[+-]\d+)?))?$/i, (m, n, diff) => n + (USE_TW ? ' 個檔案已變更' : ' 个文件已更改') + (diff ? (' ' + diff) : '')],
+        [/^(\d+)\s*\/\s*(\d+)\s+steps?$/i, (m, done, total) => done + '/' + total + (USE_TW ? ' 步驟' : ' 步骤')],
         [/^(\d+)\s+lines?\s+added,\s*(\d+)\s+lines?\s+removed$/i, (m, a, b) => USE_TW ? ('新增 ' + a + ' 行，移除 ' + b + ' 行') : ('新增 ' + a + ' 行，删除 ' + b + ' 行')],
         [/^(\d+)\s+(questions?|turns?|comments?|subagents?|chunks?|accounts?|rows?)$/i, (m, n, kind) => {
             const k = kind.toLowerCase();
@@ -1672,6 +1932,76 @@
         [/^(.+?) annotation on page (\d+)$/i, (m, kind, p) => USE_TW ? ('第 ' + p + ' 頁的 ' + kind + ' 註解') : ('第 ' + p + ' 页的 ' + kind + ' 批注')],
         [/^Applied\s+(.+)$/i, (m, target) => (USE_TW ? '已套用 ' : '已应用 ') + target],
         [/^Show\s+(.+?)\s+in the list again$/i, (m, host) => (USE_TW ? '重新在清單中顯示 ' : '重新在列表中显示 ') + host],
+        [/^Hook\s+((?:Json|Command|Prompt|Shell|Script)\s+[A-Za-z0-9_.:-]+|[A-Z][A-Za-z0-9_.:-]*(?:\s+[A-Za-z0-9_.:-]+){0,2})$/, (m, rest) => {
+            if (/^(?:will|with|is|was|has|are|to|for|that|can|may|from|when|if)\b/i.test(rest.trim())) return m;
+            return (USE_TW ? '鉤子 ' : '钩子 ') + rest;
+        }],
+        [/^(?:(·\s*))?Exited with code\s+(-?\d+)$/i, (m, dot, code) => (dot ? '· ' : '') + (USE_TW ? ('已結束，結束碼 ' + code) : ('已退出，退出码 ' + code))],
+        [/^(?:(·\s*))?Exit code\s+(-?\d+)$/i, (m, dot, code) => (dot ? '· ' : '') + (USE_TW ? ('結束碼 ' + code) : ('退出码 ' + code))],
+        [/^(?:(·\s*))?Exited with signal\s+([A-Za-z0-9_+-]+)$/i, (m, dot, sig) => (dot ? '· ' : '') + (USE_TW ? ('已因訊號 ' + sig + ' 結束') : ('已因信号 ' + sig + ' 退出'))],
+        [/^(.+?)\s*·\s*Exited with code\s+(-?\d+)$/i, (m, prefix, code) => {
+            const pNorm = norm(prefix);
+            const pZh = translateExactOrDynamic(pNorm) || prefix;
+            return pZh + (USE_TW ? (' · 已結束，結束碼 ' + code) : (' · 已退出，退出码 ' + code));
+        }],
+        [/^(Running|Ran|Searching|Searched|Analyzing|Analyzed|Reading|Editing|Edited|Writing|Wrote|Creating|Created|Deleting|Deleted|Viewing|Listing|Listed|Checking|Checked|Calling|Called|Invoking|Invoked|Executing|Executed|Fetching|Fetched|Updating|Updated|Waiting for)\s+(.+)$/, (m, verb, rest) => {
+            const restTrim = rest.trim();
+            if (!restTrim || restTrim.length > 100 || /[.!?。！？]$/.test(restTrim)) return m;
+            if (verb === 'Waiting for' && /^you\b/i.test(restTrim)) return m;
+            const verbMap = {
+                Running: ['正在运行', '正在執行'],
+                Ran: ['已运行', '已執行'],
+                Searching: ['正在搜索', '正在搜尋'],
+                Searched: ['已搜索', '已搜尋'],
+                Analyzing: ['正在分析', '正在分析'],
+                Analyzed: ['已分析', '已分析'],
+                Reading: ['正在读取', '正在讀取'],
+                Editing: ['正在编辑', '正在編輯'],
+                Edited: ['已编辑', '已編輯'],
+                Writing: ['正在写入', '正在寫入'],
+                Wrote: ['已写入', '已寫入'],
+                Creating: ['正在创建', '正在建立'],
+                Created: ['已创建', '已建立'],
+                Deleting: ['正在删除', '正在刪除'],
+                Deleted: ['已删除', '已刪除'],
+                Viewing: ['正在查看', '正在檢視'],
+                Listing: ['正在列出', '正在列出'],
+                Listed: ['已列出', '已列出'],
+                Checking: ['正在检查', '正在檢查'],
+                Checked: ['已检查', '已檢查'],
+                Calling: ['正在调用', '正在呼叫'],
+                Called: ['已调用', '已呼叫'],
+                Invoking: ['正在调用', '正在呼叫'],
+                Invoked: ['已调用', '已呼叫'],
+                Executing: ['正在执行', '正在執行'],
+                Executed: ['已执行', '已執行'],
+                Fetching: ['正在获取', '正在擷取'],
+                Fetched: ['已获取', '已擷取'],
+                Updating: ['正在更新', '正在更新'],
+                Updated: ['已更新', '已更新'],
+                'Waiting for': ['正在等待', '正在等待']
+            };
+            const vPair = verbMap[verb];
+            if (!vPair) return m;
+            const formattedRest = restTrim.replace(/(\s+)((?:\d+(?:d|h|m|s)\s*)+)$/i, (_, sp, dur) => {
+                return sp + formatCompactDuration(dur);
+            });
+            return vPair[USE_TW ? 1 : 0] + ' ' + formattedRest;
+        }],
+        [/^Stream and control\s+(.+?)\s+directly in the side pane\.?$/i, (m, name) => USE_TW
+            ? ('直接在側邊面板中串流傳輸與控制 ' + name + '。')
+            : ('直接在侧边面板中流式传输与控制 ' + name + '。')],
+        [/^Applies to \/btw and messages sent after this turn\.?$/i, () => USE_TW ? '適用於 /btw 與本輪之後傳送的訊息' : '适用于 /btw 及本轮之后发送的消息'],
+        [/^Applies to messages sent after this turn\.?$/i, () => USE_TW ? '適用於本輪之後傳送的訊息' : '适用于本轮之后发送的消息'],
+        [/^(\.\.\.\s*)?([\d,]+)\s+more\s+(lines?|characters?|chars?|bytes?|items?),\s*truncated for display\.?$/i, (m, ellipsis, num, unit) => {
+            const uLow = unit.toLowerCase();
+            const uZh = uLow.startsWith('line') ? '行'
+                : (uLow.startsWith('char') ? (USE_TW ? '個字元' : '个字符')
+                : (uLow.startsWith('byte') ? (USE_TW ? '個位元組' : '个字节')
+                : (USE_TW ? '項' : '项')));
+            return (ellipsis ? '... ' : '') + (USE_TW ? ('還有 ' + num + ' ' + uZh + '，已截斷顯示。') : ('还有 ' + num + ' ' + uZh + '，已截断显示。'));
+        }],
+        [/^(\.\.\.\s*)?truncated for display\.?$/i, (m, ellipsis) => (ellipsis ? '... ' : '') + (USE_TW ? '已截斷顯示。' : '已截断显示。')],
 
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
@@ -1715,6 +2045,61 @@
                 }
                 return num + unitStr;
             });
+        }
+        if (valNorm === 'now' && typeof p.closest === 'function' && p.closest('[data-testid="conversation-row-sidebar"]')) {
+            return USE_TW ? '剛剛' : '刚刚';
+        }
+        if (/^(?:\d+(?:d|h|m|s)\s+)+\d+(?:d|h|m|s)$/i.test(valNorm)) {
+            return formatCompactDuration(valNorm);
+        }
+        if (valNorm === 'Hook' && /^Hook\s+(?:Json|Command|Prompt|Shell|Script|SessionStart|SessionEnd|PreToolUse|PostToolUse|PreInvocation|PostInvocation|UserPromptSubmit|SubagentStop|PreCompact)\b/i.test(pText.trim())) {
+            return USE_TW ? '鉤子' : '钩子';
+        }
+        if ((valNorm === 'directly in the side pane.' || valNorm === 'directly in the side pane') && /Stream and control|流式传输与控制|串流傳輸與控制/i.test(pText)) {
+            return '。';
+        }
+        if ((valNorm === 'Type' || valNorm === 'Command') && findSidecarDetailsModal(p)) {
+            return valNorm === 'Type' ? (USE_TW ? '類型' : '类型') : (USE_TW ? '指令' : '命令');
+        }
+        if (/messages sent after this turn|本轮之后发送的消息|本輪之後傳送的訊息/i.test(pText)) {
+            if (valNorm === 'Applies to') return USE_TW ? '適用於 ' : '适用于 ';
+            if (/^and messages sent after this turn\.?$/i.test(valNorm)) {
+                const dot = valNorm.endsWith('.') ? '。' : '';
+                return (USE_TW ? ' 與本輪之後傳送的訊息' : ' 及本轮之后发送的消息') + dot;
+            }
+        }
+        if (/^steps?$/i.test(valNorm)) {
+            const gp = p.parentElement && typeof document !== 'undefined' && p.parentElement !== document.body && p.parentElement !== document.documentElement ? p.parentElement : null;
+            const gpText = gp ? (dfsParentTexts.get(gp) || originalParentTexts.get(gp) || gp.textContent || '') : '';
+            if (/^\d+\s*\/\s*\d+\s*steps?$/i.test(pText.trim()) || (gpText.length < 80 && /^\d+\s*\/\s*\d+\s*steps?$/i.test(gpText.trim()))) {
+                return (originalVal.startsWith(' ') ? ' ' : '') + (USE_TW ? '步驟' : '步骤');
+            }
+        }
+        if (/^more\s+(lines?|characters?|chars?|bytes?|items?),\s*truncated for display\.?$/i.test(valNorm)) {
+            const gp = p.parentElement && typeof document !== 'undefined' && p.parentElement !== document.body && p.parentElement !== document.documentElement ? p.parentElement : null;
+            const gpText = gp ? (dfsParentTexts.get(gp) || originalParentTexts.get(gp) || gp.textContent || '') : '';
+            const ctxText = /\d/.test(pText) ? pText : (gpText.length < 200 ? gpText : '');
+            if (/\d[\d,]*\s+more\s+(?:lines?|characters?|chars?|bytes?|items?),\s*truncated for display/i.test(ctxText)) {
+                const uLow = valNorm.match(/^more\s+(\w+)/i)[1].toLowerCase();
+                const uZh = uLow.startsWith('line') ? '行'
+                    : (uLow.startsWith('char') ? (USE_TW ? '個字元' : '个字符')
+                    : (uLow.startsWith('byte') ? (USE_TW ? '個位元組' : '个字节')
+                    : (USE_TW ? '項' : '项')));
+                return (originalVal.startsWith(' ') ? ' ' : '') + uZh + (USE_TW ? '，已截斷顯示。' : '，已截断显示。');
+            }
+        }
+        const toolLabelZh = lookupToolCallSectionLabel(valNorm);
+        if (toolLabelZh && norm(pText) === valNorm && hasAdjacentCodeBlock(p)) {
+            return toolLabelZh;
+        }
+        if (/^(?:·\s*)?Exited with code$/i.test(valNorm)) {
+            const gp = p.parentElement && typeof document !== 'undefined' && p.parentElement !== document.body && p.parentElement !== document.documentElement ? p.parentElement : null;
+            const gpText = gp ? (dfsParentTexts.get(gp) || originalParentTexts.get(gp) || gp.textContent || '') : '';
+            if (/Exited with code\s+-?\d+/i.test(pText) || (gpText.length < 120 && /Exited with code\s+-?\d+/i.test(gpText))) {
+                const leadDot = valNorm.startsWith('·') ? '· ' : '';
+                const trail = originalVal.endsWith(' ') ? ' ' : '';
+                return leadDot + (USE_TW ? '已結束，結束碼' : '已退出，退出码') + trail;
+            }
         }
         if ((valNorm === 'Card' || valNorm === 'of') && ((typeof p.closest === 'function' && p.closest('[data-testid="card-deck-counter"]')) || (p.getAttribute && p.getAttribute('data-testid') === 'card-deck-counter'))) {
             return valNorm === 'Card' ? "卡片 " : " / ";
@@ -2038,6 +2423,186 @@
         'Indigo': ['靛蓝色', '靛藍色']
     };
 
+    const protectedPluginNames = new WeakMap();
+    const PLUGIN_UI_CHROME_SET = new Set([
+        'install', 'uninstall', 'enable', 'disable', 'configure', 'settings', 'remove', 'update',
+        'details', 'more', 'open marketplace', 'marketplace', 'plugins', 'plugin', 'see more',
+        'see less', 'show more', 'show less', 'active', 'disabled', 'installed', 'running',
+        'stopped', 'connected', 'not connected', 'sign in', 'sign out', 'authentication required',
+        'plugin permissions', 'plugins options', 'no plugins available', 'no plugins installed',
+        'add', 'cancel', 'close', 'open', 'refresh', 'retry', 'try again', 'manage', 'back',
+        'delete', 'edit', 'search', 'filter', 'loading...', 'show all', 'see all',
+        'side pane ui available', 'recent events', 'full logs', 'host endpoint', 'uptime',
+        'status', 'type', 'command', 'restart', 'open in side pane', 'managed by plugin'
+    ]);
+    const BUILTIN_AUX_TABS = new Set([
+        'review', 'files', 'terminal', 'browser', 'changes', 'diff', 'preview', 'editor',
+        'artifacts', 'problems', 'output', 'console', 'logs', 'timeline', 'inspector',
+        'search', 'plan', 'swarm', 'overview', 'board', 'members', 'graph', 'raw', 'hive',
+        'open file', 'side question', 'side questions', 'skills used'
+    ]);
+
+    function findSidecarDetailsModal(el) {
+        const startEl = el && el.nodeType === Node.ELEMENT_NODE ? el : (el && el.parentElement) || null;
+        if (!startEl) return null;
+        const hasSidecarMarkers = (node) => {
+            const txt = node.textContent || '';
+            return txt.length > 0 && txt.length < 4000 && (
+                txt.includes('Side Pane UI Available') ||
+                txt.includes('侧边面板界面可用') ||
+                txt.includes('側邊面板介面可用') ||
+                txt.includes('Host Endpoint') ||
+                txt.includes('主机端点') ||
+                txt.includes('主機端點') ||
+                txt.includes('Managed by plugin') ||
+                txt.includes('由插件管理') ||
+                txt.includes('由外掛程式管理')
+            );
+        };
+        const dialog = typeof startEl.closest === 'function' ? startEl.closest('[role="dialog"], [aria-modal="true"]') : null;
+        if (dialog) {
+            return hasSidecarMarkers(dialog) ? dialog : null;
+        }
+        let cur = startEl;
+        for (let depth = 0; cur && depth < 10 && typeof document !== 'undefined' && cur !== document.body && cur !== document.documentElement; depth++, cur = cur.parentElement) {
+            if (typeof cur.querySelector === 'function' && cur.querySelector('[role="dialog"], [aria-modal="true"]')) {
+                return null;
+            }
+            if (hasSidecarMarkers(cur)) {
+                return cur;
+            }
+        }
+        return null;
+    }
+
+    function recordProtectedPluginName(el, name) {
+        if (!el || !name) return;
+        const clean = norm(name);
+        if (!clean) return;
+        let set = protectedPluginNames.get(el);
+        if (!set) {
+            set = new Set();
+            protectedPluginNames.set(el, set);
+        }
+        set.add(clean.toLowerCase());
+    }
+
+    function isSlashCommandNameNode(node, valNorm) {
+        if (!valNorm || valNorm.includes(' ')) return false;
+        if (/^\/[a-zA-Z0-9][a-zA-Z0-9_.:/-]*$/.test(valNorm)) return true;
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/.test(valNorm)) return false;
+        const prevText = node && node.previousSibling ? norm(node.previousSibling.textContent || '') : '';
+        if (prevText === '/' || prevText.endsWith('/')) return true;
+        const el = node && node.parentElement ? node.parentElement : null;
+        if (!el) return false;
+        if (el.previousElementSibling && norm(el.previousElementSibling.textContent || '').endsWith('/')) {
+            return true;
+        }
+        const item = typeof el.closest === 'function'
+            ? el.closest('[role="option"], [role="menuitem"], [cmdk-item], [data-testid*="slash"], [data-testid*="command-menu"], [data-testid*="action-menu"]')
+            : null;
+        if (item && valNorm === valNorm.toLowerCase()) {
+            const hasSiblingDesc = Boolean(
+                (el.nextElementSibling && norm(el.nextElementSibling.textContent || '')) ||
+                (el.parentElement && el.parentElement !== item && el.parentElement.nextElementSibling && norm(el.parentElement.nextElementSibling.textContent || ''))
+            );
+            const itemText = norm(item.textContent || '');
+            if (hasSiblingDesc || itemText.startsWith('/' + valNorm)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function isSidebarPluginNameNode(node, valNorm) {
+        if (!valNorm || valNorm.length > 48 || /[.!?。！？]$/.test(valNorm)) return false;
+        const low = valNorm.toLowerCase();
+        if (PLUGIN_UI_CHROME_SET.has(low)) return false;
+        const el = node && node.parentElement ? node.parentElement : null;
+        if (el && typeof document !== 'undefined' && el !== document.body && el !== document.documentElement) {
+            const tabEl = typeof el.closest === 'function'
+                ? el.closest('[role="tab"], [data-testid*="plugin-tab"], [data-testid*="sidecar-tab"]')
+                : null;
+            if (tabEl) {
+                const tabBar = typeof tabEl.closest === 'function' ? (tabEl.closest('[role="tablist"]') || tabEl.parentElement) : tabEl.parentElement;
+                let hasSidecarSibling = typeof tabEl.matches === 'function' && tabEl.matches('[data-testid*="plugin"], [data-testid*="sidecar"], [data-plugin-id]');
+                if (!hasSidecarSibling && tabBar) {
+                    const barText = norm(tabBar.textContent || '');
+                    const hasMultipleTabs = (tabBar.children && tabBar.children.length > 1) || (tabBar.childNodes && tabBar.childNodes.length > 1);
+                    if (hasMultipleTabs && /(?:Review|评审|評審|審查)/.test(barText)) {
+                        hasSidecarSibling = true;
+                    } else {
+                        let anc = tabBar.parentElement;
+                        for (let d = 0; anc && d < 4 && anc !== document.body && anc !== document.documentElement; d++, anc = anc.parentElement) {
+                            if (typeof anc.querySelector === 'function' && anc.querySelector('iframe[data-testid="sidecar-iframe"]')) {
+                                hasSidecarSibling = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (hasSidecarSibling && !BUILTIN_AUX_TABS.has(low)) {
+                    return true;
+                }
+            }
+            const pText = dfsParentTexts.get(el) || originalParentTexts.get(el) || el.textContent || '';
+            const gp = el.parentElement && el.parentElement !== document.body && el.parentElement !== document.documentElement ? el.parentElement : null;
+            const gpText = gp ? (dfsParentTexts.get(gp) || originalParentTexts.get(gp) || gp.textContent || '') : '';
+            const sentText = (pText.length < 300 ? pText : '') + '\n' + (gpText.length < 300 ? gpText : '');
+            if (/Stream and control|流式传输与控制|串流傳輸與控制/i.test(sentText) && /directly in the side pane|直接在侧边面板中|直接在側邊面板中/i.test(sentText)) {
+                if (low !== 'stream and control' && !low.startsWith('directly in the side pane') && !valNorm.includes('流式传输与控制') && !valNorm.includes('串流傳輸與控制')) {
+                    return true;
+                }
+            }
+            const modal = findSidecarDetailsModal(el);
+            if (modal) {
+                const mSet = protectedPluginNames.get(modal);
+                if (mSet && mSet.has(low)) return true;
+                if (!el.closest || !el.closest('button')) {
+                    const isHeading = typeof el.matches === 'function' && el.matches('h1, h2, h3, h4, [role="heading"]');
+                    let hasHeaderContext = isHeading;
+                    if (!hasHeaderContext) {
+                        let blk = el.parentElement;
+                        for (let d = 0; blk && blk !== modal && d < 3; d++, blk = blk.parentElement) {
+                            const bTxt = blk.textContent || '';
+                            if (bTxt.length < 180 && (/(?:Running|Stopped)(?=\s|$)|运行中|已停止|執行中/.test(bTxt) || /[a-z0-9._-]+\/[a-z0-9._-]+/i.test(bTxt))) {
+                                if (!/[a-z0-9._-]+\/[a-z0-9._-]+/i.test(valNorm)) {
+                                    hasHeaderContext = true;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    if (hasHeaderContext) {
+                        recordProtectedPluginName(modal, valNorm);
+                        return true;
+                    }
+                }
+            }
+        }
+        let cur = el;
+        for (let depth = 0; cur && depth < 6; depth++, cur = cur.parentElement) {
+            const pSet = protectedPluginNames.get(cur);
+            if (pSet && pSet.has(low)) return true;
+            if (typeof cur.matches === 'function' && cur.matches('[data-plugin-id], [data-plugin-name], [data-testid*="sidebar-plugin"], [data-testid*="plugin-sidebar"], [data-testid*="plugin-nav"], [data-testid*="plugin-tab"], [data-testid*="plugin-name"], [data-testid*="plugin-title"]')) {
+                return true;
+            }
+            if (typeof cur.matches === 'function' && cur.matches('section, div, ul') && typeof cur.closest === 'function' && cur.closest('nav, aside, [role="navigation"], [data-testid*="sidebar"]')) {
+                const headings = cur.querySelectorAll ? cur.querySelectorAll(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > [role="heading"]') : [];
+                if (headings.length === 1) {
+                    const hdr = headings[0];
+                    if (hdr !== el && !hdr.contains(node)) {
+                        const hdrText = norm(hdr.textContent || '');
+                        if (hdrText === 'Plugins' || hdrText === '插件' || hdrText === '外掛程式') {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     function translateElementAttributes(node) {
         if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
         const tag = node.tagName.toUpperCase();
@@ -2048,6 +2613,12 @@
             const v = node.getAttribute(attr);
             if (v) {
                 const t = norm(v);
+                if (attr === 'aria-label' || attr === 'title') {
+                    const plugMatch = t.match(/^(?:Open the\s+(.+?)\s+plugin|App view for\s+(.+)|Managed by the\s+(.+?)\s+plugin)$/i);
+                    if (plugMatch) {
+                        recordProtectedPluginName(node, plugMatch[1] || plugMatch[2] || plugMatch[3]);
+                    }
+                }
                 let newAttr = translatePermissionChoice(v);
                 if (!newAttr && inSwarmEl && Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, t)) {
                     newAttr = SCOPED_SWARM_MAP[t][USE_TW ? 1 : 0];
@@ -2072,7 +2643,13 @@
                         const showMatch = t.match(/^Show\s+(.+)$/i);
                         if (showMatch) {
                             const target = showMatch[1].trim();
-                            newAttr = (USE_TW ? '顯示 ' : '显示 ') + (lookupDict(target) || target);
+                            const inSidebarOrPlugin = Boolean(typeof node.closest === 'function' && node.closest('[data-plugin-id], [data-plugin-name], [data-testid*="plugin"], nav, aside, [role="navigation"], [data-testid*="sidebar"]'));
+                            if (inSidebarOrPlugin && !PLUGIN_UI_CHROME_SET.has(target.toLowerCase())) {
+                                recordProtectedPluginName(node, target);
+                                newAttr = (USE_TW ? '顯示 ' : '显示 ') + target;
+                            } else {
+                                newAttr = (USE_TW ? '顯示 ' : '显示 ') + (lookupDict(target) || target);
+                            }
                         }
                     }
                 }
@@ -2117,6 +2694,7 @@
     function translateNode(node) {
         try {
             if (!node) return;
+            if (isSubframeWindow() && !isBuiltInSidecarDocument()) return;
 
             if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
                 if (node.host && isCodeOrEditor(node.host)) return;
@@ -2132,7 +2710,10 @@
 
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return;
                 if (tag === 'OPTION' && !node.hasAttribute('value')) return;
-                if (isCodeOrEditor(node) || node.isContentEditable) return;
+                if (isCodeOrEditor(node) || node.isContentEditable) {
+                    if (!node.isContentEditable) translateIsolatedToolCallChrome(node);
+                    return;
+                }
                 if (node.classList && (node.classList.contains('monaco-editor') || node.classList.contains('terminal') || node.classList.contains('xterm'))) return;
 
                 // 处理 FastPick / 列表底部的 "Show <N> more..." 复合节点
@@ -2223,6 +2804,40 @@
                     }
                 }
 
+                // 处理插件侧边面板介绍 "Stream and control <pluginName> directly in the side pane."
+                if (/^(?:Stream and control|流式传输与控制|串流傳輸與控制)\s+.+?\s+directly in the side pane\.?$/i.test(elText)) {
+                    const modal = findSidecarDetailsModal(node);
+                    for (const c of Array.from(node.childNodes)) {
+                        if (c.nodeType === Node.TEXT_NODE) {
+                            const n = norm(c.nodeValue);
+                            if (/^(?:Stream and control|流式传输与控制|串流傳輸與控制)$/i.test(n)) {
+                                c.nodeValue = USE_TW ? '直接在側邊面板中串流傳輸與控制 ' : '直接在侧边面板中流式传输与控制 ';
+                                translatedValues.set(c, c.nodeValue);
+                            } else if (/^directly in the side pane\.?$/i.test(n)) {
+                                c.nodeValue = '。';
+                                translatedValues.set(c, c.nodeValue);
+                            } else if (n) {
+                                recordProtectedPluginName(node, n);
+                                if (modal) recordProtectedPluginName(modal, n);
+                            }
+                        } else if (c.nodeType === Node.ELEMENT_NODE) {
+                            const cname = norm(c.textContent || '');
+                            if (cname) {
+                                recordProtectedPluginName(node, cname);
+                                if (modal) recordProtectedPluginName(modal, cname);
+                            }
+                        }
+                    }
+                }
+
+                const elChildrenCount = node.children ? node.children.length : Array.from(node.childNodes || []).filter(c => c.nodeType === Node.ELEMENT_NODE).length;
+                if (elChildrenCount === 0 && node.childNodes.length > 1) {
+                    const truncZh = translateTruncatedNotice(norm(elText));
+                    if (truncZh && replaceElementTextNodes(node, truncZh)) {
+                        return;
+                    }
+                }
+
                 if (node.shadowRoot) {
                     observeRoot(node.shadowRoot);
                     translateNode(node.shadowRoot);
@@ -2242,7 +2857,12 @@
                 }
 
             } else if (node.nodeType === Node.TEXT_NODE) {
-                if (isCodeOrEditor(node)) return;
+                if (isCodeOrEditor(node)) {
+                    if (node.parentElement && !node.parentElement.isContentEditable) {
+                        translateIsolatedToolCallChrome(node.parentElement);
+                    }
+                    return;
+                }
 
                 let originalVal = node.nodeValue;
                 if (!originalVal || originalVal.trim().length < 1) return;
@@ -2286,6 +2906,7 @@
                 }
 
                 const valNorm = norm(originalVal);
+                if (isSlashCommandNameNode(node, valNorm) || isSidebarPluginNameNode(node, valNorm)) return;
                 const cachedValue = translatedValues.get(node);
                 if ((valNorm === 'New' || (cachedValue === originalVal && valNorm === map.get('New'))) && isModelMenuText(node)) {
                     if (originalVal !== '新') {
@@ -2349,7 +2970,19 @@
                 const scopedSwarmHit = (inSwarmText && Object.prototype.hasOwnProperty.call(SCOPED_SWARM_MAP, valNorm))
                     ? SCOPED_SWARM_MAP[valNorm][USE_TW ? 1 : 0]
                     : null;
-                const commonTrans = scopedSwarmHit !== null ? scopedSwarmHit : translateExactOrDynamic(valNorm);
+                let scopedFilesChangedHit = null;
+                if (scopedSwarmHit === null && /^files?\s+changed$/i.test(valNorm) && node.parentElement) {
+                    const p = node.parentElement;
+                    const pText = dfsParentTexts.get(p) || originalParentTexts.get(p) || p.textContent || '';
+                    const gp = p.parentElement && typeof document !== 'undefined' && p.parentElement !== document.body && p.parentElement !== document.documentElement ? p.parentElement : null;
+                    const gpText = gp ? (dfsParentTexts.get(gp) || originalParentTexts.get(gp) || gp.textContent || '') : '';
+                    if (/^\d+\s*files?\s+changed\b/i.test(pText.trim()) || (gpText.length < 120 && /^\d+\s*files?\s+changed\b/i.test(gpText.trim()))) {
+                        scopedFilesChangedHit = (originalVal.startsWith(' ') ? ' ' : '') + (USE_TW ? '個檔案已變更' : '个文件已更改');
+                    }
+                }
+                const commonTrans = scopedSwarmHit !== null
+                    ? scopedSwarmHit
+                    : (scopedFilesChangedHit !== null ? scopedFilesChangedHit : translateExactOrDynamic(valNorm));
                 if (commonTrans !== null) {
                     newVal = commonTrans;
                 } else {
@@ -2431,6 +3064,16 @@
         pendingNodes.clear();
         pendingMenuRefreshTargets.clear();
 
+        if (isSubframeWindow()) {
+            if (!isBuiltInSidecarDocument()) return;
+            if (!subframeActivated) {
+                subframeActivated = true;
+                const rootTarget = typeof document !== 'undefined' ? (document.body || document.documentElement) : null;
+                if (rootTarget) translateNode(rootTarget);
+                return;
+            }
+        }
+
         const queuedSet = new Set(nodes);
         for (const n of attrNodes) {
             if (!queuedSet.has(n)) {
@@ -2503,7 +3146,10 @@
         if (target) {
             try {
                 observeRoot(target);
-                translateNode(target);
+                if (!isSubframeWindow() || isBuiltInSidecarDocument()) {
+                    if (isSubframeWindow()) subframeActivated = true;
+                    translateNode(target);
+                }
             } catch (e) {}
         }
     };
