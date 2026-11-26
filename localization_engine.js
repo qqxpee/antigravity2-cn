@@ -304,9 +304,9 @@ function normalizeText(text) {
                .replace(/…/g, '...');
 }
 
-function loadDictionary() {
+function loadDictionary({ useTw = USE_TW, brandTitle = BRAND_TITLE_MODE } = {}) {
     const totalMap = {};
-    const dictsDir = path.join(__dirname, DICTS_FOLDER);
+    const dictsDir = path.join(__dirname, useTw ? 'dicts_tw' : 'dicts');
     if (!fs.existsSync(dictsDir)) {
         throw new Error(`词典目录不存在: ${dictsDir}`);
     }
@@ -327,22 +327,24 @@ function loadDictionary() {
     if (Object.keys(totalMap).length === 0) {
         throw new Error(`词典目录未加载到有效词条: ${dictsDir}`);
     }
-    if (BRAND_TITLE_MODE === 'english') {
+    if (brandTitle === 'english') {
         delete totalMap[normalizeText('Antigravity')];
-    } else if (BRAND_TITLE_MODE === 'hidden') {
+    } else if (brandTitle === 'hidden') {
         totalMap[normalizeText('Antigravity')] = '';
     }
     return totalMap;
 }
 
-function generateJs() {
-    const fullDict = loadDictionary();
+function generateJs(options = {}) {
+    const useTw = options.useTw !== undefined ? Boolean(options.useTw) : USE_TW;
+    const brandTitle = options.brandTitle !== undefined ? String(options.brandTitle) : BRAND_TITLE_MODE;
+    const fullDict = loadDictionary({ useTw, brandTitle });
     const dictJson = JSON.stringify(fullDict);
     const runtimePath = path.join(__dirname, 'src', 'preload_runtime.js');
     const runtimeTemplate = fs.readFileSync(runtimePath, 'utf-8');
 
     const body = runtimeTemplate
-        .replace('__USE_TW_PLACEHOLDER__', () => (USE_TW ? 'true' : 'false'))
+        .replace('__USE_TW_PLACEHOLDER__', () => (useTw ? 'true' : 'false'))
         .replace('DICT_PLACEHOLDER', () => dictJson);
 
     return `${SIGNATURE_START}\n${body}\n${SIGNATURE_END}`;
@@ -847,6 +849,29 @@ function printMacAppManagementHint() {
     console.error("[权限] 授权后请按 Cmd+Q 完全退出该终端并重新打开，再重新运行本脚本。");
 }
 
+function collectLinuxForwardEnvVars(keys) {
+    const pairs = [];
+    for (const k of keys) {
+        if (process.env[k]) pairs.push(`${k}=${process.env[k]}`);
+    }
+    return pairs;
+}
+
+const LINUX_GUI_PROXY_ENV_KEYS = [
+    'DISPLAY',
+    'WAYLAND_DISPLAY',
+    'XAUTHORITY',
+    'XDG_RUNTIME_DIR',
+    'DBUS_SESSION_BUS_ADDRESS',
+    'XDG_CONFIG_HOME',
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'ALL_PROXY',
+    'http_proxy',
+    'https_proxy',
+    'all_proxy'
+];
+
 function ensureWritePermission(targetDir) {
     if (process.platform === 'win32') {
         const probeFile = path.join(targetDir, `.ag-write-check-${process.pid}.tmp`);
@@ -869,7 +894,7 @@ function ensureWritePermission(targetDir) {
     } catch (err) {
         const isPermissionError = err && (err.code === 'EPERM' || err.code === 'EACCES');
         const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
-        if (isPermissionError && isRoot) {
+        if (process.platform === 'darwin' && isPermissionError && isRoot) {
             printMacAppManagementHint();
             return false;
         }
@@ -887,10 +912,7 @@ function ensureWritePermission(targetDir) {
             const forwardArgs = hasBrandArg ? args : [...args, '--brand-title', BRAND_TITLE_MODE];
             const sudoArgs = [];
             if (process.platform === 'linux') {
-                const preservedVars = [];
-                for (const k of ['PATH', 'DISPLAY', 'WAYLAND_DISPLAY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_CONFIG_HOME', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) {
-                    if (process.env[k]) preservedVars.push(`${k}=${process.env[k]}`);
-                }
+                const preservedVars = collectLinuxForwardEnvVars(['PATH', ...LINUX_GUI_PROXY_ENV_KEYS]);
                 if (preservedVars.length > 0) {
                     sudoArgs.push('env', ...preservedVars);
                 }
@@ -1443,9 +1465,7 @@ async function main() {
                         if (process.getuid && process.getuid() === 0 && sudoInfo) {
                             const userEnv = [];
                             if (sudoInfo.home) userEnv.push(`HOME=${sudoInfo.home}`);
-                            for (const k of ['DISPLAY', 'WAYLAND_DISPLAY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_CONFIG_HOME', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) {
-                                if (process.env[k]) userEnv.push(`${k}=${process.env[k]}`);
-                            }
+                            userEnv.push(...collectLinuxForwardEnvVars(LINUX_GUI_PROXY_ENV_KEYS));
                             child = child_process.spawn('sudo', ['-u', sudoInfo.user, 'env', ...userEnv, launcher], {
                                 detached: true,
                                 stdio: 'ignore'

@@ -880,6 +880,22 @@ test('ensure_localized detects outdated injected preload payload and refreshes l
     assert.equal(ensure.isLocalized(asarPath), true);
     assert.equal(ensure.isLocalizationCurrent(asarPath, { useTw: false, brandTitle: 'english' }), false);
 
+    // Status check without --fix returns 2 when payload is outdated; --launch without --fix still launches and returns 0
+    assert.equal(ensure.main([`--install-dir=${fakeInstall}`, '--sc', '--brand-title=english'], {
+        platform: 'win32',
+        execFileSync: () => 'INFO: No tasks.\r\n'
+    }), 2);
+    let launchedWithoutFix = false;
+    assert.equal(ensure.main(['--launch', `--install-dir=${fakeInstall}`, '--sc', '--brand-title=english'], {
+        platform: 'win32',
+        execFileSync: () => 'INFO: No tasks.\r\n',
+        spawn: () => {
+            launchedWithoutFix = true;
+            return { unref() {} };
+        }
+    }), 0);
+    assert.equal(launchedWithoutFix, true);
+
     const freshBlock = ensure.buildExpectedInjectedBlock({ useTw: false, brandTitle: 'english' });
     let reInjected = false;
     let launched = false;
@@ -907,12 +923,13 @@ test('Linux native support detects install dirs, wrappers, /proc PIDs, XDG cache
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-linux-support-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
-    // 1. Linux shell launchers must use LF (no CRLF) and UTF-8 without BOM
+    // 1. Linux shell launchers must use LF (no CRLF), UTF-8 without BOM, and version-sorted nvm lookup
     for (const shFile of ['install_linux.sh', 'uninstall_linux.sh']) {
         const shPath = path.join(repoRoot, shFile);
         const buf = fs.readFileSync(shPath);
         assert.equal(buf.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])), false, `${shFile} must not have UTF-8 BOM`);
         assert.equal(buf.includes(0x0d), false, `${shFile} must use LF line endings`);
+        assert.match(buf.toString('utf8'), /CURR_NODE_MAJOR/, `${shFile} must use version-sorted nvm lookup`);
         if (process.platform !== 'win32') {
             const stat = fs.statSync(shPath);
             assert.ok((stat.mode & 0o111) !== 0, `${shFile} must be executable`);
@@ -932,14 +949,15 @@ test('Linux native support detects install dirs, wrappers, /proc PIDs, XDG cache
     fs.writeFileSync(fakeBin, '#!/bin/sh\n', 'utf8');
 
     const wrapperPath = path.join(root, 'wrapper-antigravity');
-    fs.writeFileSync(wrapperPath, `#!/bin/bash\nAPP_DIR="${fakeInstall}"\nexec "$APP_DIR/antigravity" "$@"\n`, 'utf8');
+    const wrapperTarget = process.platform === 'win32' ? '/opt/antigravity-test' : fakeInstall;
+    fs.writeFileSync(wrapperPath, `#!/bin/bash\nAPP_DIR="${wrapperTarget}"\nexec "$APP_DIR/antigravity" "$@"\n`, 'utf8');
     const wrapperDirs = engine.extractLinuxDirsFromWrapper(wrapperPath);
-    assert.ok(wrapperDirs.includes(fakeInstall));
+    assert.ok(wrapperDirs.includes(wrapperTarget));
 
     const desktopPath = path.join(root, 'antigravity.desktop');
     fs.writeFileSync(desktopPath, `[Desktop Entry]\nName=Antigravity\nExec="${wrapperPath}" %U\n`, 'utf8');
     const desktopDirs = engine.extractLinuxDirsFromDesktopFile(desktopPath);
-    assert.ok(desktopDirs.includes(fakeInstall));
+    assert.ok(desktopDirs.includes(wrapperTarget));
 
     assert.equal(engine.resolveLinuxAppRoot(fakeRes), path.resolve(fakeInstall));
     assert.equal(engine.findLinuxExecutable(fakeInstall), fakeBin);
@@ -1010,4 +1028,19 @@ test('Linux native support detects install dirs, wrappers, /proc PIDs, XDG cache
             assert.equal(permCheck.stdout.trim(), 'false');
         }
     }
+
+    // 7. Linux root EACCES must not emit macOS-only App Management / Cmd+Q guidance
+    const linuxRootScript = [
+        "const fs = require('fs');",
+        "Object.defineProperty(process, 'platform', { value: 'linux' });",
+        "Object.defineProperty(process, 'getuid', { value: () => 0, configurable: true });",
+        "fs.accessSync = () => { const e = new Error('denied'); e.code = 'EACCES'; throw e; };",
+        "const { ensureWritePermission } = require('./localization_engine');",
+        "process.stdout.write('RESULT=' + ensureWritePermission('/opt/antigravity/resources'));"
+    ].join('\n');
+    const linuxRootRes = childProcess.spawnSync(process.execPath, ['-e', linuxRootScript], { cwd: repoRoot, encoding: 'utf8' });
+    assert.equal(linuxRootRes.status, 0, linuxRootRes.stderr);
+    const linuxRootOut = `${linuxRootRes.stdout}\n${linuxRootRes.stderr}`;
+    assert.match(linuxRootOut, /RESULT=false/);
+    assert.doesNotMatch(linuxRootOut, /App 管理|Cmd\+Q/);
 });

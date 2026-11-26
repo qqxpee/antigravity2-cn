@@ -502,44 +502,15 @@ function main(argv = process.argv.slice(2), deps = {}) {
         }
     }
 
-    return (localized && upToDate) ? 0 : 2;
-}
-
-function normalizeDictKey(text) {
-    if (!text) return '';
-    return text.replace(/\s+/g, ' ')
-        .trim()
-        .replace(/’/g, "'")
-        .replace(/‘/g, "'")
-        .replace(/“/g, '"')
-        .replace(/”/g, '"')
-        .replace(/…/g, '...');
+    return (localized && (upToDate || (!parsed.fix && parsed.launch))) ? 0 : 2;
 }
 
 function buildExpectedInjectedBlock(prefs) {
-    const useTw = Boolean(prefs && prefs.useTw);
-    const brandTitle = String((prefs && prefs.brandTitle) || 'english');
-    const dictsDir = path.join(ROOT, useTw ? 'dicts_tw' : 'dicts');
-    const totalMap = {};
-    const files = fs.readdirSync(dictsDir).filter(f => f.endsWith('.json')).sort();
-    for (const file of files) {
-        const data = JSON.parse(fs.readFileSync(path.join(dictsDir, file), 'utf8'));
-        for (const [k, v] of Object.entries(data)) {
-            const normK = normalizeDictKey(k);
-            if (normK) totalMap[normK] = v;
-        }
-    }
-    if (brandTitle === 'english') {
-        delete totalMap[normalizeDictKey('Antigravity')];
-    } else if (brandTitle === 'hidden') {
-        totalMap[normalizeDictKey('Antigravity')] = '';
-    }
-    const dictJson = JSON.stringify(totalMap);
-    const runtimeTemplate = fs.readFileSync(path.join(ROOT, 'src', 'preload_runtime.js'), 'utf8');
-    const body = runtimeTemplate
-        .replace('__USE_TW_PLACEHOLDER__', () => (useTw ? 'true' : 'false'))
-        .replace('DICT_PLACEHOLDER', () => dictJson);
-    return `${SIGNATURE_START}\n${body}\n${SIGNATURE_END}`;
+    const { generateJs } = require('../localization_engine');
+    return generateJs({
+        useTw: Boolean(prefs && prefs.useTw),
+        brandTitle: String((prefs && prefs.brandTitle) || 'english')
+    });
 }
 
 function isLocalizationCurrent(asarPath, prefs) {

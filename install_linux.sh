@@ -29,9 +29,28 @@ for p in \
 do
     [ -d "$p" ] && export PATH="$p:$PATH"
 done
-for p in "$REAL_HOME"/.nvm/versions/node/*/bin; do
-    [ -d "$p" ] && export PATH="$p:$PATH"
-done
+# 按版本号升序排序后再按版本门槛前置到 PATH（避免旧版 nvm 覆盖新版 Node）
+CURR_NODE_MAJOR=0
+if command -v node >/dev/null 2>&1; then
+    CURR_NODE_MAJOR=$(node -v 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p')
+    CURR_NODE_MAJOR=${CURR_NODE_MAJOR:-0}
+fi
+while IFS=$'\t' read -r cand_major p; do
+    if [ -d "$p" ] && [ "${cand_major:-0}" -ge "$CURR_NODE_MAJOR" ]; then
+        export PATH="$p:$PATH"
+        CURR_NODE_MAJOR=$cand_major
+    fi
+done < <(
+    for d in "$REAL_HOME"/.nvm/versions/node/*/bin; do
+        [ -d "$d" ] && printf '%s\n' "$d"
+    done | awk -F/ '{
+        seg = $(NF-1);
+        if (match(seg, /[0-9]+(\.[0-9]+)*/)) {
+            split(substr(seg, RSTART, RLENGTH), a, ".");
+            printf "%06d%06d%06d\t%d\t%s\n", a[1]+0, a[2]+0, a[3]+0, a[1]+0, $0;
+        }
+    }' | LC_ALL=C sort | cut -f2-
+)
 
 USE_TW=false
 HAS_BRAND_ARG=false
