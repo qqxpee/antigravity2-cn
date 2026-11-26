@@ -7,7 +7,7 @@
     const USE_TW = __USE_TW_PLACEHOLDER__;
     const map = new Map(Object.entries(DICT_PLACEHOLDER));
     const lowerMap = new Map();
-    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator', 'verify']);
+    const LOWER_WORDS_EXCLUDE = new Set(['on', 'in', 'to', 'at', 'by', 'for', 'with', 'as', 'system', 'review', 'active', 'browser', 'global', 'including', 'and', 'or', 'file', 'files', 'help', 'app', 'plan', 'search', 'coordinator', 'verify', 'applied', 'chosen', 'failed', 'move', 'never', 'resolve', 'self']);
     for (const [k, v] of map.entries()) {
         const lowerK = k.toLowerCase();
         if (LOWER_WORDS_EXCLUDE.has(lowerK) && k !== lowerK) {
@@ -1602,6 +1602,7 @@
         [/^(\d+)\s+days$/i, (m, d) => d + ' 天'],
         [/^(.+?) annotation on page (\d+)$/i, (m, kind, p) => USE_TW ? ('第 ' + p + ' 頁的 ' + kind + ' 註解') : ('第 ' + p + ' 页的 ' + kind + ' 批注')],
         [/^Applied\s+(.+)$/i, (m, target) => (USE_TW ? '已套用 ' : '已应用 ') + target],
+        [/^Show\s+(.+?)\s+in the list again$/i, (m, host) => (USE_TW ? '重新在清單中顯示 ' : '重新在列表中显示 ') + host],
 
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {

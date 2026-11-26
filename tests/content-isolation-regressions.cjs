@@ -1078,3 +1078,33 @@ test('v2.35.1 additional UI badges, attributes, plan toggles and TW 已發布 ho
     assert.equal(domTw.window.document.getElementById('trig').textContent, '已觸發 nightly-sync');
     assert.equal(domTw.window.document.getElementById('tok').textContent, '規則：1,200 Token');
 });
+
+test('PR #68 short words do not pollute lowercase identifiers and Show <host> in the list again translates cleanly', async t => {
+    const html = `
+      <div>
+        <span id="lc-move">move</span>
+        <span id="lc-never">never</span>
+        <span id="lc-self">self</span>
+        <span id="lc-failed">failed</span>
+        <span id="lc-resolve">resolve</span>
+        <span id="tc-move">Move</span>
+        <button id="show-host" aria-label="Show example.com in the list again">x</button>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('lc-move').textContent, 'move');
+    assert.equal(w.document.getElementById('lc-never').textContent, 'never');
+    assert.equal(w.document.getElementById('lc-self').textContent, 'self');
+    assert.equal(w.document.getElementById('lc-failed').textContent, 'failed');
+    assert.equal(w.document.getElementById('lc-resolve').textContent, 'resolve');
+    assert.equal(w.document.getElementById('tc-move').textContent, '移动');
+    assert.equal(w.document.getElementById('show-host').getAttribute('aria-label'), '重新在列表中显示 example.com');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('lc-self').textContent, 'self');
+    assert.equal(domTw.window.document.getElementById('tc-move').textContent, '移動');
+    assert.equal(domTw.window.document.getElementById('show-host').getAttribute('aria-label'), '重新在清單中顯示 example.com');
+});

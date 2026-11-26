@@ -800,3 +800,22 @@ test('checkSupportedNodeVersion rejects Node < 20 and accepts Node >= 20', () =>
         }
     }
 });
+
+test('compareNodeVersions, resolveCheckNode and macOS .command launchers avoid BSD-incompatible sort -V', () => {
+    const { compareNodeVersions, resolveCheckNode } = require('../localization_engine');
+    const sorted = ['v8.17.0', 'v24.2.0', 'v14.21.3', 'v20.18.0'].sort(compareNodeVersions);
+    assert.deepEqual(sorted, ['v8.17.0', 'v14.21.3', 'v20.18.0', 'v24.2.0']);
+    assert.equal(resolveCheckNode(), process.execPath);
+
+    const fs = require('fs');
+    const path = require('path');
+    const cmdFiles = ['双击安装中文汉化.command', '双击安装繁体中文.command', '双击卸载还原官方英文.command'];
+    for (const file of cmdFiles) {
+        const raw = fs.readFileSync(path.join(__dirname, '..', file));
+        assert.ok(!(raw[0] === 0xef && raw[1] === 0xbb && raw[2] === 0xbf), `${file} must not have UTF-8 BOM`);
+        const text = raw.toString('utf8');
+        assert.ok(!text.includes('\r\n'), `${file} must use LF line endings`);
+        assert.ok(!/\bsort\s+-V\b/.test(text), `${file} must not use GNU-only sort -V on macOS`);
+        assert.match(text, /CURR_NODE_MAJOR/);
+    }
+});

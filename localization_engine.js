@@ -982,7 +982,7 @@ async function main() {
     if (typeof require === 'function' && typeof module !== 'undefined' && require.main !== module) {
         return;
     }
-    if (!checkSupportedNodeVersion()) {
+    if (!process.argv.includes('--huifu') && !checkSupportedNodeVersion()) {
         process.exit(1);
     }
     let huifu = false;
@@ -1137,7 +1137,9 @@ if (typeof module !== 'undefined' && module.exports) {
         canRestartApp,
         resolveBrandTitleChoice,
         promptBrandTitleMode,
-        checkSupportedNodeVersion
+        checkSupportedNodeVersion,
+        compareNodeVersions,
+        resolveCheckNode
     };
 }
 

@@ -19,10 +19,28 @@ export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/opt/local/bin:
 for p in "$REAL_HOME/.volta/bin" "$REAL_HOME/.asdf/shims" "$REAL_HOME/.local/share/mise/shims" "$REAL_HOME/.local/bin" "$REAL_HOME/.fnm/current/bin" "$REAL_HOME/.local/share/fnm/aliases/default/bin" "$REAL_HOME/Library/Application Support/fnm/aliases/default/bin"; do
     [ -d "$p" ] && export PATH="$p:$PATH"
 done
-# 依版本號排序後再加入 PATH，確保優先採用最新版 Node（避免 v8 等舊版排在最前導致語法校驗失敗）
-while IFS= read -r p; do
-    [ -d "$p" ] && export PATH="$p:$PATH"
-done < <(printf '%s\n' "$REAL_HOME"/.nvm/versions/node/*/bin /opt/homebrew/opt/node@*/bin /usr/local/opt/node@*/bin | sort -V)
+# 依版本號升序排序後再依版本門檻前置至 PATH（相容 macOS BSD sort，避免舊版 nvm 搶佔新版路徑）
+CURR_NODE_MAJOR=0
+if command -v node >/dev/null 2>&1; then
+    CURR_NODE_MAJOR=$(node -v 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p')
+    CURR_NODE_MAJOR=${CURR_NODE_MAJOR:-0}
+fi
+while IFS=$'\t' read -r cand_major p; do
+    if [ -d "$p" ] && [ "${cand_major:-0}" -ge "$CURR_NODE_MAJOR" ]; then
+        export PATH="$p:$PATH"
+        CURR_NODE_MAJOR=$cand_major
+    fi
+done < <(
+    for d in "$REAL_HOME"/.nvm/versions/node/*/bin /opt/homebrew/opt/node@*/bin /usr/local/opt/node@*/bin; do
+        [ -d "$d" ] && printf '%s\n' "$d"
+    done | awk -F/ '{
+        seg = $(NF-1);
+        if (match(seg, /[0-9]+(\.[0-9]+)*/)) {
+            split(substr(seg, RSTART, RLENGTH), a, ".");
+            printf "%06d%06d%06d\t%d\t%s\n", a[1]+0, a[2]+0, a[3]+0, a[1]+0, $0;
+        }
+    }' | LC_ALL=C sort | cut -f2-
+)
 
 # 檢查管理員權限，若不是 root 則自動透過 sudo 提權並保留環境變數
 if [ "$EUID" -ne 0 ]; then
