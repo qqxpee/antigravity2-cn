@@ -901,3 +901,113 @@ test('ensure_localized detects outdated injected preload payload and refreshes l
     assert.equal(launched, true);
     assert.equal(ensure.isLocalizationCurrent(asarPath, { useTw: false, brandTitle: 'english' }), true);
 });
+
+test('Linux native support detects install dirs, wrappers, /proc PIDs, XDG caches, and shell scripts use LF + UTF-8', t => {
+    const repoRoot = path.resolve(__dirname, '..');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-linux-support-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    // 1. Linux shell launchers must use LF (no CRLF) and UTF-8 without BOM
+    for (const shFile of ['install_linux.sh', 'uninstall_linux.sh']) {
+        const shPath = path.join(repoRoot, shFile);
+        const buf = fs.readFileSync(shPath);
+        assert.equal(buf.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])), false, `${shFile} must not have UTF-8 BOM`);
+        assert.equal(buf.includes(0x0d), false, `${shFile} must use LF line endings`);
+        if (process.platform !== 'win32') {
+            const stat = fs.statSync(shPath);
+            assert.ok((stat.mode & 0o111) !== 0, `${shFile} must be executable`);
+            const check = childProcess.spawnSync('bash', ['-n', shPath], { encoding: 'utf8' });
+            assert.equal(check.status, 0, check.stderr);
+        }
+    }
+
+    const engine = require(path.join(repoRoot, 'localization_engine.js'));
+
+    // 2. Wrapper script & .desktop parsing
+    const fakeInstall = path.join(root, 'opt', 'antigravity');
+    const fakeRes = path.join(fakeInstall, 'resources');
+    fs.mkdirSync(fakeRes, { recursive: true });
+    writeArchive(path.join(fakeRes, 'app.asar'), { 'dist/preload.js': { body: '// original' } });
+    const fakeBin = path.join(fakeInstall, 'antigravity');
+    fs.writeFileSync(fakeBin, '#!/bin/sh\n', 'utf8');
+
+    const wrapperPath = path.join(root, 'wrapper-antigravity');
+    fs.writeFileSync(wrapperPath, `#!/bin/bash\nAPP_DIR="${fakeInstall}"\nexec "$APP_DIR/antigravity" "$@"\n`, 'utf8');
+    const wrapperDirs = engine.extractLinuxDirsFromWrapper(wrapperPath);
+    assert.ok(wrapperDirs.includes(fakeInstall));
+
+    const desktopPath = path.join(root, 'antigravity.desktop');
+    fs.writeFileSync(desktopPath, `[Desktop Entry]\nName=Antigravity\nExec="${wrapperPath}" %U\n`, 'utf8');
+    const desktopDirs = engine.extractLinuxDirsFromDesktopFile(desktopPath);
+    assert.ok(desktopDirs.includes(fakeInstall));
+
+    assert.equal(engine.resolveLinuxAppRoot(fakeRes), path.resolve(fakeInstall));
+    assert.equal(engine.findLinuxExecutable(fakeInstall), fakeBin);
+    assert.equal(engine.findLinuxExecutable(fakeRes), fakeBin);
+
+    if (process.platform === 'linux') {
+        assert.equal(engine.canRestartApp(fakeInstall), true);
+        assert.equal(engine.canRestartApp(path.join(root, 'empty-dir')), false);
+
+        // 3. Auto-detect via ANTIGRAVITY_INSTALL_DIR and PATH wrapper
+        const prevEnvDir = process.env.ANTIGRAVITY_INSTALL_DIR;
+        process.env.ANTIGRAVITY_INSTALL_DIR = fakeInstall;
+        t.after(() => {
+            if (prevEnvDir === undefined) delete process.env.ANTIGRAVITY_INSTALL_DIR;
+            else process.env.ANTIGRAVITY_INSTALL_DIR = prevEnvDir;
+        });
+        assert.equal(engine.detectInstallationDir(), path.resolve(fakeInstall));
+
+        // 4. /proc PID matching scoped to installDir
+        const fakeProc = path.join(root, 'proc');
+        const otherInstall = path.join(root, 'other', 'antigravity');
+        fs.mkdirSync(otherInstall, { recursive: true });
+        const otherBin = path.join(otherInstall, 'antigravity');
+        fs.writeFileSync(otherBin, '', 'utf8');
+        fs.mkdirSync(path.join(fakeProc, '424242'), { recursive: true });
+        fs.mkdirSync(path.join(fakeProc, '424243'), { recursive: true });
+        fs.mkdirSync(path.join(fakeProc, '424244'), { recursive: true });
+        fs.symlinkSync(fakeBin, path.join(fakeProc, '424242', 'exe'));
+        fs.symlinkSync(otherBin, path.join(fakeProc, '424243', 'exe'));
+        fs.symlinkSync('/bin/sh', path.join(fakeProc, '424244', 'exe'));
+        assert.deepEqual(engine.findLinuxAppPids(fakeInstall, fakeProc), [424242]);
+        assert.deepEqual(engine.findLinuxAppPids(fakeRes, fakeProc), [424242]);
+
+        // 5. XDG_CONFIG_HOME cache cleanup preserves Local Storage and clears Antigravity / antigravity caches
+        const fakeConfig = path.join(root, 'xdg-config');
+        const topCache = path.join(fakeConfig, 'Antigravity', 'Code Cache');
+        const partCache = path.join(fakeConfig, 'Antigravity', 'Partitions', 'hub-browser-1', 'Cache');
+        const lowerCache = path.join(fakeConfig, 'antigravity', 'GPUCache');
+        const keepData = path.join(fakeConfig, 'Antigravity', 'Partitions', 'hub-browser-1', 'Local Storage');
+        for (const d of [topCache, partCache, lowerCache, keepData]) {
+            fs.mkdirSync(d, { recursive: true });
+            fs.writeFileSync(path.join(d, 'dummy.bin'), 'x');
+        }
+        const prevXdg = process.env.XDG_CONFIG_HOME;
+        process.env.XDG_CONFIG_HOME = fakeConfig;
+        t.after(() => {
+            if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+            else process.env.XDG_CONFIG_HOME = prevXdg;
+        });
+        engine.cleanElectronCache();
+        assert.equal(fs.existsSync(topCache), false);
+        assert.equal(fs.existsSync(partCache), false);
+        assert.equal(fs.existsSync(lowerCache), false);
+        assert.equal(fs.existsSync(keepData), true);
+
+        // 6. ensureWritePermission on Linux non-TTY returns false for unwritable dir instead of invoking sudo
+        if (process.getuid && process.getuid() !== 0) {
+            const roDir = path.join(root, 'readonly-res');
+            fs.mkdirSync(roDir, { recursive: true });
+            fs.chmodSync(roDir, 0o555);
+            t.after(() => { try { fs.chmodSync(roDir, 0o755); } catch (_e) {} });
+            const permCheck = childProcess.spawnSync(
+                process.execPath,
+                ['-e', `const { ensureWritePermission } = require('./localization_engine'); process.stdout.write(String(ensureWritePermission(${JSON.stringify(roDir)})));`],
+                { cwd: repoRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+            );
+            assert.equal(permCheck.status, 0, permCheck.stderr);
+            assert.equal(permCheck.stdout.trim(), 'false');
+        }
+    }
+});
