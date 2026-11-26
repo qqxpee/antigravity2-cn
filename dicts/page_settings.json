@@ -94,6 +94,7 @@
   "ACCOUNT": "账户",
   "Your Plan: Google AI Pro": "您的计划：Google AI Pro",
   "You can upgrade to the Google AI Ultra plan to receive the highest rate limits.": "您可以升级到 Google AI Ultra 计划以获得最高的速率限制。",
+  "Free users and Google AI Plus users receive the minimum base limits on Antigravity. You can upgrade to Google AI Pro or above to receive higher rate limits.": "免费用户和 Google AI Plus 用户在 Antigravity 上享有最低基础限额。您可以升级到 Google AI Pro 或更高方案以获得更高的速率限制。",
   "Upgrade": "升级",
   "Enable AI Credit Overages": "启用 AI 额度超量使用",
   "When toggled on, Antigravity will use your AI credits to fulfill model requests once you're out of model quota. Antigravity will always use your model quota first before using AI credits.": "开启后，当您的模型配额耗尽时，反重力智能编程将使用您的 AI 额度来满足模型请求。反重力智能编程始终会先使用您的模型配额，然后再使用 AI 额度。",

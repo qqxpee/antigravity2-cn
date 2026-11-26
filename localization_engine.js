@@ -1306,17 +1306,16 @@ function promptBrandTitleMode(useTw = USE_TW, { input = process.stdin, output = 
 function checkSupportedNodeVersion() {
     var parts = String((typeof process !== 'undefined' && process.versions && process.versions.node) || '0.0.0').split('.');
     var major = parseInt(parts[0], 10) || 0;
-    var minor = parseInt(parts[1], 10) || 0;
-    if (major < 20) {
+    if (major < 16) {
         console.error(USE_TW
-            ? '[錯誤] 目前 Node.js 版本過舊 (' + process.versions.node + ')，無法解析 Antigravity 2.x 現代語法（例如 Optional Chaining `?.`）。請安裝 Node.js 22 LTS 以上版本，並確認終端機 PATH 優先指向新版 node。'
-            : '[错误] 当前 Node.js 版本过低 (' + process.versions.node + ')，无法校验 Antigravity 2.x 现代语法（如 Optional Chaining `?.`）。请安装 Node.js 22 LTS 及以上版本，并确认终端 PATH 优先指向新版 node。');
+            ? '[錯誤] 目前 Node.js 版本過舊 (' + process.versions.node + ')，無法相容 Antigravity 2.x 現代語法或安裝引擎需求。請安裝 Node.js 18 LTS 以上版本，並確認終端機 PATH 優先指向新版 node。'
+            : '[错误] 当前 Node.js 版本过低 (' + process.versions.node + ')，无法兼容 Antigravity 2.x 现代语法或安装引擎需求。请安装 Node.js 18 LTS 及以上版本，并确认终端 PATH 优先指向新版 node。');
         return false;
     }
-    if (major < 22 || (major === 22 && minor < 12)) {
+    if (major < 18) {
         console.warn(USE_TW
-            ? '[警告] 偵測到 Node.js 版本為 ' + process.versions.node + '（建議使用 22.12.0 以上版本以獲得完整相容性）。'
-            : '[警告] 检测到 Node.js 版本为 ' + process.versions.node + '（建议使用 22.12.0 及以上版本以获得完整兼容性）。');
+            ? '[警告] 偵測到 Node.js 版本為 ' + process.versions.node + '（建議使用 18 LTS 以上版本以獲得完整相容性）。'
+            : '[警告] 检测到 Node.js 版本为 ' + process.versions.node + '（建议使用 18 LTS 及以上版本以获得完整兼容性）。');
     }
     return true;
 }

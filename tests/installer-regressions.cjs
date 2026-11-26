@@ -811,21 +811,38 @@ test('main-process patches cover v2.35.1 remote disconnectedPage and signInCallb
     assert.match(capTw, /'擷取工作階段失敗'/);
 });
 
-test('checkSupportedNodeVersion rejects Node < 20 and accepts Node >= 20', () => {
+test('checkSupportedNodeVersion rejects Node < 16 and accepts Node >= 16 (including 18.x without warnings)', () => {
     const { checkSupportedNodeVersion } = require('../localization_engine');
     assert.equal(typeof checkSupportedNodeVersion, 'function');
     assert.equal(checkSupportedNodeVersion(), true);
 
     const nodeDescriptor = Object.getOwnPropertyDescriptor(process.versions, 'node');
     const origError = console.error;
+    const origWarn = console.warn;
     const errors = [];
+    const warnings = [];
     console.error = (...args) => errors.push(args.join(' '));
+    console.warn = (...args) => warnings.push(args.join(' '));
     try {
-        Object.defineProperty(process.versions, 'node', { value: '12.22.12', configurable: true });
-        assert.equal(checkSupportedNodeVersion(), false);
-        assert.ok(errors.some(msg => msg.includes('12.22.12')));
+        for (const oldVer of ['12.22.12', '14.21.3']) {
+            Object.defineProperty(process.versions, 'node', { value: oldVer, configurable: true });
+            assert.equal(checkSupportedNodeVersion(), false);
+            assert.ok(errors.some(msg => msg.includes(oldVer)));
+        }
+
+        Object.defineProperty(process.versions, 'node', { value: '16.20.2', configurable: true });
+        assert.equal(checkSupportedNodeVersion(), true);
+        assert.ok(warnings.some(msg => msg.includes('16.20.2')));
+
+        warnings.length = 0;
+        for (const okVer of ['18.20.3', '18.20.8']) {
+            Object.defineProperty(process.versions, 'node', { value: okVer, configurable: true });
+            assert.equal(checkSupportedNodeVersion(), true);
+        }
+        assert.equal(warnings.length, 0);
     } finally {
         console.error = origError;
+        console.warn = origWarn;
         if (nodeDescriptor) {
             Object.defineProperty(process.versions, 'node', nodeDescriptor);
         }
