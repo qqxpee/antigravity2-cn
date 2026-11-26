@@ -159,6 +159,10 @@ if (USE_TW) {
         "[!] 未找到备份文件 app.asar.bak，可能尚未安装过汉化或备份被删除。": "[!] 未找到備份檔案 app.asar.bak，可能尚未安裝過繁中化或備份已被刪除。",
         "[还原] 正在用官方备份文件恢复...": "[還原] 正在使用官方備份檔案還原...",
         "[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...": "[權限] 偵測到目前使用者對 macOS 應用程式目錄缺少寫入權限，正在嘗試請求管理員權限 (sudo) 重新執行...",
+        "[权限] 当前用户对目标目录缺少写入权限，请右键以管理员身份运行安装脚本。": "[權限] 目前使用者對目標目錄缺少寫入權限，請按右鍵以系統管理員身分執行安裝指令碼。",
+        "[权限] macOS 已阻止写入应用目录：这是系统“App 管理”保护机制（TCC）拦截，仅靠 sudo 无法绕过。": "[權限] macOS 已阻止寫入應用程式目錄：這是系統「App 管理」保護機制（TCC）攔截，僅靠 sudo 無法繞過。",
+        "[权限] 请前往“系统设置 -> 隐私与安全性 -> App 管理”，为当前运行脚本的终端应用（Terminal / iTerm2 / Warp / VS Code 等）开启权限；若仍失败，再开启同一应用的“完全磁盘访问权限”。": "[權限] 請前往「系統設定 -> 隱私權與安全性 -> App 管理」，為目前執行指令碼的終端機應用程式（Terminal / iTerm2 / Warp / VS Code 等）開啟權限；若仍失敗，再開啟同一應用程式的「完全磁碟存取權限」。",
+        "[权限] 授权后请按 Cmd+Q 完全退出该终端并重新打开，再重新运行本脚本。": "[權限] 授權後請按 Cmd+Q 完全結束該終端機並重新開啟，再重新執行本指令碼。",
         "[√] 官方 app.asar 已成功恢复！": "[√] 官方 app.asar 已成功還原！",
         "[错误] --install-dir 缺少有效的路径参数！": "[錯誤] --install-dir 缺少有效的路徑參數！",
         "[错误] --install-dir= 路径不能为空！": "[錯誤] --install-dir= 路徑不能為空！",
@@ -168,7 +172,7 @@ if (USE_TW) {
         "[错误] 管理员提权执行失败或用户取消了密码输入。": "[錯誤] 管理員提權執行失敗或使用者取消了密碼輸入。",
         "[错误] 汉化未完成，未提交的候选包不会替换客户端: ": "[錯誤] 漢化未完成，未提交的候選封裝不會替換用戶端: ",
         "[错误] 恢复备份失败: ": "[錯誤] 還原備份失敗: ",
-        "[提示] macOS 写入受限，请使用管理员权限运行脚本。": "[提示] macOS 寫入受限，請使用管理員權限執行指令碼。",
+        "[提示] macOS 写入受限，请检查终端应用的“App 管理”与“完全磁盘访问权限”。": "[提示] macOS 寫入受限，請檢查終端機應用程式的「App 管理」與「完全磁碟存取權限」。",
         "[提示] 临时目录已保留: ": "[提示] 暫存目錄已保留: ",
         "[错误] 更新 macOS Info.plist 校验值失败，已中止签名: ": "[錯誤] 更新 macOS Info.plist 校驗值失敗，已中止簽名: ",
         "[错误] 未能识别有效的 ElectronAsarIntegrity 格式，已中止签名。": "[錯誤] 未能識別有效的 ElectronAsarIntegrity 格式，已中止簽名。",
@@ -201,7 +205,7 @@ if (USE_TW) {
         "[警告] 未能在 tray.js 中命中任何任务栏注入点。": "[警告] 未能在 tray.js 中命中任何系統匣注入點。",
         "[警告] 未能在 loadingOverlay.js 中找到加载页文本插入点。": "[警告] 未能在 loadingOverlay.js 中找到載入頁文字插入點。",
         "[警告] 未能在 updater.js 中找到更新弹窗插入点。": "[警告] 未能在 updater.js 中找到更新彈出視窗插入點。",
-        "[错误] 当前用户对目标目录缺少写入权限，请使用管理员权限运行脚本。": "[錯誤] 目前使用者對目標目錄缺少寫入權限，請使用管理員權限執行指令碼。",
+        "[错误] 目标目录不可写，汉化已中止。": "[錯誤] 目標目錄不可寫入，漢化已中止。",
         "[1/2] 正在注入汉化...": "[1/2] 正在注入繁體中文化...",
         "[2/2] 注入完成！": "[2/2] 注入完成！",
         "提示：汉化已成功安装。": "提示：繁體中文漢化已成功套用。",
@@ -569,6 +573,12 @@ function resignAppOnMac(anyPath) {
     return false;
 }
 
+function printMacAppManagementHint() {
+    console.error("[权限] macOS 已阻止写入应用目录：这是系统“App 管理”保护机制（TCC）拦截，仅靠 sudo 无法绕过。");
+    console.error("[权限] 请前往“系统设置 -> 隐私与安全性 -> App 管理”，为当前运行脚本的终端应用（Terminal / iTerm2 / Warp / VS Code 等）开启权限；若仍失败，再开启同一应用的“完全磁盘访问权限”。");
+    console.error("[权限] 授权后请按 Cmd+Q 完全退出该终端并重新打开，再重新运行本脚本。");
+}
+
 function ensureWritePermission(targetDir) {
     if (process.platform === 'win32') {
         const probeFile = path.join(targetDir, `.ag-write-check-${process.pid}.tmp`);
@@ -578,6 +588,7 @@ function ensureWritePermission(targetDir) {
             return true;
         } catch (err) {
             if (err && (err.code === 'EPERM' || err.code === 'EACCES')) {
+                console.error("[权限] 当前用户对目标目录缺少写入权限，请右键以管理员身份运行安装脚本。");
                 return false;
             }
             return true;
@@ -588,6 +599,12 @@ function ensureWritePermission(targetDir) {
         fs.accessSync(targetDir, fs.constants.W_OK);
         return true;
     } catch (err) {
+        const isPermissionError = err && (err.code === 'EPERM' || err.code === 'EACCES');
+        const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+        if (isPermissionError && isRoot) {
+            printMacAppManagementHint();
+            return false;
+        }
         if (process.getuid && process.getuid() !== 0) {
             console.log("[权限] 检测到当前用户对 macOS 应用目录缺少写入权限，正在尝试请求管理员权限 (sudo) 重新运行...");
             const args = process.argv.slice(1);
@@ -785,8 +802,8 @@ function restore20(resourcesDir, noKill = false) {
         }
     } catch (e) {
         console.error(`[错误] 恢复备份失败: ${e.message}`);
-        if (process.platform === 'darwin' && e.code === 'EPERM') {
-            console.error(`[提示] macOS 写入受限，请使用管理员权限运行脚本。`);
+        if (process.platform === 'darwin' && (e.code === 'EPERM' || e.code === 'EACCES')) {
+            console.error(`[提示] macOS 写入受限，请检查终端应用的“App 管理”与“完全磁盘访问权限”。`);
         }
         return false;
     } finally {
@@ -1066,7 +1083,7 @@ async function main() {
     }
 
     if (!ensureWritePermission(resourcesDir)) {
-        console.error("[错误] 当前用户对目标目录缺少写入权限，请使用管理员权限运行脚本。");
+        console.error("[错误] 目标目录不可写，汉化已中止。");
         process.exit(1);
     }
 
