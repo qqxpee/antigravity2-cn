@@ -259,7 +259,12 @@
     }
 
     function isModelMenuText(node) {
-        const menu = node.parentElement && node.parentElement.closest('[role="menu"]');
+        const el = node.parentElement;
+        if (!el || typeof el.closest !== 'function') return false;
+        if (el.closest('[data-testid="model-selector-panel"], [data-testid="model-selector-item"], [data-testid="model-selector-custom-item"], [data-testid="model-selector-orchestrator"]')) {
+            return true;
+        }
+        const menu = el.closest('[role="menu"]');
         if (!menu) return false;
         let label = menu.getAttribute('aria-label');
         if (!label) {
@@ -679,15 +684,15 @@
         december: 12, dec: 12
     };
 
-    /** Format English calendar dates into Chinese YYYY 年 M 月 D 日 form. */
+    /** Format English calendar dates into Chinese YYYY 年 M 月 D 日 (or M 月 D 日) form. */
     function formatEnglishDate(raw) {
         const s = String(raw || '').trim();
-        let m = s.match(/^([A-Za-z]+)\.?\s+(\d{1,2}),\s*(\d{4})$/);
+        let m = s.match(/^([A-Za-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?,\s*(\d{4})$/i);
         if (m) {
             const mon = MONTH_NAME_TO_NUM[m[1].toLowerCase()];
             if (mon) return m[3] + ' 年 ' + mon + ' 月 ' + parseInt(m[2], 10) + ' 日';
         }
-        m = s.match(/^(\d{1,2})\s+([A-Za-z]+)\.?\s+(\d{4})$/);
+        m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\.?\s+(\d{4})$/i);
         if (m) {
             const mon = MONTH_NAME_TO_NUM[m[2].toLowerCase()];
             if (mon) return m[3] + ' 年 ' + mon + ' 月 ' + parseInt(m[1], 10) + ' 日';
@@ -695,6 +700,16 @@
         m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (m) {
             return m[1] + ' 年 ' + parseInt(m[2], 10) + ' 月 ' + parseInt(m[3], 10) + ' 日';
+        }
+        m = s.match(/^([A-Za-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?$/i);
+        if (m) {
+            const mon = MONTH_NAME_TO_NUM[m[1].toLowerCase()];
+            if (mon) return mon + ' 月 ' + parseInt(m[2], 10) + ' 日';
+        }
+        m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\.?$/i);
+        if (m) {
+            const mon = MONTH_NAME_TO_NUM[m[2].toLowerCase()];
+            if (mon) return mon + ' 月 ' + parseInt(m[1], 10) + ' 日';
         }
         return s;
     }
@@ -1356,6 +1371,54 @@
                 : (model + ' 将自 ' + formatEnglishDate(dateStr) + ' 起不再在您当前的方案中提供')) + (dot ? '。' : '');
         }],
 
+        // v2.35.1 模型悬浮说明、下架日期预告与选择器状态属性
+        [/^Use\s+(.+?)\s+for better quality with lower quota usage\.(?:\s*Leaving on\s+(.+?)(\.)?)?$/i, (m, model, dateStr, dot) => {
+            const base = USE_TW
+                ? ('建議使用 ' + model.trim() + '，以更低的配額消耗獲得更佳品質。')
+                : ('建议使用 ' + model.trim() + '，以更低的配额消耗获得更佳质量。');
+            if (!dateStr) return base;
+            const dFmt = formatEnglishDate(dateStr.replace(/\.$/, ''));
+            const sep = /[\u4e00-\u9fff]$/.test(dFmt) ? '' : ' ';
+            return base + (USE_TW ? ('將於 ' + dFmt + sep + '下線') : ('将于 ' + dFmt + sep + '下线')) + (dot || /\.$/.test(m.trim()) ? '。' : '');
+        }],
+        [/^Use\s+(.+?)\s+for better quality(?:\s+and faster responses)?\.(?:\s*Leaving on\s+(.+?)(\.)?)?$/i, (m, model, dateStr, dot) => {
+            const hasFast = /and faster responses/i.test(m);
+            const base = USE_TW
+                ? ('建議使用 ' + model.trim() + (hasFast ? '，兼顧更佳品質與更快回應。' : ' 以獲得更佳品質。'))
+                : ('建议使用 ' + model.trim() + (hasFast ? '，兼顾更佳质量与更快响应。' : ' 以获得更佳质量。'));
+            if (!dateStr) return base;
+            const dFmt = formatEnglishDate(dateStr.replace(/\.$/, ''));
+            const sep = /[\u4e00-\u9fff]$/.test(dFmt) ? '' : ' ';
+            return base + (USE_TW ? ('將於 ' + dFmt + sep + '下線') : ('将于 ' + dFmt + sep + '下线')) + (dot || /\.$/.test(m.trim()) ? '。' : '');
+        }],
+        [/^Use\s+(.+?)\s+instead\.(?:\s*Leaving on\s+(.+?)(\.)?)?$/i, (m, model, dateStr, dot) => {
+            const base = USE_TW ? ('建議改用 ' + model.trim() + '。') : ('建议改用 ' + model.trim() + '。');
+            if (!dateStr) return base;
+            const dFmt = formatEnglishDate(dateStr.replace(/\.$/, ''));
+            const sep = /[\u4e00-\u9fff]$/.test(dFmt) ? '' : ' ';
+            return base + (USE_TW ? ('將於 ' + dFmt + sep + '下線') : ('将于 ' + dFmt + sep + '下线')) + (dot || /\.$/.test(m.trim()) ? '。' : '');
+        }],
+        [/^Leaving on\s+([A-Za-z]+\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\.?(?:\s+\d{4})?|\d{4}-\d{2}-\d{2})(\.)?$/i, (m, dateStr, dot) => {
+            const dFmt = formatEnglishDate(dateStr);
+            const sep = /[\u4e00-\u9fff]$/.test(dFmt) ? '' : ' ';
+            return (USE_TW ? ('將於 ' + dFmt + sep + '下線') : ('将于 ' + dFmt + sep + '下线')) + (dot ? '。' : '');
+        }],
+        [/^(.+?)\.\s+Leaving on\s+([A-Za-z]+\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\.?(?:\s+\d{4})?|\d{4}-\d{2}-\d{2})(\.)?$/i, (m, firstSent, dateStr, dot) => {
+            const fNorm = norm(firstSent);
+            const fZh = translateExactOrDynamic(fNorm + '.') || translateExactOrDynamic(fNorm);
+            if (!fZh) return m;
+            const dFmt = formatEnglishDate(dateStr);
+            const sep = /[\u4e00-\u9fff]$/.test(dFmt) ? '' : ' ';
+            return fZh.replace(/[。.]+$/, '') + '。' + (USE_TW ? ('將於 ' + dFmt + sep + '下線') : ('将于 ' + dFmt + sep + '下线')) + (dot ? '。' : '');
+        }],
+        [/^Select model,\s*current:[ \t]*(.+)$/i, (m, cur) => (USE_TW ? '選擇模型，目前：' : '选择模型，当前：') + cur],
+        [/^Select model with\s+(.+)$/i, (m, key) => (USE_TW ? ('使用 ' + key + ' 選擇模型') : ('使用 ' + key + ' 选择模型'))],
+        [/^Model:[ \t]*(.+?),\s*(.+)$/i, (m, cur, reason) => {
+            const rZh = translateExactOrDynamic(norm(reason));
+            if (!rZh) return m;
+            return '模型：' + cur + '，' + rZh;
+        }],
+
         // v2.34.0 动态模板规则
         [/^Couldn't disconnect (.+?): (.+)$/, (m, target, reason) => (USE_TW ? '無法中斷 ' + target + ' 的連線：' : '无法断开 ' + target + ' 的连接：') + reason],
         [/^Failed to load page (.+?): (.+)$/, (m, page, reason) => (USE_TW ? '載入頁面 ' + page + ' 失敗：' : '加载页面 ' + page + ' 失败：') + reason],
@@ -1425,12 +1488,18 @@
         [/^Revoke:\s*(.+)$/, (m, target) => (USE_TW ? '撤銷：' : '撤销：') + target],
 
         // v2.35.1 全面审计补充动态模板规则（配额、排程、时间、计数、Git/MCP/浏览器提示）
-        [/^You need (at least \d+|more) AI Credits to send messages\. To continue using (.+?) now, purchase more AI Credits\.$/i, (m, amt, target) => {
+        [/^You need (at least \d+|more) AI Credits to send messages\.\s*To continue using (.+?) now,\s*purchase more AI Credits\.(?:\s*Your plan's baseline quota will refresh on (.+?)\.?)?$/i, (m, amt, target, when) => {
             const amtZh = /^more$/i.test(amt) ? '更多' : amt.replace(/^at least\s+/i, '至少 ');
-            const tZh = /^this model$/i.test(target.trim()) ? '此模型' : target.trim();
-            return USE_TW
-                ? ('您需要' + amtZh + ' AI 點數才能傳送訊息。若要立即繼續使用 ' + tZh + '，請購買更多 AI 點數。')
-                : ('您需要' + amtZh + ' AI 额度才能发送消息。要立即继续使用 ' + tZh + '，请购买更多 AI 额度。');
+            const tTrim = target.trim();
+            const tPart = /^this model$/i.test(tTrim) ? '此模型' : (' ' + tTrim);
+            let res = USE_TW
+                ? ('您需要' + amtZh + ' AI 點數才能傳送訊息。若要立即繼續使用' + tPart + '，請購買更多 AI 點數。')
+                : ('您需要' + amtZh + ' AI 额度才能发送消息。要立即继续使用' + tPart + '，请购买更多 AI 额度。');
+            if (when) {
+                const cleanWhen = when.replace(/\.$/, '');
+                res += USE_TW ? ('您方案的基準配額將於 ' + cleanWhen + ' 重設。') : ('您方案的基础配额将于 ' + cleanWhen + ' 刷新。');
+            }
+            return res;
         }],
         [/^Your quota for (.+?) will reset on (.+?)\. Switch to another available model to continue\.$/i, (m, model, when) => {
             const mZh = /^this model$/i.test(model.trim()) ? '此模型' : model.trim();
