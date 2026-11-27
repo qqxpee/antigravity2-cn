@@ -6,7 +6,7 @@ const os = require('node:os');
 const vm = require('node:vm');
 const childProcess = require('node:child_process');
 const { readAsarLayout, patchAsarArchive, validateAsarCandidate } = require('../src/asar_patcher');
-const { patchPreloadJs, patchUtilsJs, patchTrayJs, patchLoadingOverlayJs, patchMainProcessModule } = require('../src/main_patches');
+const { patchPreloadJs, patchUtilsJs, patchMenuJs, patchTrayJs, patchLoadingOverlayJs, patchMainProcessModule } = require('../src/main_patches');
 const { loadEngine } = require('./helpers/runtime-loader.cjs');
 
 const signature = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
@@ -1183,4 +1183,53 @@ test('main-process patches cover v2.35.1 SSH remote flow, passkey window, WSL me
         assert.equal(patchMainProcessModule(rel, '<html lang="en">', true), '<html lang="zh-TW">', rel);
         assert.equal(patchMainProcessModule(rel, '<html lang="en">', false), '<html lang="en">', rel);
     }
+});
+
+test('patchMenuJs translates Unicode ellipsis, Reload, Speech, Fullscreen and Window menu items in SC and TC', () => {
+    const menuOrig = "electron_1.Menu.setApplicationMenu(menu);";
+    const runMenu = (useTw) => {
+        const patched = patchMenuJs(menuOrig, useTw);
+        const menuObj = {
+            items: [
+                { label: 'Settings…' },
+                { label: 'Check for Updates…' },
+                { label: 'Reload' },
+                { label: 'Force Reload' },
+                { label: 'Speech', submenu: { items: [{ label: 'Start Speaking' }, { label: 'Stop Speaking' }] } },
+                { label: 'Toggle Fullscreen' },
+                { label: 'Enter Full Screen' },
+                { label: 'Emoji & Symbols' }
+            ]
+        };
+        const ctx = {
+            menu: menuObj,
+            electron_1: { Menu: { setApplicationMenu() {} } }
+        };
+        vm.runInNewContext(patched, ctx);
+        return menuObj.items;
+    };
+
+    const sc = runMenu(false);
+    assert.equal(sc[0].label, '设置...');
+    assert.equal(sc[1].label, '检查更新...');
+    assert.equal(sc[2].label, '重新加载');
+    assert.equal(sc[3].label, '强制重新加载');
+    assert.equal(sc[4].label, '语音');
+    assert.equal(sc[4].submenu.items[0].label, '开始朗读');
+    assert.equal(sc[4].submenu.items[1].label, '停止朗读');
+    assert.equal(sc[5].label, '切换全屏');
+    assert.equal(sc[6].label, '进入全屏');
+    assert.equal(sc[7].label, '表情与符号');
+
+    const tw = runMenu(true);
+    assert.equal(tw[0].label, '設定...');
+    assert.equal(tw[1].label, '檢查更新...');
+    assert.equal(tw[2].label, '重新載入');
+    assert.equal(tw[3].label, '強制重新載入');
+    assert.equal(tw[4].label, '語音');
+    assert.equal(tw[4].submenu.items[0].label, '開始朗讀');
+    assert.equal(tw[4].submenu.items[1].label, '停止朗讀');
+    assert.equal(tw[5].label, '切換全螢幕');
+    assert.equal(tw[6].label, '進入全螢幕');
+    assert.equal(tw[7].label, '表情符號與符號');
 });

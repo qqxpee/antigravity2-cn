@@ -32,10 +32,17 @@ test('unknown reset formats keep their original time instead of discarding it', 
 });
 
 test('bare durations do not claim that a future quota reset happened ago', async t => {
-    const doc = await render(t, '<span id="duration">1w</span><span id="elapsed">5h ago</span><div data-testid="conversation-row-sidebar"><small id="row">3d</small></div>');
+    const html = '<span id="duration">1w</span><span id="elapsed">5h ago</span><span id="plain-now">now</span><div data-testid="conversation-row-sidebar"><small id="row">3d</small><small id="row-now">now</small></div>';
+    const doc = await render(t, html);
     assert.equal(doc.querySelector('#duration').textContent, '1周');
     assert.equal(doc.querySelector('#elapsed').textContent, '5小时前');
+    assert.equal(doc.querySelector('#plain-now').textContent, 'now');
     assert.equal(doc.querySelector('#row').textContent, '3天前');
+    assert.equal(doc.querySelector('#row-now').textContent, '刚刚');
+
+    const docTw = await render(t, html, { traditional: true });
+    assert.equal(docTw.querySelector('#plain-now').textContent, 'now');
+    assert.equal(docTw.querySelector('#row-now').textContent, '剛剛');
 });
 
 test('New model badges use a status translation without changing New commands', async t => {
@@ -220,6 +227,7 @@ test('v2.35.1 model hover descriptions, deprecation notices, and locked-while-ru
         '<div id="tip-flash">Use Hydrogen for better quality with lower quota usage. Leaving on Nov 30.</div>',
         '<div id="tip-argon">Use Carbon for better quality with lower quota usage. Leaving on Dec 15, 2026.</div>',
         '<div id="tip-leave-only">Leaving on Nov 30.</div>',
+        '<div id="tip-btw-next">Applies to /btw and messages sent after this turn</div>',
         '<div id="tip-lock-model">Model cannot be changed while the agent is running</div>',
         '<div id="tip-lock-perm">Permissions cannot be changed while the agent is running</div>',
         '<div id="tip-lock-bon">Cannot start best-of-N mode while the agent is running</div>',
@@ -250,6 +258,7 @@ test('v2.35.1 model hover descriptions, deprecation notices, and locked-while-ru
     assert.equal(docSc.getElementById('tip-flash').textContent, '建议使用 Hydrogen，以更低的配额消耗获得更佳质量。将于 11 月 30 日下线。');
     assert.equal(docSc.getElementById('tip-argon').textContent, '建议使用 Carbon，以更低的配额消耗获得更佳质量。将于 2026 年 12 月 15 日下线。');
     assert.equal(docSc.getElementById('tip-leave-only').textContent, '将于 11 月 30 日下线。');
+    assert.equal(docSc.getElementById('tip-btw-next').textContent, '适用于 /btw 及本轮之后发送的消息');
     assert.equal(docSc.getElementById('tip-lock-model').textContent, '智能体运行时无法更改模型');
     assert.equal(docSc.getElementById('tip-lock-perm').textContent, '智能体运行时无法更改权限');
     assert.equal(docSc.getElementById('tip-lock-bon').textContent, '智能体运行时无法启动多候选对决模式 (Best-of-N)');
@@ -267,6 +276,7 @@ test('v2.35.1 model hover descriptions, deprecation notices, and locked-while-ru
     assert.equal(docTw.getElementById('tip-neon').textContent, '適用於大多數深度推理與複雜問題');
     assert.equal(docTw.getElementById('tip-orch').textContent, '將常規步驟交由更快的執行模型處理。同等品質，消耗更少 Token。');
     assert.equal(docTw.getElementById('tip-flash').textContent, '建議使用 Hydrogen，以更低的配額消耗獲得更佳品質。將於 11 月 30 日下線。');
+    assert.equal(docTw.getElementById('tip-btw-next').textContent, '適用於 /btw 與本輪之後傳送的訊息');
     assert.equal(docTw.getElementById('tip-lock-model').textContent, '代理執行時無法變更模型');
     assert.equal(docTw.getElementById('tip-lock-perm').textContent, '代理執行時無法變更權限');
     assert.equal(docTw.getElementById('btn-lock-model').getAttribute('aria-label'), '模型：Gemini 4 Carbon Medium，代理執行時無法變更模型');

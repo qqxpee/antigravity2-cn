@@ -1275,3 +1275,486 @@ test('CJK gap collapse is undone when React reuses neighbor text nodes, and nest
     const nodes = 3 * depth + 2;
     assert.ok(context.calls <= 2 * nodes, `translateNode called ${context.calls} times for ${nodes} nodes`);
 });
+
+test('slash command names and sidebar plugin names remain in English while descriptions and working hints translate in SC and TC', async t => {
+    const html = `
+      <div>
+        <div role="listbox">
+          <div role="option"><span id="cmd-goal">goal</span><span id="desc-goal">Run until the specified goal is completely finished</span></div>
+          <div role="option"><span id="cmd-schedule">schedule</span><span id="desc-schedule">Run an instruction on a recurring schedule or as a one-time timer</span></div>
+          <div role="option"><span id="cmd-plan">plan</span><span id="desc-plan">Plan carefully before executing a task.</span></div>
+          <div role="option"><span id="cmd-plugin">plugin</span></div>
+          <div role="option"><span id="cmd-automation">automation</span></div>
+          <div role="option"><span id="cmd-grill">grill-me</span></div>
+          <div role="option"><span id="cmd-learn">learn</span></div>
+          <div role="option"><span id="cmd-boost">boost</span></div>
+          <div role="option"><span id="cmd-btw">btw</span></div>
+          <div role="option"><span id="cmd-slash">/schedule</span></div>
+          <div role="option"><span id="cmd-split-prefix">/</span><span id="cmd-models">models</span><span id="desc-models">Select model</span></div>
+        </div>
+        <aside data-testid="sidebar">
+          <section>
+            <h3 id="sb-plugins-hdr">Plugins</h3>
+            <div data-plugin-id="chrome-devtools"><span id="plug-chrome">Chrome DevTools</span><button id="plug-open-chrome" aria-label="Open the Chrome DevTools plugin">Open</button></div>
+            <div><span id="plug-mwg">Modern Web Guidance</span></div>
+            <div><span id="plug-ws">Google Workspace</span></div>
+            <div><span id="plug-dak">Data Agent Kit</span></div>
+            <button id="plug-open-k" aria-label="Open the Knowledge plugin"><span id="plug-knowledge">Knowledge</span></button>
+            <button id="plug-mkp">Open Marketplace</button>
+            <button id="plug-more">See more</button>
+          </section>
+          <section>
+            <h3 id="sb-other-hdr">Knowledge</h3>
+          </section>
+        </aside>
+        <div id="work-hook">Hook Json SessionStart</div>
+        <div id="work-run">Running scan dicts for slug and lowercase keys</div>
+        <div id="work-dur">1m 31s</div>
+        <p id="prose-run">Running tests on CI requires valid credentials.</p>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('cmd-goal').textContent, 'goal');
+    assert.equal(w.document.getElementById('desc-goal').textContent, '持续运行，直到指定的目标完全完成');
+    assert.equal(w.document.getElementById('cmd-schedule').textContent, 'schedule');
+    assert.equal(w.document.getElementById('desc-schedule').textContent, '按周期计划或作为一次性定时器运行指令');
+    assert.equal(w.document.getElementById('cmd-plan').textContent, 'plan');
+    assert.equal(w.document.getElementById('desc-plan').textContent, '在执行任务前仔细制定计划。');
+    assert.equal(w.document.getElementById('cmd-plugin').textContent, 'plugin');
+    assert.equal(w.document.getElementById('cmd-automation').textContent, 'automation');
+    assert.equal(w.document.getElementById('cmd-grill').textContent, 'grill-me');
+    assert.equal(w.document.getElementById('cmd-learn').textContent, 'learn');
+    assert.equal(w.document.getElementById('cmd-boost').textContent, 'boost');
+    assert.equal(w.document.getElementById('cmd-btw').textContent, 'btw');
+    assert.equal(w.document.getElementById('cmd-slash').textContent, '/schedule');
+    assert.equal(w.document.getElementById('cmd-models').textContent, 'models');
+    assert.equal(w.document.getElementById('desc-models').textContent, '选择模型');
+
+    assert.equal(w.document.getElementById('sb-plugins-hdr').textContent, '插件');
+    assert.equal(w.document.getElementById('plug-chrome').textContent, 'Chrome DevTools');
+    assert.equal(w.document.getElementById('plug-open-chrome').getAttribute('aria-label'), '打开 Chrome DevTools 插件');
+    assert.equal(w.document.getElementById('plug-mwg').textContent, 'Modern Web Guidance');
+    assert.equal(w.document.getElementById('plug-ws').textContent, 'Google Workspace');
+    assert.equal(w.document.getElementById('plug-dak').textContent, 'Data Agent Kit');
+    assert.equal(w.document.getElementById('plug-knowledge').textContent, 'Knowledge');
+    assert.equal(w.document.getElementById('plug-open-k').getAttribute('aria-label'), '打开 Knowledge 插件');
+    assert.equal(w.document.getElementById('plug-mkp').textContent, '打开市场');
+    assert.equal(w.document.getElementById('plug-more').textContent, '展开更多');
+    assert.equal(w.document.getElementById('sb-other-hdr').textContent, '知识库');
+
+    assert.equal(w.document.getElementById('work-hook').textContent, '钩子 Json SessionStart');
+    assert.equal(w.document.getElementById('work-run').textContent, '正在运行 scan dicts for slug and lowercase keys');
+    assert.equal(w.document.getElementById('work-dur').textContent, '1 分钟 31 秒');
+    assert.equal(w.document.getElementById('prose-run').textContent, 'Running tests on CI requires valid credentials.');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('cmd-goal').textContent, 'goal');
+    assert.equal(domTw.window.document.getElementById('cmd-models').textContent, 'models');
+    assert.equal(domTw.window.document.getElementById('plug-knowledge').textContent, 'Knowledge');
+    assert.equal(domTw.window.document.getElementById('sb-other-hdr').textContent, '知識庫');
+    assert.equal(domTw.window.document.getElementById('work-hook').textContent, '鉤子 Json SessionStart');
+    assert.equal(domTw.window.document.getElementById('work-run').textContent, '正在執行 scan dicts for slug and lowercase keys');
+    assert.equal(domTw.window.document.getElementById('work-dur').textContent, '1 分鐘 31 秒');
+});
+
+test('sidecar plugin modal keeps plugin name untranslated, translates side-pane sentence, Title-Case section headings, and higher-tier upgrade notice', async t => {
+    const html = `
+      <div>
+        <div role="dialog" id="sidecar-modal">
+          <div id="hdr-row"><span id="modal-plugin">Context Usage</span><span id="modal-status">Running</span></div>
+          <div id="modal-path">desktop-context/context</div>
+          <div id="banner">
+            <div id="banner-title">Side Pane UI Available</div>
+            <p id="banner-desc-split">Stream and control <span>Context Usage</span> directly in the side pane.</p>
+            <p id="banner-desc-single">Stream and control Context Usage directly in the side pane.</p>
+            <button id="open-sp">Open in side pane</button>
+          </div>
+          <div><span id="lbl-type">Type</span><span>UI Plugin (SidePanel)</span></div>
+          <div><span id="lbl-cmd">Command</span><span>node main.mjs</span></div>
+          <div><span id="lbl-host">Host Endpoint</span></div>
+        </div>
+        <span id="outside-cu">Context usage</span>
+        <h3 id="sec-nav">Navigation</h3>
+        <h3 id="sec-sug">Suggestions</h3>
+        <h3 id="sec-rec">Recommended</h3>
+        <span id="lbl-days">Days</span>
+        <span id="lc-nav">navigation</span>
+        <p id="upgrade-ultra">You can upgrade to a higher Google AI Ultra plan to receive the highest rate limits.</p>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('modal-plugin').textContent, 'Context Usage');
+    assert.equal(w.document.getElementById('modal-status').textContent, '运行中');
+    assert.equal(w.document.getElementById('banner-title').textContent, '侧边面板界面可用');
+    assert.equal(w.document.getElementById('banner-desc-split').textContent, '直接在侧边面板中流式传输与控制 Context Usage。');
+    assert.equal(w.document.getElementById('banner-desc-single').textContent, '直接在侧边面板中流式传输与控制 Context Usage。');
+    assert.equal(w.document.getElementById('open-sp').textContent, '在侧边面板中打开');
+    assert.equal(w.document.getElementById('lbl-type').textContent, '类型');
+    assert.equal(w.document.getElementById('lbl-cmd').textContent, '命令');
+    assert.equal(w.document.getElementById('lbl-host').textContent, '主机端点');
+    assert.equal(w.document.getElementById('outside-cu').textContent, '上下文用量');
+    assert.equal(w.document.getElementById('sec-nav').textContent, '导航');
+    assert.equal(w.document.getElementById('sec-sug').textContent, '建议');
+    assert.equal(w.document.getElementById('sec-rec').textContent, '推荐');
+    assert.equal(w.document.getElementById('lbl-days').textContent, '天');
+    assert.equal(w.document.getElementById('lc-nav').textContent, 'navigation');
+    assert.equal(w.document.getElementById('upgrade-ultra').textContent, '您可以升级到更高级别的 Google AI Ultra 计划以获得最高的速率限制。');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('modal-plugin').textContent, 'Context Usage');
+    assert.equal(domTw.window.document.getElementById('banner-desc-split').textContent, '直接在側邊面板中串流傳輸與控制 Context Usage。');
+    assert.equal(domTw.window.document.getElementById('banner-desc-single').textContent, '直接在側邊面板中串流傳輸與控制 Context Usage。');
+    assert.equal(domTw.window.document.getElementById('lbl-type').textContent, '類型');
+    assert.equal(domTw.window.document.getElementById('lbl-cmd').textContent, '指令');
+    assert.equal(domTw.window.document.getElementById('outside-cu').textContent, '上下文用量');
+    assert.equal(domTw.window.document.getElementById('sec-nav').textContent, '導覽');
+    assert.equal(domTw.window.document.getElementById('sec-sug').textContent, '建議');
+    assert.equal(domTw.window.document.getElementById('sec-rec').textContent, '推薦');
+    assert.equal(domTw.window.document.getElementById('lbl-days').textContent, '天');
+    assert.equal(domTw.window.document.getElementById('lc-nav').textContent, 'navigation');
+    assert.equal(domTw.window.document.getElementById('upgrade-ultra').textContent, '您可以升級至更高等級的 Google AI Ultra 方案以獲得最高的速率限制。');
+});
+
+test('folded step summaries without counts and plan mode tool labels translate while code blocks stay isolated', async t => {
+    const html = `
+      <div>
+        <span id="fs-1">Explored, ran command</span>
+        <span id="fs-2">Explored, edited, ran command</span>
+        <span id="fs-3">Explored, ran 2 commands</span>
+        <span id="fs-4">Exploring, running command</span>
+        <span id="pm-exit">exit_plan_mode</span>
+        <span id="pm-enter">enter_plan_mode</span>
+        <code id="pm-code">exit_plan_mode</code>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('fs-1').textContent, '已探索，已运行命令');
+    assert.equal(w.document.getElementById('fs-2').textContent, '已探索，已编辑，已运行命令');
+    assert.equal(w.document.getElementById('fs-3').textContent, '已探索，已运行 2 个命令');
+    assert.equal(w.document.getElementById('fs-4').textContent, '正在探索，正在运行命令');
+    assert.equal(w.document.getElementById('pm-exit').textContent, '退出规划模式');
+    assert.equal(w.document.getElementById('pm-enter').textContent, '进入规划模式');
+    assert.equal(w.document.getElementById('pm-code').textContent, 'exit_plan_mode');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('fs-1').textContent, '已探索，已執行指令');
+    assert.equal(domTw.window.document.getElementById('fs-2').textContent, '已探索，已編輯，已執行指令');
+    assert.equal(domTw.window.document.getElementById('fs-3').textContent, '已探索，已執行 2 個指令');
+    assert.equal(domTw.window.document.getElementById('fs-4').textContent, '正在探索，正在執行指令');
+    assert.equal(domTw.window.document.getElementById('pm-exit').textContent, '退出規劃模式');
+    assert.equal(domTw.window.document.getElementById('pm-enter').textContent, '進入規劃模式');
+    assert.equal(domTw.window.document.getElementById('pm-code').textContent, 'exit_plan_mode');
+});
+
+test('tool call section labels, truncation hints, hover notices, and progress pills translate safely in SC and TC', async t => {
+    const html = `
+      <div>
+        <div id="btw-single">Applies to /btw and messages sent after this turn</div>
+        <div id="btw-split">Applies to <code>/btw</code> and messages sent after this turn</div>
+        <span id="fc-single">3 files changed</span>
+        <span id="fc-one">1 file changed</span>
+        <span id="fc-diff">3 files changed +66 -0</span>
+        <div id="fc-split"><span>3</span><span> files changed</span></div>
+        <p id="fc-prose">These files changed yesterday</p>
+        <span id="st-single">3/3 steps</span>
+        <span id="st-one">1/1 step</span>
+        <div id="st-split"><span>3/3</span><span> steps</span></div>
+        <span id="st-plain">steps</span>
+        <div id="lbl-args">Arguments</div>
+        <div id="lbl-out">Output</div>
+        <div id="lbl-res">Result</div>
+        <div id="lbl-resp">Response</div>
+        <span id="lc-args">arguments</span>
+        <span id="lc-res">result</span>
+        <span id="lc-resp">response</span>
+        <div id="tr-lines">... 24 more lines, truncated for display.</div>
+        <div id="tr-one">… 1 more line, truncated for display.</div>
+        <div id="tr-chars">... 120 more characters, truncated for display.</div>
+        <div id="tr-split">... <span>24</span><span> more lines, truncated for display.</span></div>
+        <div id="undo-rewind">Only the conversation will be rewound; your files will be left as-is.</div>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('btw-single').textContent, '适用于 /btw 及本轮之后发送的消息');
+    assert.equal(w.document.getElementById('btw-split').textContent, '适用于 /btw 及本轮之后发送的消息');
+    assert.equal(w.document.getElementById('fc-single').textContent, '3 个文件已更改');
+    assert.equal(w.document.getElementById('fc-one').textContent, '1 个文件已更改');
+    assert.equal(w.document.getElementById('fc-diff').textContent, '3 个文件已更改 +66 -0');
+    assert.equal(w.document.getElementById('fc-split').textContent, '3 个文件已更改');
+    assert.equal(w.document.getElementById('fc-prose').textContent, 'These files changed yesterday');
+    assert.equal(w.document.getElementById('st-single').textContent, '3/3 步骤');
+    assert.equal(w.document.getElementById('st-one').textContent, '1/1 步骤');
+    assert.equal(w.document.getElementById('st-split').textContent, '3/3 步骤');
+    assert.equal(w.document.getElementById('st-plain').textContent, 'steps');
+    assert.equal(w.document.getElementById('lbl-args').textContent, '参数');
+    assert.equal(w.document.getElementById('lbl-out').textContent, '输出');
+    assert.equal(w.document.getElementById('lbl-res').textContent, '结果');
+    assert.equal(w.document.getElementById('lbl-resp').textContent, '响应');
+    assert.equal(w.document.getElementById('lc-args').textContent, 'arguments');
+    assert.equal(w.document.getElementById('lc-res').textContent, 'result');
+    assert.equal(w.document.getElementById('lc-resp').textContent, 'response');
+    assert.equal(w.document.getElementById('tr-lines').textContent, '... 还有 24 行，已截断显示。');
+    assert.equal(w.document.getElementById('tr-one').textContent, '… 还有 1 行，已截断显示。');
+    assert.equal(w.document.getElementById('tr-chars').textContent, '... 还有 120 个字符，已截断显示。');
+    assert.equal(w.document.getElementById('tr-split').textContent, '... 24 行，已截断显示。');
+    assert.equal(w.document.getElementById('undo-rewind').textContent, '仅回退对话进度，您的文件将保持原样不变。');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('btw-single').textContent, '適用於 /btw 與本輪之後傳送的訊息');
+    assert.equal(domTw.window.document.getElementById('btw-split').textContent, '適用於 /btw 與本輪之後傳送的訊息');
+    assert.equal(domTw.window.document.getElementById('fc-single').textContent, '3 個檔案已變更');
+    assert.equal(domTw.window.document.getElementById('fc-diff').textContent, '3 個檔案已變更 +66 -0');
+    assert.equal(domTw.window.document.getElementById('fc-split').textContent, '3 個檔案已變更');
+    assert.equal(domTw.window.document.getElementById('fc-prose').textContent, 'These files changed yesterday');
+    assert.equal(domTw.window.document.getElementById('st-single').textContent, '3/3 步驟');
+    assert.equal(domTw.window.document.getElementById('st-split').textContent, '3/3 步驟');
+    assert.equal(domTw.window.document.getElementById('st-plain').textContent, 'steps');
+    assert.equal(domTw.window.document.getElementById('lbl-args').textContent, '參數');
+    assert.equal(domTw.window.document.getElementById('lbl-out').textContent, '輸出');
+    assert.equal(domTw.window.document.getElementById('lbl-res').textContent, '結果');
+    assert.equal(domTw.window.document.getElementById('lbl-resp').textContent, '回應');
+    assert.equal(domTw.window.document.getElementById('lc-args').textContent, 'arguments');
+    assert.equal(domTw.window.document.getElementById('tr-lines').textContent, '... 還有 24 行，已截斷顯示。');
+    assert.equal(domTw.window.document.getElementById('tr-chars').textContent, '... 還有 120 個字元，已截斷顯示。');
+    assert.equal(domTw.window.document.getElementById('tr-split').textContent, '... 24 行，已截斷顯示。');
+    assert.equal(domTw.window.document.getElementById('undo-rewind').textContent, '僅回退對話進度，您的檔案將保持原樣不變。');
+});
+
+test('third-party sidecar plugin iframes and aux-pane plugin tabs stay untranslated while built-in Swarm sidecars still translate', async t => {
+    const thirdPartyHtml = `
+      <div>
+        <div id="sp-token">TOKEN USAGE</div>
+        <div id="sp-tools">Tool calls</div>
+        <div id="sp-sys">System prompt</div>
+        <div id="sp-rules">Rules</div>
+        <div id="sp-skills">Skills</div>
+        <div id="sp-sub">Subagents</div>
+        <div id="sp-plug">Plugins</div>
+        <div id="sp-mcp">MCP Tools</div>
+        <div id="sp-turns">105 turns</div>
+      </div>
+    `;
+    const hostDom = createDom('<iframe id="third-party-frame"></iframe><iframe id="swarm-frame"></iframe>');
+    t.after(() => hostDom.window.close());
+
+    const thirdPartyFrame = hostDom.window.document.getElementById('third-party-frame');
+    thirdPartyFrame.contentDocument.body.innerHTML = thirdPartyHtml;
+    thirdPartyFrame.contentWindow.eval(loadRuntime());
+    await settle();
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-token').textContent, 'TOKEN USAGE');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-tools').textContent, 'Tool calls');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-sys').textContent, 'System prompt');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-rules').textContent, 'Rules');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-skills').textContent, 'Skills');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-sub').textContent, 'Subagents');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-plug').textContent, 'Plugins');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-mcp').textContent, 'MCP Tools');
+    assert.equal(thirdPartyFrame.contentDocument.getElementById('sp-turns').textContent, '105 turns');
+
+    const swarmFrameHtml = `
+      <div data-testid="swarm-board">
+        <div id="tab-overview"><span id="sw-ov">Overview</span></div>
+      </div>
+    `;
+    const swarmFrame = hostDom.window.document.getElementById('swarm-frame');
+    swarmFrame.contentDocument.body.innerHTML = swarmFrameHtml;
+    swarmFrame.contentWindow.eval(loadRuntime());
+    await settle();
+    assert.equal(swarmFrame.contentDocument.getElementById('sw-ov').textContent, '概览');
+
+    const auxHtml = `
+      <div>
+        <div role="tablist">
+          <button role="tab" id="tab-review">Review</button>
+          <button role="tab" id="tab-cu">Context Usage</button>
+          <button role="tab" id="tab-notes">Notes</button>
+        </div>
+        <div data-testid="aux-pane">
+          <button id="aux-review">Review</button>
+          <button id="aux-open-file">Open File</button>
+          <button id="aux-side-q">Side Question</button>
+          <button id="aux-cu">Context Usage</button>
+          <div role="menuitem" id="menu-skills-used">Skills Used</div>
+        </div>
+        <span id="builtin-cu">Context usage</span>
+        <iframe data-testid="sidecar-iframe" src="http://localhost:51956"></iframe>
+      </div>
+    `;
+    const w = await fixture(t, auxHtml);
+    assert.equal(w.document.getElementById('tab-review').textContent, '评审');
+    assert.equal(w.document.getElementById('tab-cu').textContent, 'Context Usage');
+    assert.equal(w.document.getElementById('tab-notes').textContent, 'Notes');
+    assert.equal(w.document.getElementById('aux-open-file').textContent, '打开文件');
+    assert.equal(w.document.getElementById('aux-side-q').textContent, '侧边提问');
+    assert.equal(w.document.getElementById('aux-cu').textContent, 'Context Usage');
+    assert.equal(w.document.getElementById('menu-skills-used').textContent, '已用技能');
+    assert.equal(w.document.getElementById('builtin-cu').textContent, '上下文用量');
+
+    const domTw = createDom(auxHtml);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('tab-review').textContent, '審查');
+    assert.equal(domTw.window.document.getElementById('tab-cu').textContent, 'Context Usage');
+    assert.equal(domTw.window.document.getElementById('tab-notes').textContent, 'Notes');
+    assert.equal(domTw.window.document.getElementById('aux-open-file').textContent, '開啟檔案');
+    assert.equal(domTw.window.document.getElementById('aux-side-q').textContent, '側邊提問');
+    assert.equal(domTw.window.document.getElementById('aux-cu').textContent, 'Context Usage');
+    assert.equal(domTw.window.document.getElementById('menu-skills-used').textContent, '已使用技能');
+    assert.equal(domTw.window.document.getElementById('builtin-cu').textContent, '上下文用量');
+});
+
+test('expanded tool call labels and truncation hints inside soft-isolated siblings translate while preserving code and thinking text', async t => {
+    const html = `
+      <div>
+        <div data-testid="thinking-collapsible-trigger">Thought for 11s</div>
+        <div id="thinking-body">Thinking about Arguments and Output in Result</div>
+        <div id="tool-wrap">
+          <div class="font-mono" id="mono-tool">
+            <div id="mono-args">Arguments</div>
+            <pre><code id="mono-code">{"Arguments": "Result"}</code></pre>
+            <div id="mono-out">Output</div>
+            <div id="mono-trunc">... 24 more lines, truncated for display.</div>
+          </div>
+          <div translate="no" id="tn-tool">
+            <span id="tn-res">Result</span>
+            <pre><code>ok</code></pre>
+            <span id="tn-resp">Response</span>
+          </div>
+          <div class="code-block" id="cb-tool">
+            <div id="cb-args">arguments</div>
+            <pre><code>raw</code></pre>
+            <div id="cb-out">output</div>
+          </div>
+        </div>
+        <div id="normal-adj">
+          <span id="adj-args">arguments</span>
+          <pre><code>x = 1</code></pre>
+        </div>
+        <div id="hdr-wrap-box">
+          <div class="header-row"><strong id="nested-args">Arguments</strong><button>Copy</button></div>
+          <div class="code-viewer"><div class="code-line">raw line</div></div>
+        </div>
+        <em id="jsx-em-trunc">... 24 more lines, truncated for display.</em>
+        <div data-testid="thinking-collapsible-trigger">Executed search</div>
+        <div id="tool-step-body">
+          <div id="step-args">Arguments</div>
+          <div class="font-mono">output payload</div>
+          <p><em id="step-em-trunc">... 12 more lines, truncated for display.</em></p>
+        </div>
+        <div translate="no" id="keep-tn">Knowledge</div>
+        <span id="plain-lc">arguments</span>
+      </div>
+    `;
+    const w = await fixture(t, html, win => {
+      const em1 = win.document.getElementById('jsx-em-trunc');
+      em1.textContent = '';
+      for (const s of ['... ', '24', ' more ', 'lines', ', truncated for display.']) em1.appendChild(win.document.createTextNode(s));
+      const em2 = win.document.getElementById('step-em-trunc');
+      em2.textContent = '';
+      for (const s of ['... ', '12', ' more ', 'lines', ', truncated for display.']) em2.appendChild(win.document.createTextNode(s));
+    });
+    assert.equal(w.document.getElementById('thinking-body').textContent, 'Thinking about Arguments and Output in Result');
+    assert.equal(w.document.getElementById('mono-args').textContent, '参数');
+    assert.equal(w.document.getElementById('mono-code').textContent, '{"Arguments": "Result"}');
+    assert.equal(w.document.getElementById('mono-out').textContent, '输出');
+    assert.equal(w.document.getElementById('mono-trunc').textContent, '... 还有 24 行，已截断显示。');
+    assert.equal(w.document.getElementById('tn-res').textContent, '结果');
+    assert.equal(w.document.getElementById('tn-resp').textContent, '响应');
+    assert.equal(w.document.getElementById('cb-args').textContent, '参数');
+    assert.equal(w.document.getElementById('cb-out').textContent, '输出');
+    assert.equal(w.document.getElementById('adj-args').textContent, '参数');
+    assert.equal(w.document.getElementById('nested-args').textContent, '参数');
+    assert.equal(w.document.getElementById('jsx-em-trunc').textContent, '... 还有 24 行，已截断显示。');
+    assert.equal(w.document.getElementById('step-args').textContent, '参数');
+    assert.equal(w.document.getElementById('step-em-trunc').textContent, '... 还有 12 行，已截断显示。');
+    assert.equal(w.document.getElementById('keep-tn').textContent, 'Knowledge');
+    assert.equal(w.document.getElementById('plain-lc').textContent, 'arguments');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    const em1Tw = domTw.window.document.getElementById('jsx-em-trunc');
+    em1Tw.textContent = '';
+    for (const s of ['... ', '24', ' more ', 'lines', ', truncated for display.']) em1Tw.appendChild(domTw.window.document.createTextNode(s));
+    const em2Tw = domTw.window.document.getElementById('step-em-trunc');
+    em2Tw.textContent = '';
+    for (const s of ['... ', '12', ' more ', 'lines', ', truncated for display.']) em2Tw.appendChild(domTw.window.document.createTextNode(s));
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('thinking-body').textContent, 'Thinking about Arguments and Output in Result');
+    assert.equal(domTw.window.document.getElementById('mono-args').textContent, '參數');
+    assert.equal(domTw.window.document.getElementById('mono-out').textContent, '輸出');
+    assert.equal(domTw.window.document.getElementById('mono-trunc').textContent, '... 還有 24 行，已截斷顯示。');
+    assert.equal(domTw.window.document.getElementById('tn-res').textContent, '結果');
+    assert.equal(domTw.window.document.getElementById('tn-resp').textContent, '回應');
+    assert.equal(domTw.window.document.getElementById('cb-args').textContent, '參數');
+    assert.equal(domTw.window.document.getElementById('cb-out').textContent, '輸出');
+    assert.equal(domTw.window.document.getElementById('adj-args').textContent, '參數');
+    assert.equal(domTw.window.document.getElementById('nested-args').textContent, '參數');
+    assert.equal(domTw.window.document.getElementById('jsx-em-trunc').textContent, '... 還有 24 行，已截斷顯示。');
+    assert.equal(domTw.window.document.getElementById('step-args').textContent, '參數');
+    assert.equal(domTw.window.document.getElementById('step-em-trunc').textContent, '... 還有 12 行，已截斷顯示。');
+    assert.equal(domTw.window.document.getElementById('keep-tn').textContent, 'Knowledge');
+    assert.equal(domTw.window.document.getElementById('plain-lc').textContent, 'arguments');
+});
+
+test('turn indicator hover attachments, counter, and command exit codes translate in SC and TC', async t => {
+    const html = `
+      <div>
+        <div id="att-title">处理以上三个问题 (3 image attachments)</div>
+        <span id="att-single">(1 image attachment)</span>
+        <span id="att-file">(2 file attachments)</span>
+        <span id="turn-cnt">4 of 14</span>
+        <span id="exit-dot">· Exited with code 1</span>
+        <span id="exit-bare">Exited with code 0</span>
+        <div id="exit-comb">Ran npm test · Exited with code 1</div>
+        <div id="exit-split"><span>Exited with code </span><span>1</span></div>
+        <span id="ctx-folder">Folder</span>
+        <span id="ctx-drive">Drive</span>
+        <span id="lc-folder">folder</span>
+        <span id="lc-drive">drive</span>
+      </div>
+    `;
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('att-title').textContent, '处理以上三个问题 (3 张图片附件)');
+    assert.equal(w.document.getElementById('att-single').textContent, '(1 张图片附件)');
+    assert.equal(w.document.getElementById('att-file').textContent, '(2 个文件附件)');
+    assert.equal(w.document.getElementById('turn-cnt').textContent, '4 / 14');
+    assert.equal(w.document.getElementById('exit-dot').textContent, '· 已退出，退出码 1');
+    assert.equal(w.document.getElementById('exit-bare').textContent, '已退出，退出码 0');
+    assert.equal(w.document.getElementById('exit-comb').textContent, '已运行 npm test · 已退出，退出码 1');
+    assert.equal(w.document.getElementById('exit-split').textContent, '已退出，退出码 1');
+    assert.equal(w.document.getElementById('ctx-folder').textContent, '文件夹');
+    assert.equal(w.document.getElementById('ctx-drive').textContent, '云端硬盘');
+    assert.equal(w.document.getElementById('lc-folder').textContent, 'folder');
+    assert.equal(w.document.getElementById('lc-drive').textContent, 'drive');
+
+    const domTw = createDom(html);
+    t.after(() => domTw.window.close());
+    domTw.window.eval(loadRuntime({ traditional: true }));
+    await settle();
+    assert.equal(domTw.window.document.getElementById('att-title').textContent, '处理以上三个问题 (3 張圖片附件)');
+    assert.equal(domTw.window.document.getElementById('att-single').textContent, '(1 張圖片附件)');
+    assert.equal(domTw.window.document.getElementById('att-file').textContent, '(2 個檔案附件)');
+    assert.equal(domTw.window.document.getElementById('turn-cnt').textContent, '4 / 14');
+    assert.equal(domTw.window.document.getElementById('exit-dot').textContent, '· 已結束，結束碼 1');
+    assert.equal(domTw.window.document.getElementById('exit-bare').textContent, '已結束，結束碼 0');
+    assert.equal(domTw.window.document.getElementById('exit-comb').textContent, '已執行 npm test · 已結束，結束碼 1');
+    assert.equal(domTw.window.document.getElementById('exit-split').textContent, '已結束，結束碼 1');
+    assert.equal(domTw.window.document.getElementById('ctx-folder').textContent, '資料夾');
+    assert.equal(domTw.window.document.getElementById('ctx-drive').textContent, '雲端硬碟');
+    assert.equal(domTw.window.document.getElementById('lc-folder').textContent, 'folder');
+    assert.equal(domTw.window.document.getElementById('lc-drive').textContent, 'drive');
+});

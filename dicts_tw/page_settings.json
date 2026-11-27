@@ -575,5 +575,9 @@
   "System default app": "系統預設應用程式",
   "VS Code Default": "VS Code 預設",
   "VS Code Keyboard Shortcuts": "VS Code 鍵盤快速鍵",
-  "Visited URLs and autocomplete suggestions.": "造訪過的 URL 與自動完成建議。"
+  "Visited URLs and autocomplete suggestions.": "造訪過的 URL 與自動完成建議。",
+  "Navigation": "導覽",
+  "Suggestions": "建議",
+  "Recommended": "推薦",
+  "Days": "天"
 }

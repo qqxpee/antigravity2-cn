@@ -575,5 +575,9 @@
   "System default app": "系统默认应用",
   "VS Code Default": "VS Code 默认",
   "VS Code Keyboard Shortcuts": "VS Code 键盘快捷键",
-  "Visited URLs and autocomplete suggestions.": "已访问的 URL 和自动补全建议。"
+  "Visited URLs and autocomplete suggestions.": "已访问的 URL 和自动补全建议。",
+  "Navigation": "导航",
+  "Suggestions": "建议",
+  "Recommended": "推荐",
+  "Days": "天"
 }
