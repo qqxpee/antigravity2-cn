@@ -6,7 +6,7 @@
 
 [![Version](https://img.shields.io/badge/Antigravity-v2.35.1%2B-blue?style=flat-square)](https://antigravity.google/download)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](#-快速开始)
-[![Tests](https://img.shields.io/github/actions/workflow/status/qqxpee/antigravity2-cn/tests.yml?branch=main&label=Tests&style=flat-square)](.github/workflows/tests.yml)
+[![Tests](https://github.com/qqxpee/antigravity2-cn/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/qqxpee/antigravity2-cn/actions/workflows/tests.yml)
 [![Stars](https://img.shields.io/github/stars/qqxpee/antigravity2-cn?style=flat-square&color=yellow)](https://github.com/qqxpee/antigravity2-cn/stargazers)
 [![License](https://img.shields.io/github/license/qqxpee/antigravity2-cn?style=flat-square&color=green)](LICENSE)
 
